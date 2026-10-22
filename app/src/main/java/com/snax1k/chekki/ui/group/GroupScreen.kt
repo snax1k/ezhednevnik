@@ -74,6 +74,7 @@ fun GroupScreen(
     modifier: Modifier = Modifier,
     onBack: () -> Unit = {},
     onToggleDone: (TaskUi) -> Unit = {},
+    onTaskClick: (TaskUi) -> Unit = {},
     onShowMore: () -> Unit = {},
     onVoiceClick: () -> Unit = {},
     onAddClick: () -> Unit = {}
@@ -107,7 +108,11 @@ fun GroupScreen(
                             }
                         }
                         items(section.tasks, key = { it.id }, contentType = { "task" }) { task ->
-                            TaskRow(task = task, onToggleDone = { onToggleDone(task) })
+                            TaskRow(
+                                task = task,
+                                onToggleDone = { onToggleDone(task) },
+                                onClick = { onTaskClick(task) }
+                            )
                         }
                     }
                     if (state.canShowMore) {

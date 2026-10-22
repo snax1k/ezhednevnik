@@ -123,4 +123,14 @@
     <string name="priority_short_low">Низкий</string>
     <string name="priority_short_medium">Средний</string>
     <string name="priority_short_high">Высокий</string>
+    <!-- Карточка задачи -->
+    <string name="task_open">Открыть задачу</string>
+    <string name="task_delete">Удалить задачу</string>
+    <string name="task_deleted">Задача удалена</string>
+    <string name="action_undo">Отменить</string>
+    <string name="task_complete">Выполнено</string>
+    <string name="task_return">Вернуть</string>
+    <string name="task_pick_date">Выбрать дату…</string>
+    <!-- Подзадачи в карточке: «1 из 3» для TalkBack -->
+    <string name="task_subtasks_progress">%1$d из %2$d</string>
 </resources>

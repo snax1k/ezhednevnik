@@ -1,5 +1,6 @@
 package com.snax1k.chekki.ui.components
 
+import androidx.compose.animation.core.animateDpAsState
 import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Arrangement
@@ -8,11 +9,14 @@ import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.navigationBarsPadding
+import androidx.compose.foundation.layout.offset
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.material3.Icon
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.compositionLocalOf
+import androidx.compose.runtime.getValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
@@ -22,6 +26,7 @@ import androidx.compose.ui.graphics.shadow.Shadow
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.semantics.Role
 import androidx.compose.ui.unit.DpOffset
+import androidx.compose.ui.unit.IntOffset
 import androidx.compose.ui.unit.dp
 import com.snax1k.chekki.R
 import com.snax1k.chekki.ui.icons.ChekkiIcons
@@ -31,12 +36,19 @@ import com.snax1k.chekki.ui.theme.cssLinearGradient
 /** Отступ снизу у прокручиваемого содержимого, чтобы оно не пряталось за плавающими кнопками. */
 val FloatingButtonsAreaHeight = 120.dp
 
+/**
+ * На сколько поднять плавающие кнопки: снизу может появиться плашка «Задача удалена · Отменить»,
+ * и кнопки уходят над ней, а не прячутся под неё (как в макете «Состояния и жесты»).
+ */
+val LocalFloatingButtonsLift = compositionLocalOf { 0.dp }
+
 /** Плавающие кнопки внизу справа: голосовой ввод и «+». */
 @Composable
 fun FloatingTaskButtons(onVoiceClick: () -> Unit, onAddClick: () -> Unit, modifier: Modifier = Modifier) {
     val colors = ChekkiTheme.colors
+    val lift by animateDpAsState(LocalFloatingButtonsLift.current, label = "floatingButtonsLift")
     Row(
-        modifier,
+        modifier.offset { IntOffset(0, -lift.roundToPx()) },
         horizontalArrangement = Arrangement.spacedBy(12.dp),
         verticalAlignment = Alignment.CenterVertically
     ) {

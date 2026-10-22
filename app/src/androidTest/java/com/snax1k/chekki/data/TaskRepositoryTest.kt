@@ -393,6 +393,90 @@ class TaskRepositoryTest {
         }
     }
 
+    @Test
+    fun изменениеЗадачиМеняетПоляИПереставляетБудильник() {
+        runBlocking {
+            val scheduler = RecordingScheduler()
+            val repository = TaskRepository(database, scheduler)
+            val run = repository.observeTasksOn(today).first().single { it.task.title == "Утренняя пробежка" }
+
+            repository.updateTask(
+                id = run.task.id,
+                title = "Пробежка 5 км",
+                note = "По набережной",
+                date = today.plusDays(2),
+                time = LocalTime.of(8, 0),
+                categoryId = null,
+                priority = TaskPriority.High,
+                repeat = RepeatRule.None,
+                reminderMinutesBefore = 15
+            )
+            val updated = repository.getTaskWithDetails(run.task.id)!!.task
+            assertEquals("Пробежка 5 км", updated.title)
+            assertEquals("По набережной", updated.note)
+            assertEquals(today.plusDays(2), updated.date)
+            assertEquals(LocalTime.of(8, 0), updated.time)
+            assertEquals(null, updated.categoryId)
+            assertEquals(TaskPriority.High, updated.priority)
+            assertEquals(RepeatRule.None, updated.repeat)
+            // Отметку выполнения и время выполнения изменение не трогает
+            assertTrue(updated.isDone)
+            assertEquals(run.task.completedAt, updated.completedAt)
+            assertEquals(listOf(updated), scheduler.updated)
+        }
+    }
+
+    @Test
+    fun удалениеИОтменаВозвращаютЗадачуЦеликом() {
+        runBlocking {
+            val scheduler = RecordingScheduler()
+            val repository = TaskRepository(database, scheduler)
+            val before = countTasks()
+            val report = repository.observeTasksOn(today).first().single { it.task.title == "Отправить отчёт за квартал" }
+            val subtasks = repository.observeSubtasks(report.task.id).first()
+
+            val deleted = repository.deleteTask(report.task.id)!!
+            assertEquals(before - 1, countTasks())
+            assertEquals(null, repository.getTaskWithDetails(report.task.id))
+            assertTrue(repository.observeSubtasks(report.task.id).first().isEmpty())
+            assertEquals(listOf(report.task.id), scheduler.cancelled)
+
+            repository.restoreTask(deleted)
+            assertEquals(before, countTasks())
+            assertEquals(report, repository.getTaskWithDetails(report.task.id))
+            assertEquals(subtasks, repository.observeSubtasks(report.task.id).first())
+            assertEquals(listOf(report.task.id), scheduler.updated.map { it.id })
+        }
+    }
+
+    @Test
+    fun отменаУдаленияВозвращаетСвязьСКопиейПовтора() {
+        runBlocking {
+            // У выполненной пробежки уже есть копия на завтра
+            val run = repository.observeTasksOn(today).first().single { it.task.title == "Утренняя пробежка" }
+            val copy = repository.observeTasksOn(today.plusDays(1)).first().single { it.task.title == "Утренняя пробежка" }
+            assertEquals(run.task.id, copy.task.repeatedFromId)
+
+            val deleted = repository.deleteTask(run.task.id)!!
+            assertEquals(null, repository.getTaskWithDetails(copy.task.id)!!.task.repeatedFromId)
+
+            repository.restoreTask(deleted)
+            assertEquals(run.task.id, repository.getTaskWithDetails(copy.task.id)!!.task.repeatedFromId)
+        }
+    }
+
+    @Test
+    fun подзадачуМожноОтметить() {
+        runBlocking {
+            val shopping = repository.observeTasksOn(today).first().single { it.task.title == "Купить продукты" }
+            val eggs = repository.observeSubtasks(shopping.task.id).first().single { it.title == "Яйца" }
+
+            repository.setSubtaskDone(eggs.id, isDone = true)
+            assertTrue(repository.observeSubtasks(shopping.task.id).first().single { it.id == eggs.id }.isDone)
+            assertEquals(3, repository.getTaskWithDetails(shopping.task.id)!!.subtasksDone)
+        }
+    }
+
     private fun countTasks(): Int =
         database.openHelper.readableDatabase.query("SELECT COUNT(*) FROM tasks").use { cursor ->
             cursor.moveToFirst()

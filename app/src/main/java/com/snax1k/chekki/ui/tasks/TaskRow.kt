@@ -9,6 +9,7 @@ import androidx.compose.animation.fadeOut
 import androidx.compose.animation.scaleIn
 import androidx.compose.foundation.background
 import androidx.compose.foundation.border
+import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
@@ -41,24 +42,32 @@ import com.snax1k.chekki.ui.components.formatTime
 import com.snax1k.chekki.ui.icons.ChekkiIcons
 import com.snax1k.chekki.ui.theme.ChekkiTheme
 
-/** Задача в списке: отметка, название, строка свойств и флажок приоритета. */
+/**
+ * Задача в списке: отметка, название, строка свойств и флажок приоритета.
+ * Нажатие на строку ([onClick]) открывает карточку, на кружок — только ставит или снимает отметку.
+ */
 @Composable
-fun TaskRow(task: TaskUi, onToggleDone: () -> Unit, modifier: Modifier = Modifier) {
+fun TaskRow(task: TaskUi, onToggleDone: () -> Unit, modifier: Modifier = Modifier, onClick: (() -> Unit)? = null) {
     val priorityColor = task.priority?.let { priorityColor(it) }
     val titleColor by animateColorAsState(
         if (task.done) ChekkiTheme.colors.taskDoneTitle else MaterialTheme.colorScheme.onSurface,
         label = "taskTitleColor"
     )
+    val openLabel = stringResource(R.string.task_open)
     Row(
         modifier
             .fillMaxWidth()
             .heightIn(min = 64.dp)
             .clip(MaterialTheme.shapes.medium)
             .background(MaterialTheme.colorScheme.surfaceContainer)
+            .then(
+                if (onClick != null) Modifier.clickable(onClickLabel = openLabel, role = Role.Button, onClick = onClick)
+                else Modifier
+            )
             .padding(start = 4.dp, end = 14.dp, top = 8.dp, bottom = 8.dp),
         verticalAlignment = Alignment.Top
     ) {
-        TaskCheckbox(task, priorityColor, onToggleDone)
+        TaskCheckbox(task.done, task.title, priorityColor, onToggleDone)
         // Отступ сверху ставит первую строку названия по центру отметки (48 / 2 − 20 / 2)
         Column(
             Modifier
@@ -86,23 +95,26 @@ fun TaskRow(task: TaskUi, onToggleDone: () -> Unit, modifier: Modifier = Modifie
     }
 }
 
-/** Отметка выполнения: кольцо цвета приоритета, после нажатия — заливка с галочкой. */
+/**
+ * Отметка выполнения: кольцо цвета приоритета ([priorityColor] null — без приоритета),
+ * после нажатия — заливка с галочкой. Зона нажатия 48 dp.
+ */
 @Composable
-private fun TaskCheckbox(task: TaskUi, priorityColor: Color?, onToggleDone: () -> Unit) {
+internal fun TaskCheckbox(done: Boolean, title: String, priorityColor: Color?, onToggleDone: () -> Unit) {
     val ringColor = priorityColor ?: MaterialTheme.colorScheme.outline
     val description = stringResource(
-        if (task.done) R.string.task_mark_undone else R.string.task_mark_done,
-        task.title
+        if (done) R.string.task_mark_undone else R.string.task_mark_done,
+        title
     )
     Box(
         Modifier
             .size(48.dp)
             .clip(CircleShape)
-            .toggleable(value = task.done, role = Role.Checkbox, onValueChange = { onToggleDone() })
+            .toggleable(value = done, role = Role.Checkbox, onValueChange = { onToggleDone() })
             .semantics { contentDescription = description },
         contentAlignment = Alignment.Center
     ) {
-        if (!task.done) {
+        if (!done) {
             Box(
                 Modifier
                     .size(22.dp)
@@ -112,7 +124,7 @@ private fun TaskCheckbox(task: TaskUi, priorityColor: Color?, onToggleDone: () -
             )
         }
         AnimatedVisibility(
-            visible = task.done,
+            visible = done,
             enter = scaleIn(
                 initialScale = 0.55f,
                 animationSpec = spring(dampingRatio = Spring.DampingRatioMediumBouncy)

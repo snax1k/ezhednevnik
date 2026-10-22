@@ -8,6 +8,7 @@ import androidx.room.Query
 import kotlinx.coroutines.flow.Flow
 import java.time.Instant
 import java.time.LocalDate
+import java.time.LocalTime
 
 /** Задача для списка: вместе с категорией и счётчиком подзадач. */
 data class TaskWithDetails(
@@ -161,6 +162,70 @@ interface TaskDao {
         """
     )
     suspend fun getTaskWithDetails(id: Long): TaskWithDetails?
+
+    /** То же для карточки задачи: следит за изменениями; null — задачи нет (например, её удалили). */
+    @Query(
+        """
+        SELECT t.*,
+            c.name AS category_name,
+            c.color_index AS category_color_index,
+            (SELECT COUNT(*) FROM subtasks s WHERE s.task_id = t.id AND s.is_done = 1) AS subtasks_done,
+            (SELECT COUNT(*) FROM subtasks s WHERE s.task_id = t.id) AS subtasks_total
+        FROM tasks t
+        LEFT JOIN categories c ON c.id = t.category_id
+        WHERE t.id = :id
+        """
+    )
+    fun observeTaskWithDetails(id: Long): Flow<TaskWithDetails?>
+
+    @Query("SELECT * FROM subtasks WHERE task_id = :taskId ORDER BY position")
+    fun observeSubtasks(taskId: Long): Flow<List<SubtaskEntity>>
+
+    /** Меняет поля, которые правятся в карточке задачи. Отметку выполнения и время создания не трогает. */
+    @Query(
+        """
+        UPDATE tasks SET
+            title = :title,
+            note = :note,
+            date = :date,
+            time = :time,
+            category_id = :categoryId,
+            priority = :priority,
+            repeat_unit = :repeatUnit,
+            repeat_every = :repeatEvery,
+            repeat_weekdays = :repeatWeekdays,
+            reminder_minutes_before = :reminderMinutesBefore
+        WHERE id = :id
+        """
+    )
+    suspend fun updateEditableFields(
+        id: Long,
+        title: String,
+        note: String,
+        date: LocalDate?,
+        time: LocalTime?,
+        categoryId: Long?,
+        priority: TaskPriority,
+        repeatUnit: RepeatUnit,
+        repeatEvery: Int,
+        repeatWeekdays: Int,
+        reminderMinutesBefore: Int?
+    )
+
+    /** Удаляет задачу; подзадачи удаляются вместе с ней, у копий повтора связь обнуляется. */
+    @Query("DELETE FROM tasks WHERE id = :id")
+    suspend fun deleteTask(id: Long)
+
+    /** id всех копий повтора, созданных из задачи [taskId], включая выполненные. */
+    @Query("SELECT id FROM tasks WHERE repeated_from_id = :taskId")
+    suspend fun getRepeatCopyIds(taskId: Long): List<Long>
+
+    /** Возвращает копиям повтора [ids] связь с исходной задачей — после отмены её удаления. */
+    @Query("UPDATE tasks SET repeated_from_id = :taskId WHERE id IN (:ids)")
+    suspend fun setRepeatedFrom(ids: List<Long>, taskId: Long)
+
+    @Query("UPDATE subtasks SET is_done = :isDone WHERE id = :id")
+    suspend fun setSubtaskDone(id: Long, isDone: Boolean)
 
     /**
      * Невыполненные задачи с напоминанием на сегодня и дальше: им нужны будильники.

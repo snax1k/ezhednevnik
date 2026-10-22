@@ -43,8 +43,11 @@ internal val DarkColorScheme = darkColorScheme(
     surfaceContainerHighest = SurfaceRaised,
     surfaceBright = SurfaceRaised,
     surfaceDim = Background,
+    // Светлая плашка «Задача удалена · Отменить» (Snackbar) на тёмном фоне
     inverseSurface = TextPrimary,
     inverseOnSurface = Background,
+    // Кнопка «Отменить» на плашке: тёмный оттенок акцента из макета «Состояния и жесты»
+    inversePrimary = Color(0xFFB04F08),
     // В макете нет: середина между фоном и вторичным текстом
     outline = Color(0xFF5B5E68),
     outlineVariant = SurfaceRaised

@@ -108,6 +108,9 @@ object ChekkiIcons {
     val Close: ImageVector by lazy { outlineIcon("Close", "M6 6l12 12M18 6L6 18") }
     val Tag: ImageVector by lazy { outlineIcon("Tag", "M3 12V4h8l10 10-8 8zM7.5 7.5v.01") }
     val ChevronRight: ImageVector by lazy { outlineIcon("ChevronRight", "M9 6l6 6-6 6") }
+
+    // Карточка задачи
+    val Delete: ImageVector by lazy { outlineIcon("Delete", "M4 7h16M10 11v6M14 11v6M6 7l1 13h10l1-13M9 7V4h6v3") }
 }
 
 private const val PriorityFlagPath = "M5 21V4M5 4h11.5l-2.2 4.2 2.2 4.3H5"

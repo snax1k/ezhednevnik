@@ -75,6 +75,73 @@ class TaskRepository(
     /** Задача с категорией и подзадачами; null — задачи уже нет. */
     suspend fun getTaskWithDetails(id: Long): TaskWithDetails? = taskDao.getTaskWithDetails(id)
 
+    /** Задача для карточки: поток обновляется при любом её изменении; null — задачи нет. */
+    fun observeTask(id: Long): Flow<TaskWithDetails?> = taskDao.observeTaskWithDetails(id)
+
+    /** Подзадачи по порядку. */
+    fun observeSubtasks(taskId: Long): Flow<List<SubtaskEntity>> = taskDao.observeSubtasks(taskId)
+
+    /**
+     * Меняет поля задачи из карточки и переставляет будильник. Отметку выполнения не трогает:
+     * её меняет только [toggleDone], поэтому запоздавшее сохранение названия её не перезапишет.
+     */
+    suspend fun updateTask(
+        id: Long,
+        title: String,
+        note: String,
+        date: LocalDate?,
+        time: LocalTime?,
+        categoryId: Long?,
+        priority: TaskPriority,
+        repeat: RepeatRule,
+        reminderMinutesBefore: Int?
+    ) {
+        val updated = database.withTransaction {
+            taskDao.updateEditableFields(
+                id = id,
+                title = title,
+                note = note,
+                date = date,
+                time = time,
+                categoryId = categoryId,
+                priority = priority,
+                repeatUnit = repeat.unit,
+                repeatEvery = repeat.every,
+                repeatWeekdays = repeat.weekdays,
+                reminderMinutesBefore = reminderMinutesBefore
+            )
+            taskDao.getTask(id)
+        } ?: return
+        reminders.update(updated)
+    }
+
+    /**
+     * Удаляет задачу вместе с подзадачами и будильником. Возвращает всё, что нужно для [restoreTask];
+     * null — задачи уже не было.
+     */
+    suspend fun deleteTask(id: Long): DeletedTask? {
+        val deleted = database.withTransaction {
+            val task = taskDao.getTask(id) ?: return@withTransaction null
+            val deleted = DeletedTask(task, taskDao.getSubtasks(id), taskDao.getRepeatCopyIds(id))
+            taskDao.deleteTask(id)
+            deleted
+        } ?: return null
+        reminders.cancel(id)
+        return deleted
+    }
+
+    /** Возвращает удалённую задачу как была: с тем же id, подзадачами, связью с копиями повтора и будильником. */
+    suspend fun restoreTask(deleted: DeletedTask) {
+        database.withTransaction {
+            taskDao.insertTask(deleted.task)
+            if (deleted.subtasks.isNotEmpty()) taskDao.insertSubtasks(deleted.subtasks)
+            if (deleted.repeatCopyIds.isNotEmpty()) taskDao.setRepeatedFrom(deleted.repeatCopyIds, deleted.task.id)
+        }
+        reminders.update(deleted.task)
+    }
+
+    suspend fun setSubtaskDone(id: Long, isDone: Boolean) = taskDao.setSubtaskDone(id, isDone)
+
     /** Задачи на дату, включая выполненные. */
     fun observeTasksOn(date: LocalDate): Flow<List<TaskWithDetails>> = taskDao.observeTasksOn(date)
 
@@ -167,3 +234,11 @@ class TaskRepository(
         taskDao.getUpcomingReminders(today).forEach(reminders::update)
     }
 }
+
+/** Удалённая задача со всем, что нужно, чтобы вернуть её кнопкой «Отменить». */
+data class DeletedTask(
+    val task: TaskEntity,
+    val subtasks: List<SubtaskEntity>,
+    /** Копии повтора, созданные из этой задачи: при удалении их связь обнуляется, при отмене возвращается. */
+    val repeatCopyIds: List<Long>
+)
