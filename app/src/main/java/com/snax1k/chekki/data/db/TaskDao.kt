@@ -227,6 +227,20 @@ interface TaskDao {
     @Query("UPDATE subtasks SET is_done = :isDone WHERE id = :id")
     suspend fun setSubtaskDone(id: Long, isDone: Boolean)
 
+    @Insert
+    suspend fun insertSubtask(subtask: SubtaskEntity): Long
+
+    /** Место для новой подзадачи — после последней; у задачи без подзадач — 0. */
+    @Query("SELECT COALESCE(MAX(position) + 1, 0) FROM subtasks WHERE task_id = :taskId")
+    suspend fun nextSubtaskPosition(taskId: Long): Int
+
+    @Query("UPDATE subtasks SET title = :title WHERE id = :id")
+    suspend fun renameSubtask(id: Long, title: String)
+
+    /** Удаляет подзадачу. Номера мест у остальных не сдвигаются: порядок держится и с пропусками. */
+    @Query("DELETE FROM subtasks WHERE id = :id")
+    suspend fun deleteSubtask(id: Long)
+
     /**
      * Невыполненные задачи с напоминанием на сегодня и дальше: им нужны будильники.
      * У более ранних задач время напоминания уже прошло.

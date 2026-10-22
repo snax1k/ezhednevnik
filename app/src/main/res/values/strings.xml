@@ -131,6 +131,7 @@
     <string name="task_complete">Выполнено</string>
     <string name="task_return">Вернуть</string>
     <string name="task_pick_date">Выбрать дату…</string>
+    <string name="task_edit_subtask">Изменить подзадачу</string>
     <!-- Подзадачи в карточке: «1 из 3» для TalkBack -->
     <string name="task_subtasks_progress">%1$d из %2$d</string>
 </resources>

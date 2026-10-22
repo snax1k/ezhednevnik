@@ -477,6 +477,44 @@ class TaskRepositoryTest {
         }
     }
 
+    @Test
+    fun подзадачиДобавляютсяВКонецПереименовываютсяИУдаляются() {
+        runBlocking {
+            val shopping = repository.observeTasksOn(today).first().single { it.task.title == "Купить продукты" }
+            val taskId = shopping.task.id
+
+            val sourCream = repository.addSubtask(taskId, "Сметана")
+            assertEquals(
+                listOf("Молоко", "Хлеб", "Яйца", "Сыр", "Яблоки", "Сметана"),
+                repository.observeSubtasks(taskId).first().map { it.title }
+            )
+            assertFalse(repository.observeSubtasks(taskId).first().last().isDone)
+
+            repository.renameSubtask(sourCream, "Сметана 20%")
+            val cheese = repository.observeSubtasks(taskId).first().single { it.title == "Сыр" }
+            repository.deleteSubtask(cheese.id)
+            assertEquals(
+                listOf("Молоко", "Хлеб", "Яйца", "Яблоки", "Сметана 20%"),
+                repository.observeSubtasks(taskId).first().map { it.title }
+            )
+            // После удаления новая подзадача всё равно встаёт в конец
+            repository.addSubtask(taskId, "Укроп")
+            assertEquals("Укроп", repository.observeSubtasks(taskId).first().last().title)
+            assertEquals(6, repository.getTaskWithDetails(taskId)!!.subtasksTotal)
+        }
+    }
+
+    @Test
+    fun перваяПодзадачаУЗадачиБезПодзадач() {
+        runBlocking {
+            val mom = repository.observeTasksOn(today).first().single { it.task.title == "Позвонить маме" }
+            repository.addSubtask(mom.task.id, "Спросить про выходные")
+            val subtasks = repository.observeSubtasks(mom.task.id).first()
+            assertEquals(listOf("Спросить про выходные"), subtasks.map { it.title })
+            assertEquals(0, subtasks.single().position)
+        }
+    }
+
     private fun countTasks(): Int =
         database.openHelper.readableDatabase.query("SELECT COUNT(*) FROM tasks").use { cursor ->
             cursor.moveToFirst()

@@ -51,6 +51,39 @@ class TaskCardRulesTest {
         assertEquals(today.plusDays(1), draft.dateFor(today.plusDays(1)))
     }
 
+    private val saved = listOf(
+        SubtaskUi(10, "Молоко", done = true),
+        SubtaskUi(11, "Хлеб", done = false)
+    )
+
+    @Test
+    fun строкиПодзадачБезПравкиПовторяютБазу() {
+        val rows = subtaskRows(saved, editing = null, newKeys = emptyMap())
+        assertEquals(listOf(10L, 11L), rows.map { it.key })
+        assertEquals(listOf("Молоко", "Хлеб"), rows.map { it.title })
+        assertEquals(listOf(false, false), rows.map { it.isEditing })
+    }
+
+    @Test
+    fun уПравящейсяПодзадачиТекстИзПравки() {
+        val rows = subtaskRows(saved, SubtaskEditing(key = 11, text = "", isNew = false, originalTitle = "Хлеб"), emptyMap())
+        // Пока название стёрто, в базе прежнее, а на экране — пустое поле
+        assertEquals(listOf("Молоко", ""), rows.map { it.title })
+        assertEquals(listOf(false, true), rows.map { it.isEditing })
+    }
+
+    @Test
+    fun новаяСтрокаИдётПоследнейИСохраняетКлючПослеСохранения() {
+        val editing = SubtaskEditing(key = -1, text = "Сыр", isNew = true, originalTitle = "")
+        val before = subtaskRows(saved, editing, emptyMap())
+        assertEquals(listOf(10L, 11L, -1L), before.map { it.key })
+
+        // Подзадача появилась в базе под id 12, но строка осталась со своим ключом и не задвоилась
+        val after = subtaskRows(saved + SubtaskUi(12, "Сыр", done = false), editing, newKeys = mapOf(12L to -1L))
+        assertEquals(listOf(10L, 11L, -1L), after.map { it.key })
+        assertEquals(true, after.last().isEditing)
+    }
+
     @Test
     fun быстраяДатаСразуСтановитсяКонкретной() {
         val draft = TaskEntity(title = "Разобрать антресоль", date = null, time = null, categoryId = null, createdAt = Instant.EPOCH)

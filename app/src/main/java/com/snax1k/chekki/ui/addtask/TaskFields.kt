@@ -8,6 +8,7 @@ import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
+import androidx.compose.foundation.layout.PaddingValues
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.RowScope
 import androidx.compose.foundation.layout.Spacer
@@ -47,6 +48,7 @@ import androidx.compose.ui.semantics.semantics
 import androidx.compose.ui.text.TextStyle
 import androidx.compose.ui.text.input.ImeAction
 import androidx.compose.ui.text.input.KeyboardCapitalization
+import androidx.compose.ui.text.input.TextFieldValue
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import androidx.lifecycle.Lifecycle
@@ -353,15 +355,54 @@ internal fun PlainTextField(
         // В одну строку Enter не переносит строку, а выполняет действие клавиатуры
         singleLine = maxLines == 1,
         maxLines = maxLines,
-        decorationBox = { innerTextField ->
-            Box {
-                if (value.isEmpty()) {
-                    Text(hint, style = textStyle, color = ChekkiTheme.colors.textPlaceholder)
-                }
-                innerTextField()
-            }
-        }
+        decorationBox = { innerTextField -> HintBox(value.isEmpty(), hint, textStyle, innerTextField) }
     )
+}
+
+/**
+ * То же поле, но со своим положением курсора: например, чтобы при начале правки
+ * курсор стоял в конце текста, а не в начале.
+ */
+@Composable
+internal fun PlainTextField(
+    value: TextFieldValue,
+    onValueChange: (TextFieldValue) -> Unit,
+    label: String,
+    hint: String,
+    textStyle: TextStyle,
+    imeAction: ImeAction,
+    maxLines: Int,
+    modifier: Modifier = Modifier,
+    keyboardActions: KeyboardActions = KeyboardActions.Default
+) {
+    BasicTextField(
+        value = value,
+        onValueChange = onValueChange,
+        modifier = modifier
+            .fillMaxWidth()
+            .semantics { contentDescription = label },
+        textStyle = textStyle,
+        cursorBrush = SolidColor(MaterialTheme.colorScheme.primary),
+        keyboardOptions = KeyboardOptions(
+            capitalization = KeyboardCapitalization.Sentences,
+            imeAction = imeAction
+        ),
+        keyboardActions = keyboardActions,
+        singleLine = maxLines == 1,
+        maxLines = maxLines,
+        decorationBox = { innerTextField -> HintBox(value.text.isEmpty(), hint, textStyle, innerTextField) }
+    )
+}
+
+/** Подсказка серым, пока поле пустое. */
+@Composable
+private fun HintBox(isEmpty: Boolean, hint: String, textStyle: TextStyle, innerTextField: @Composable () -> Unit) {
+    Box {
+        if (isEmpty) {
+            Text(hint, style = textStyle, color = ChekkiTheme.colors.textPlaceholder)
+        }
+        innerTextField()
+    }
 }
 
 @Composable
@@ -442,3 +483,29 @@ internal val TaskPriority.shortLabel: Int
         TaskPriority.Medium -> R.string.priority_short_medium
         TaskPriority.High -> R.string.priority_short_high
     }
+
+/** «Добавить подзадачу» под списком подзадач. [contentPadding] — отступ иконки внутри зоны нажатия. */
+@Composable
+internal fun AddSubtaskButton(
+    onClick: () -> Unit,
+    modifier: Modifier = Modifier,
+    contentPadding: PaddingValues = PaddingValues(0.dp)
+) {
+    Row(
+        modifier
+            .fillMaxWidth()
+            .height(48.dp)
+            .clip(MaterialTheme.shapes.small)
+            .clickable(role = Role.Button, onClick = onClick)
+            .padding(contentPadding),
+        horizontalArrangement = Arrangement.spacedBy(12.dp),
+        verticalAlignment = Alignment.CenterVertically
+    ) {
+        Icon(ChekkiIcons.Add, contentDescription = null, Modifier.size(20.dp), tint = MaterialTheme.colorScheme.primary)
+        Text(
+            text = stringResource(R.string.add_task_add_subtask),
+            style = MaterialTheme.typography.bodyLarge,
+            color = MaterialTheme.colorScheme.primary
+        )
+    }
+}

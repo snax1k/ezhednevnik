@@ -556,26 +556,6 @@ private fun SubtaskField(
 private val SubtaskBoxShape = RoundedCornerShape(6.dp)
 
 @Composable
-private fun AddSubtaskButton(onClick: () -> Unit) {
-    Row(
-        Modifier
-            .fillMaxWidth()
-            .height(48.dp)
-            .clip(MaterialTheme.shapes.small)
-            .clickable(role = Role.Button, onClick = onClick),
-        horizontalArrangement = Arrangement.spacedBy(12.dp),
-        verticalAlignment = Alignment.CenterVertically
-    ) {
-        Icon(ChekkiIcons.Add, contentDescription = null, Modifier.size(20.dp), tint = MaterialTheme.colorScheme.primary)
-        Text(
-            text = stringResource(R.string.add_task_add_subtask),
-            style = MaterialTheme.typography.bodyLarge,
-            color = MaterialTheme.colorScheme.primary
-        )
-    }
-}
-
-@Composable
 private fun SaveButton(enabled: Boolean, onClick: () -> Unit, modifier: Modifier = Modifier) {
     val colors = ChekkiTheme.colors
     Box(

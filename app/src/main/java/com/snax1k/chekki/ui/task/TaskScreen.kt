@@ -7,20 +7,27 @@ import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.ColumnScope
+import androidx.compose.foundation.layout.PaddingValues
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
+import androidx.compose.foundation.layout.WindowInsets
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.heightIn
+import androidx.compose.foundation.layout.ime
 import androidx.compose.foundation.layout.imePadding
 import androidx.compose.foundation.layout.navigationBarsPadding
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.statusBarsPadding
+import androidx.compose.foundation.relocation.BringIntoViewRequester
+import androidx.compose.foundation.relocation.bringIntoViewRequester
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.selection.toggleable
+import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
+import androidx.compose.foundation.text.KeyboardActions
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.material3.DropdownMenu
 import androidx.compose.material3.DropdownMenuItem
@@ -32,6 +39,7 @@ import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
+import androidx.compose.runtime.key
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.saveable.rememberSaveable
@@ -39,15 +47,22 @@ import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
+import androidx.compose.ui.focus.FocusRequester
+import androidx.compose.ui.focus.focusRequester
+import androidx.compose.ui.focus.onFocusChanged
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.vector.ImageVector
 import androidx.compose.ui.platform.LocalContext
+import androidx.compose.ui.platform.LocalDensity
+import androidx.compose.ui.platform.LocalFocusManager
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.semantics.Role
 import androidx.compose.ui.semantics.contentDescription
 import androidx.compose.ui.semantics.semantics
+import androidx.compose.ui.text.TextRange
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.input.ImeAction
+import androidx.compose.ui.text.input.TextFieldValue
 import androidx.compose.ui.text.style.TextDecoration
 import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.unit.dp
@@ -58,6 +73,7 @@ import com.snax1k.chekki.data.db.RepeatRule
 import com.snax1k.chekki.data.db.TaskPriority
 import com.snax1k.chekki.reminders.exactAlarmSettingsIntent
 import com.snax1k.chekki.reminders.notificationSettingsIntent
+import com.snax1k.chekki.ui.addtask.AddSubtaskButton
 import com.snax1k.chekki.ui.addtask.CategoryDot
 import com.snax1k.chekki.ui.addtask.CategoryOption
 import com.snax1k.chekki.ui.addtask.CategoryRow
@@ -75,9 +91,9 @@ import com.snax1k.chekki.ui.addtask.TaskTimePickerDialog
 import com.snax1k.chekki.ui.addtask.label
 import com.snax1k.chekki.ui.addtask.nextFullHour
 import com.snax1k.chekki.ui.addtask.priorityColor
+import com.snax1k.chekki.ui.addtask.rememberNotificationAccess
 import com.snax1k.chekki.ui.addtask.reminderLabel
 import com.snax1k.chekki.ui.addtask.reminderOptions
-import com.snax1k.chekki.ui.addtask.rememberNotificationAccess
 import com.snax1k.chekki.ui.addtask.repeatLabel
 import com.snax1k.chekki.ui.addtask.shortLabel
 import com.snax1k.chekki.ui.components.CardProgressBar
@@ -117,6 +133,7 @@ fun TaskScreen(viewModel: TaskViewModel, onBack: () -> Unit, onDeleted: (Deleted
         onDelete = { viewModel.delete(onDeleted) },
         onToggleDone = viewModel::toggleDone,
         onTitleChange = viewModel::onTitleChange,
+        onTitleEditEnd = viewModel::onTitleEditEnd,
         onNoteChange = viewModel::onNoteChange,
         onQuickDateSelect = viewModel::onQuickDateSelect,
         onDatePick = viewModel::onDatePick,
@@ -134,7 +151,17 @@ fun TaskScreen(viewModel: TaskViewModel, onBack: () -> Unit, onDeleted: (Deleted
         onRepeatSelect = viewModel::onRepeatSelect,
         onPrioritySelect = viewModel::onPrioritySelect,
         onCategorySelect = viewModel::onCategorySelect,
-        onSubtaskToggle = viewModel::toggleSubtask
+        subtaskRows = subtaskRows(subtasks, viewModel.editingSubtask, viewModel.newSubtaskKeys),
+        subtaskActions = remember(viewModel) {
+            SubtaskActions(
+                onToggle = viewModel::toggleSubtask,
+                onEdit = viewModel::editSubtask,
+                onTextChange = viewModel::onSubtaskTextChange,
+                onEditEnd = viewModel::onSubtaskEditEnd,
+                onDelete = viewModel::deleteSubtask,
+                onAdd = viewModel::addSubtask
+            )
+        }
     )
 
     if (showExactAlarmDialog) {
@@ -167,6 +194,7 @@ private fun TaskContent(
     onDelete: () -> Unit,
     onToggleDone: () -> Unit,
     onTitleChange: (String) -> Unit,
+    onTitleEditEnd: () -> Unit,
     onNoteChange: (String) -> Unit,
     onQuickDateSelect: (QuickDate) -> Unit,
     onDatePick: (LocalDate) -> Unit,
@@ -177,7 +205,8 @@ private fun TaskContent(
     onRepeatSelect: (RepeatRule) -> Unit,
     onPrioritySelect: (TaskPriority) -> Unit,
     onCategorySelect: (Long?) -> Unit,
-    onSubtaskToggle: (SubtaskUi) -> Unit
+    subtaskRows: List<SubtaskRowUi>,
+    subtaskActions: SubtaskActions
 ) {
     var pickerStep by rememberSaveable { mutableStateOf<PickerStep?>(null) }
     Surface(Modifier.fillMaxSize(), color = MaterialTheme.colorScheme.background) {
@@ -199,6 +228,7 @@ private fun TaskContent(
                     today = today,
                     onToggleDone = onToggleDone,
                     onTitleChange = onTitleChange,
+                    onTitleEditEnd = onTitleEditEnd,
                     onNoteChange = onNoteChange,
                     onDateClick = { pickerStep = PickerStep.Date },
                     onQuickDateSelect = onQuickDateSelect,
@@ -208,7 +238,8 @@ private fun TaskContent(
                     onRepeatSelect = onRepeatSelect,
                     onPrioritySelect = onPrioritySelect,
                     onCategorySelect = onCategorySelect,
-                    onSubtaskToggle = onSubtaskToggle
+                    subtaskRows = subtaskRows,
+                    subtaskActions = subtaskActions
                 )
             }
         }
@@ -252,6 +283,7 @@ private fun ColumnScope.TaskBody(
     today: LocalDate,
     onToggleDone: () -> Unit,
     onTitleChange: (String) -> Unit,
+    onTitleEditEnd: () -> Unit,
     onNoteChange: (String) -> Unit,
     onDateClick: () -> Unit,
     onQuickDateSelect: (QuickDate) -> Unit,
@@ -261,7 +293,8 @@ private fun ColumnScope.TaskBody(
     onRepeatSelect: (RepeatRule) -> Unit,
     onPrioritySelect: (TaskPriority) -> Unit,
     onCategorySelect: (Long?) -> Unit,
-    onSubtaskToggle: (SubtaskUi) -> Unit
+    subtaskRows: List<SubtaskRowUi>,
+    subtaskActions: SubtaskActions
 ) {
     val date = draft.dateFor(today)
     Column(
@@ -280,6 +313,7 @@ private fun ColumnScope.TaskBody(
             priority = draft.priority,
             onToggleDone = onToggleDone,
             onTitleChange = onTitleChange,
+            onTitleEditEnd = onTitleEditEnd,
             modifier = Modifier.padding(top = 8.dp)
         )
         PlainTextField(
@@ -311,9 +345,7 @@ private fun ColumnScope.TaskBody(
             onCategorySelect = onCategorySelect,
             modifier = Modifier.padding(top = 16.dp)
         )
-        if (subtasks.isNotEmpty()) {
-            SubtasksCard(subtasks, onSubtaskToggle, Modifier.padding(top = 16.dp))
-        }
+        SubtasksCard(subtasks, subtaskRows, subtaskActions, Modifier.padding(top = 16.dp))
         Spacer(Modifier.height(24.dp))
     }
     DoneButtonBar(isDone, onToggleDone)
@@ -390,8 +422,10 @@ private fun TitleRow(
     priority: TaskPriority,
     onToggleDone: () -> Unit,
     onTitleChange: (String) -> Unit,
+    onTitleEditEnd: () -> Unit,
     modifier: Modifier = Modifier
 ) {
+    val focusManager = LocalFocusManager.current
     Row(modifier.fillMaxWidth(), verticalAlignment = Alignment.Top) {
         TaskCheckbox(
             done = isDone,
@@ -412,8 +446,12 @@ private fun TitleRow(
             ),
             imeAction = ImeAction.Done,
             maxLines = 4,
+            // «Готово» заканчивает правку: стёртое целиком название сразу вернётся
+            keyboardActions = KeyboardActions(onDone = { focusManager.clearFocus() }),
             // Первая строка по центру кружка: (48 − 28) / 2
-            modifier = Modifier.padding(start = 4.dp, top = 10.dp)
+            modifier = Modifier
+                .padding(start = 4.dp, top = 10.dp)
+                .onFocusChanged { state -> if (!state.isFocused) onTitleEditEnd() }
         )
     }
 }
@@ -536,17 +574,39 @@ private fun DateMenuRow(
     }
 }
 
-/** Подзадачи: счётчик, полоса прогресса и строки с квадратными отметками. */
+/** Что можно сделать с подзадачами в карточке. */
+private class SubtaskActions(
+    val onToggle: (SubtaskRowUi) -> Unit,
+    val onEdit: (SubtaskRowUi) -> Unit,
+    val onTextChange: (String) -> Unit,
+    val onEditEnd: (key: Long) -> Unit,
+    val onDelete: (key: Long) -> Unit,
+    val onAdd: () -> Unit
+)
+
+/**
+ * Подзадачи: счётчик и полоса прогресса (по сохранённым [saved]), строки с квадратными отметками
+ * и «Добавить подзадачу». Блок виден всегда, даже без подзадач, — чтобы было где добавить первую.
+ */
 @Composable
-private fun SubtasksCard(subtasks: List<SubtaskUi>, onToggle: (SubtaskUi) -> Unit, modifier: Modifier = Modifier) {
-    val done = subtasks.count { it.done }
-    val progressDescription = stringResource(R.string.task_subtasks_progress, done, subtasks.size)
+private fun SubtasksCard(
+    saved: List<SubtaskUi>,
+    rows: List<SubtaskRowUi>,
+    actions: SubtaskActions,
+    modifier: Modifier = Modifier
+) {
+    val done = saved.count { it.done }
+    val progressDescription = stringResource(R.string.task_subtasks_progress, done, saved.size)
+    val focusManager = LocalFocusManager.current
     CardBlock(modifier) {
-        Column(Modifier.padding(start = 16.dp, end = 16.dp, top = 12.dp, bottom = 4.dp)) {
+        Column(Modifier.padding(start = 16.dp, end = 16.dp, top = 12.dp)) {
             Row(
                 Modifier
                     .fillMaxWidth()
-                    .semantics(mergeDescendants = true) { contentDescription = progressDescription },
+                    .heightIn(min = 24.dp)
+                    .semantics(mergeDescendants = true) {
+                        if (saved.isNotEmpty()) contentDescription = progressDescription
+                    },
                 verticalAlignment = Alignment.CenterVertically
             ) {
                 Text(
@@ -554,56 +614,157 @@ private fun SubtasksCard(subtasks: List<SubtaskUi>, onToggle: (SubtaskUi) -> Uni
                     modifier = Modifier.weight(1f),
                     style = MaterialTheme.typography.titleSmall
                 )
-                Text(
-                    text = "$done/${subtasks.size}",
-                    style = MaterialTheme.typography.bodySmall.copy(fontFeatureSettings = "tnum"),
-                    color = MaterialTheme.colorScheme.onSurfaceVariant
+                if (saved.isNotEmpty()) {
+                    Text(
+                        text = "$done/${saved.size}",
+                        style = MaterialTheme.typography.bodySmall.copy(fontFeatureSettings = "tnum"),
+                        color = MaterialTheme.colorScheme.onSurfaceVariant
+                    )
+                }
+            }
+            if (saved.isNotEmpty()) {
+                CardProgressBar(
+                    done = done,
+                    total = saved.size,
+                    trackColor = MaterialTheme.colorScheme.outlineVariant,
+                    color = ChekkiTheme.colors.taskDone,
+                    modifier = Modifier.padding(top = 10.dp, bottom = 4.dp)
                 )
             }
-            CardProgressBar(
-                done = done,
-                total = subtasks.size,
-                trackColor = MaterialTheme.colorScheme.outlineVariant,
-                color = ChekkiTheme.colors.taskDone,
-                modifier = Modifier.padding(top = 10.dp, bottom = 4.dp)
-            )
-            subtasks.forEach { subtask -> SubtaskRow(subtask, onToggle = { onToggle(subtask) }) }
+        }
+        // Зона нажатия отметки 48 dp, а сам квадрат — на одной линии с заголовком (16 dp от края)
+        Column(Modifier.padding(start = 2.dp, end = 4.dp, bottom = 4.dp)) {
+            rows.forEachIndexed { index, row ->
+                key(row.key) {
+                    SubtaskRow(
+                        row = row,
+                        actions = actions,
+                        onNext = {
+                            when {
+                                row.title.isBlank() -> focusManager.clearFocus()
+                                index == rows.lastIndex -> actions.onAdd()
+                                else -> actions.onEdit(rows[index + 1])
+                            }
+                        }
+                    )
+                }
+            }
+            AddSubtaskButton(onClick = actions.onAdd, contentPadding = PaddingValues(start = 14.dp))
         }
     }
 }
 
+/**
+ * Строка подзадачи. Нажатие на квадрат отмечает подзадачу, на название — начинает правку:
+ * название становится полем ввода, справа появляется крестик удаления.
+ */
 @Composable
-private fun SubtaskRow(subtask: SubtaskUi, onToggle: () -> Unit) {
+private fun SubtaskRow(row: SubtaskRowUi, actions: SubtaskActions, onNext: () -> Unit) {
     val colors = ChekkiTheme.colors
+    val toggleDescription = stringResource(
+        if (row.done) R.string.task_mark_undone else R.string.task_mark_done,
+        row.title
+    )
+    // Правящаяся строка целиком видна над клавиатурой и кнопкой внизу, а не только строка с курсором.
+    // Прокручиваем, пока выезжает клавиатура: каждый новый размер отменяет прошлую прокрутку
+    val bringIntoView = remember { BringIntoViewRequester() }
+    if (row.isEditing) {
+        val imeBottom = WindowInsets.ime.getBottom(LocalDensity.current)
+        LaunchedEffect(imeBottom) { bringIntoView.bringIntoView() }
+    }
     Row(
         Modifier
             .fillMaxWidth()
             .heightIn(min = 48.dp)
-            .toggleable(value = subtask.done, role = Role.Checkbox, onValueChange = { onToggle() }),
-        horizontalArrangement = Arrangement.spacedBy(12.dp),
+            .bringIntoViewRequester(bringIntoView),
         verticalAlignment = Alignment.CenterVertically
     ) {
         Box(
             Modifier
-                .size(20.dp)
-                .clip(SubtaskBoxShape)
-                .then(
-                    if (subtask.done) Modifier.background(colors.taskDone)
-                    else Modifier.border(2.dp, MaterialTheme.colorScheme.outline, SubtaskBoxShape)
-                ),
+                .size(48.dp)
+                .clip(CircleShape)
+                .toggleable(value = row.done, role = Role.Checkbox, onValueChange = { actions.onToggle(row) })
+                .semantics { contentDescription = toggleDescription },
             contentAlignment = Alignment.Center
         ) {
-            if (subtask.done) {
-                Icon(ChekkiIcons.Check, contentDescription = null, Modifier.size(13.dp), tint = colors.onTaskDone)
+            Box(
+                Modifier
+                    .size(20.dp)
+                    .clip(SubtaskBoxShape)
+                    .then(
+                        if (row.done) Modifier.background(colors.taskDone)
+                        else Modifier.border(2.dp, MaterialTheme.colorScheme.outline, SubtaskBoxShape)
+                    ),
+                contentAlignment = Alignment.Center
+            ) {
+                if (row.done) {
+                    Icon(ChekkiIcons.Check, contentDescription = null, Modifier.size(13.dp), tint = colors.onTaskDone)
+                }
             }
         }
-        Text(
-            text = subtask.title,
-            style = MaterialTheme.typography.bodyLarge,
-            color = if (subtask.done) colors.taskDoneTitle else MaterialTheme.colorScheme.onSurface,
-            textDecoration = if (subtask.done) TextDecoration.LineThrough else null
-        )
+        if (row.isEditing) {
+            SubtaskTitleField(row, actions, onNext, Modifier.weight(1f))
+            Box(
+                Modifier
+                    .size(48.dp)
+                    .clip(CircleShape)
+                    .clickable(role = Role.Button, onClick = { actions.onDelete(row.key) }),
+                contentAlignment = Alignment.Center
+            ) {
+                Icon(
+                    ChekkiIcons.Close,
+                    contentDescription = stringResource(R.string.add_task_remove_subtask),
+                    modifier = Modifier.size(18.dp),
+                    tint = MaterialTheme.colorScheme.outline
+                )
+            }
+        } else {
+            Text(
+                text = row.title,
+                modifier = Modifier
+                    .weight(1f)
+                    .clip(MaterialTheme.shapes.extraSmall)
+                    .clickable(onClickLabel = stringResource(R.string.task_edit_subtask), role = Role.Button) {
+                        actions.onEdit(row)
+                    }
+                    .padding(vertical = 12.dp, horizontal = 4.dp),
+                style = MaterialTheme.typography.bodyLarge,
+                color = if (row.done) colors.taskDoneTitle else MaterialTheme.colorScheme.onSurface,
+                textDecoration = if (row.done) TextDecoration.LineThrough else null
+            )
+        }
     }
+}
+
+/** Поле названия подзадачи: курсор ставится сразу, уход курсора заканчивает правку. */
+@Composable
+private fun SubtaskTitleField(row: SubtaskRowUi, actions: SubtaskActions, onNext: () -> Unit, modifier: Modifier) {
+    val focusRequester = remember { FocusRequester() }
+    // Поле появляется уже без фокуса: заканчиваем правку, только если фокус у него был и ушёл
+    var hadFocus by remember { mutableStateOf(false) }
+    LaunchedEffect(Unit) { focusRequester.requestFocus() }
+    // Курсор в конце названия: правку чаще всего начинают, чтобы дописать
+    var field by remember { mutableStateOf(TextFieldValue(row.title, TextRange(row.title.length))) }
+    PlainTextField(
+        value = field,
+        onValueChange = { changed ->
+            field = changed
+            if (changed.text != row.title) actions.onTextChange(changed.text)
+        },
+        label = stringResource(R.string.add_task_subtask_label),
+        hint = stringResource(R.string.add_task_subtask_hint),
+        textStyle = MaterialTheme.typography.bodyLarge.copy(color = MaterialTheme.colorScheme.onSurface),
+        imeAction = ImeAction.Next,
+        maxLines = 1,
+        keyboardActions = KeyboardActions(onNext = { onNext() }),
+        modifier = modifier
+            .padding(horizontal = 4.dp)
+            .focusRequester(focusRequester)
+            .onFocusChanged { state ->
+                if (state.isFocused) hadFocus = true
+                else if (hadFocus) actions.onEditEnd(row.key)
+            }
+    )
 }
 
 // Квадрат с небольшим скруглением, как в панели новой задачи
@@ -698,17 +859,20 @@ private fun TaskContentPreview() {
                 reminderMinutesBefore = 30
             ),
             isDone = false,
-            subtasks = listOf(
-                SubtaskUi(1, "Выгрузить данные о продажах", done = true),
-                SubtaskUi(2, "Построить графики", done = false),
-                SubtaskUi(3, "Написать короткий вывод", done = false)
+            subtasks = previewSubtasks,
+            subtaskRows = subtaskRows(
+                previewSubtasks,
+                editing = SubtaskEditing(key = 2, text = "Построить графики", isNew = false, originalTitle = "Построить графики"),
+                newKeys = emptyMap()
             ),
+            subtaskActions = SubtaskActions({}, {}, {}, {}, {}, {}),
             categories = listOf(CategoryOption(1, "Работа", 0)),
             today = LocalDate.of(2026, 10, 22),
             onBack = {},
             onDelete = {},
             onToggleDone = {},
             onTitleChange = {},
+            onTitleEditEnd = {},
             onNoteChange = {},
             onQuickDateSelect = {},
             onDatePick = {},
@@ -718,8 +882,13 @@ private fun TaskContentPreview() {
             onEnableNotifications = {},
             onRepeatSelect = {},
             onPrioritySelect = {},
-            onCategorySelect = {},
-            onSubtaskToggle = {}
+            onCategorySelect = {}
         )
     }
 }
+
+private val previewSubtasks = listOf(
+    SubtaskUi(1, "Выгрузить данные о продажах", done = true),
+    SubtaskUi(2, "Построить графики", done = false),
+    SubtaskUi(3, "Написать короткий вывод", done = false)
+)

@@ -142,6 +142,15 @@ class TaskRepository(
 
     suspend fun setSubtaskDone(id: Long, isDone: Boolean) = taskDao.setSubtaskDone(id, isDone)
 
+    /** Новая неотмеченная подзадача в конце списка. Возвращает её id. */
+    suspend fun addSubtask(taskId: Long, title: String): Long = database.withTransaction {
+        taskDao.insertSubtask(SubtaskEntity(taskId = taskId, title = title, position = taskDao.nextSubtaskPosition(taskId)))
+    }
+
+    suspend fun renameSubtask(id: Long, title: String) = taskDao.renameSubtask(id, title)
+
+    suspend fun deleteSubtask(id: Long) = taskDao.deleteSubtask(id)
+
     /** Задачи на дату, включая выполненные. */
     fun observeTasksOn(date: LocalDate): Flow<List<TaskWithDetails>> = taskDao.observeTasksOn(date)
 
