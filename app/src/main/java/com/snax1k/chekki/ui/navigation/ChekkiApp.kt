@@ -20,11 +20,11 @@ import androidx.navigation3.ui.NavDisplay
 import com.snax1k.chekki.ChekkiApplication
 import com.snax1k.chekki.ui.addtask.AddTaskSheet
 import com.snax1k.chekki.ui.addtask.AddTaskViewModel
+import com.snax1k.chekki.ui.group.GroupScreen
+import com.snax1k.chekki.ui.group.GroupViewModel
 import com.snax1k.chekki.ui.main.MainScreen
 import com.snax1k.chekki.ui.main.MainViewModel
 import com.snax1k.chekki.ui.main.TaskGroup
-import com.snax1k.chekki.ui.today.TodayScreen
-import com.snax1k.chekki.ui.today.TodayViewModel
 import kotlinx.serialization.Serializable
 
 // Экраны приложения. @Serializable нужен, чтобы стек экранов сохранялся при повороте и после
@@ -33,8 +33,12 @@ import kotlinx.serialization.Serializable
 @Serializable
 data object MainRoute : NavKey
 
+/** Список задач группы. */
 @Serializable
-data object TodayRoute : NavKey
+data class GroupRoute(val group: TaskGroup) : NavKey
+
+/** Группы, у которых уже готов список. Группы на несколько дней и «Выполненное» — следующий шаг. */
+private val OpenableGroups = setOf(TaskGroup.Today, TaskGroup.Tomorrow, TaskGroup.NoDate)
 
 /** Корень приложения: стек экранов (Navigation 3) и переходы между ними. */
 @Composable
@@ -67,15 +71,16 @@ fun ChekkiApp() {
                 val state by viewModel.uiState.collectAsStateWithLifecycle()
                 MainScreen(
                     state = state,
-                    // Пока открывается только «Сегодня», остальных экранов ещё нет
-                    onGroupClick = { group -> if (group == TaskGroup.Today) backStack.add(TodayRoute) },
+                    onGroupClick = { group -> if (group in OpenableGroups) backStack.add(GroupRoute(group)) },
                     onAddClick = { isAddTaskOpen = true }
                 )
             }
-            entry<TodayRoute> {
-                val viewModel = viewModel { TodayViewModel(container.taskRepository, container.currentDate) }
+            entry<GroupRoute> { route ->
+                val viewModel = viewModel {
+                    GroupViewModel(route.group, container.taskRepository, container.currentDate)
+                }
                 val state by viewModel.uiState.collectAsStateWithLifecycle()
-                TodayScreen(
+                GroupScreen(
                     state = state,
                     onBack = { backStack.removeLastOrNull() },
                     onToggleDone = { task -> viewModel.toggleDone(task.id) },

@@ -97,6 +97,42 @@ class TaskRepositoryTest {
     }
 
     @Test
+    fun задачиНаЗавтраИдутПоВремени() {
+        runBlocking {
+            val tomorrow = today.plusDays(1)
+            assertEquals(
+                listOf("Утренняя пробежка", "Стоматолог", "Забрать посылку"),
+                repository.observeOpenTasksBetween(tomorrow..tomorrow).first().map { it.task.title }
+            )
+        }
+    }
+
+    @Test
+    fun отмеченнаяНаЭкранеЗадачаОстаётсяВСпискеПокаЕёДержат() {
+        runBlocking {
+            val tomorrow = today.plusDays(1)
+            val dentist = repository.observeOpenTasksBetween(tomorrow..tomorrow).first()
+                .single { it.task.title == "Стоматолог" }
+            repository.toggleDone(dentist.task.id, today = today)
+
+            val kept = repository.observeOpenTasksBetween(tomorrow..tomorrow, keepIds = setOf(dentist.task.id)).first()
+            assertTrue(kept.single { it.task.id == dentist.task.id }.task.isDone)
+            val fresh = repository.observeOpenTasksBetween(tomorrow..tomorrow).first()
+            assertTrue(fresh.none { it.task.id == dentist.task.id })
+        }
+    }
+
+    @Test
+    fun задачиБезДатыНовыеСверху() {
+        runBlocking {
+            assertEquals(
+                listOf("Записаться на курсы английского", "Выбрать подарок Ане", "Разобрать антресоль"),
+                repository.observeOpenTasksWithoutDate().first().map { it.task.title }
+            )
+        }
+    }
+
+    @Test
     fun выполнениеПовтораСоздаётКопиюАСнятиеОтметкиЕёУбирает() {
         runBlocking {
             val call = repository.observeTasksOn(today).first().single { it.task.title == "Позвонить маме" }

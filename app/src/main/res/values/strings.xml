@@ -27,7 +27,10 @@
     <string name="action_back">Назад</string>
 
     <!-- Список задач -->
-    <string name="today_empty">На сегодня задач нет</string>
+    <string name="group_empty_today">На сегодня задач нет</string>
+    <string name="group_empty_tomorrow">На завтра задач нет</string>
+    <string name="group_empty_no_date">Задач без даты нет</string>
+    <string name="group_empty">Здесь пока пусто</string>
     <string name="list_sort">Сортировка</string>
     <string name="list_more">Ещё</string>
     <string name="task_all_day">Весь день</string>

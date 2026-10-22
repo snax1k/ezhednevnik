@@ -78,6 +78,17 @@ class TaskRepository(
     /** Задачи на дату, включая выполненные. */
     fun observeTasksOn(date: LocalDate): Flow<List<TaskWithDetails>> = taskDao.observeTasksOn(date)
 
+    /** Невыполненные задачи в диапазоне дат. Задачи из [keepIds] остаются в списке, даже если их выполнили. */
+    fun observeOpenTasksBetween(
+        dates: ClosedRange<LocalDate>,
+        keepIds: Set<Long> = emptySet()
+    ): Flow<List<TaskWithDetails>> =
+        taskDao.observeOpenTasksBetween(dates.start, dates.endInclusive, keepIds.toList())
+
+    /** Невыполненные задачи без даты, новые сверху. [keepIds] — как в [observeOpenTasksBetween]. */
+    fun observeOpenTasksWithoutDate(keepIds: Set<Long> = emptySet()): Flow<List<TaskWithDetails>> =
+        taskDao.observeOpenTasksWithoutDate(keepIds.toList())
+
     /** Число невыполненных задач по группам главного экрана для дня [today]. */
     fun observeGroupCounts(today: LocalDate): Flow<GroupCounts> {
         val ranges = GroupRanges.of(today)

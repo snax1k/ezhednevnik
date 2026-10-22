@@ -48,6 +48,41 @@ interface TaskDao {
     fun observeTasksOn(date: LocalDate): Flow<List<TaskWithDetails>>
 
     /**
+     * Невыполненные задачи с [from] по [to] включительно: по дате, внутри дня по времени, «на весь день» в конце.
+     * Задачи из [keepIds] попадают в список, даже если выполнены: так отмеченная на экране задача не пропадает сразу.
+     */
+    @Query(
+        """
+        SELECT t.*,
+            c.name AS category_name,
+            c.color_index AS category_color_index,
+            (SELECT COUNT(*) FROM subtasks s WHERE s.task_id = t.id AND s.is_done = 1) AS subtasks_done,
+            (SELECT COUNT(*) FROM subtasks s WHERE s.task_id = t.id) AS subtasks_total
+        FROM tasks t
+        LEFT JOIN categories c ON c.id = t.category_id
+        WHERE t.date BETWEEN :from AND :to AND (t.is_done = 0 OR t.id IN (:keepIds))
+        ORDER BY t.date, t.time IS NULL, t.time, t.created_at, t.id
+        """
+    )
+    fun observeOpenTasksBetween(from: LocalDate, to: LocalDate, keepIds: List<Long>): Flow<List<TaskWithDetails>>
+
+    /** Невыполненные задачи без даты, новые сверху. [keepIds] — как в [observeOpenTasksBetween]. */
+    @Query(
+        """
+        SELECT t.*,
+            c.name AS category_name,
+            c.color_index AS category_color_index,
+            (SELECT COUNT(*) FROM subtasks s WHERE s.task_id = t.id AND s.is_done = 1) AS subtasks_done,
+            (SELECT COUNT(*) FROM subtasks s WHERE s.task_id = t.id) AS subtasks_total
+        FROM tasks t
+        LEFT JOIN categories c ON c.id = t.category_id
+        WHERE t.date IS NULL AND (t.is_done = 0 OR t.id IN (:keepIds))
+        ORDER BY t.created_at DESC, t.id DESC
+        """
+    )
+    fun observeOpenTasksWithoutDate(keepIds: List<Long>): Flow<List<TaskWithDetails>>
+
+    /**
      * Счётчики групп одним запросом. Границы считает [com.snax1k.chekki.data.GroupRanges];
      * если начало диапазона позже конца, BETWEEN ничего не находит и группа получает 0.
      */

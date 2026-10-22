@@ -1,0 +1,325 @@
+package com.snax1k.chekki.ui.group
+
+import androidx.annotation.StringRes
+import androidx.compose.foundation.background
+import androidx.compose.foundation.layout.Arrangement
+import androidx.compose.foundation.layout.Box
+import androidx.compose.foundation.layout.Column
+import androidx.compose.foundation.layout.ColumnScope
+import androidx.compose.foundation.layout.PaddingValues
+import androidx.compose.foundation.layout.Row
+import androidx.compose.foundation.layout.WindowInsets
+import androidx.compose.foundation.layout.asPaddingValues
+import androidx.compose.foundation.layout.fillMaxSize
+import androidx.compose.foundation.layout.fillMaxWidth
+import androidx.compose.foundation.layout.height
+import androidx.compose.foundation.layout.navigationBars
+import androidx.compose.foundation.layout.navigationBarsPadding
+import androidx.compose.foundation.layout.padding
+import androidx.compose.foundation.layout.statusBarsPadding
+import androidx.compose.foundation.lazy.LazyColumn
+import androidx.compose.foundation.lazy.items
+import androidx.compose.material3.MaterialTheme
+import androidx.compose.material3.Surface
+import androidx.compose.material3.Text
+import androidx.compose.runtime.Composable
+import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableStateOf
+import androidx.compose.runtime.remember
+import androidx.compose.runtime.setValue
+import androidx.compose.ui.Alignment
+import androidx.compose.ui.Modifier
+import androidx.compose.ui.draw.alpha
+import androidx.compose.ui.draw.clip
+import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.res.stringResource
+import androidx.compose.ui.semantics.heading
+import androidx.compose.ui.semantics.semantics
+import androidx.compose.ui.text.font.FontWeight
+import androidx.compose.ui.text.style.TextAlign
+import androidx.compose.ui.tooling.preview.Preview
+import androidx.compose.ui.unit.dp
+import com.snax1k.chekki.R
+import com.snax1k.chekki.ui.components.BottomFade
+import com.snax1k.chekki.ui.components.CardProgressBar
+import com.snax1k.chekki.ui.components.FloatingButtonsAreaHeight
+import com.snax1k.chekki.ui.components.FloatingTaskButtons
+import com.snax1k.chekki.ui.components.HighlightCard
+import com.snax1k.chekki.ui.components.ProgressCountText
+import com.snax1k.chekki.ui.components.SquareIconButton
+import com.snax1k.chekki.ui.components.formatDayTitle
+import com.snax1k.chekki.ui.icons.ChekkiIcons
+import com.snax1k.chekki.ui.main.TaskGroup
+import com.snax1k.chekki.ui.main.sampleTodayTasks
+import com.snax1k.chekki.ui.tasks.TaskRow
+import com.snax1k.chekki.ui.tasks.TaskUi
+import com.snax1k.chekki.ui.theme.ChekkiTheme
+import com.snax1k.chekki.ui.theme.GroupColor
+import com.snax1k.chekki.ui.theme.cssLinearGradient
+import java.time.LocalDate
+
+/**
+ * Список задач одной группы. Макет есть только у «Сегодня» и только в стиле А, здесь он переведён на Б:
+ * шапка — карточка группы как на главном экране, задачи — скруглённые карточки.
+ */
+@Composable
+fun GroupScreen(
+    state: GroupUiState,
+    modifier: Modifier = Modifier,
+    onBack: () -> Unit = {},
+    onToggleDone: (TaskUi) -> Unit = {},
+    onVoiceClick: () -> Unit = {},
+    onAddClick: () -> Unit = {}
+) {
+    val navigationBarHeight = WindowInsets.navigationBars.asPaddingValues().calculateBottomPadding()
+    Surface(modifier = modifier.fillMaxSize(), color = MaterialTheme.colorScheme.background) {
+        Box(Modifier.fillMaxSize()) {
+            Column(
+                Modifier
+                    .fillMaxSize()
+                    .statusBarsPadding()
+            ) {
+                GroupTopBar(onBack)
+                LazyColumn(
+                    Modifier.fillMaxSize(),
+                    contentPadding = PaddingValues(
+                        start = 16.dp,
+                        end = 16.dp,
+                        top = 6.dp,
+                        bottom = FloatingButtonsAreaHeight + navigationBarHeight
+                    ),
+                    verticalArrangement = Arrangement.spacedBy(8.dp)
+                ) {
+                    item {
+                        GroupHeader(state, Modifier.padding(bottom = 6.dp))
+                    }
+                    items(state.tasks, key = { it.id }) { task ->
+                        TaskRow(task = task, onToggleDone = { onToggleDone(task) })
+                    }
+                    if (!state.isLoading && state.tasks.isEmpty()) {
+                        item {
+                            Text(
+                                text = stringResource(state.group.emptyText),
+                                modifier = Modifier
+                                    .fillMaxWidth()
+                                    .padding(top = 24.dp),
+                                style = MaterialTheme.typography.bodyLarge,
+                                color = MaterialTheme.colorScheme.onSurfaceVariant,
+                                textAlign = TextAlign.Center
+                            )
+                        }
+                    }
+                }
+            }
+            BottomFade(Modifier.align(Alignment.BottomCenter))
+            FloatingTaskButtons(
+                onVoiceClick = onVoiceClick,
+                onAddClick = onAddClick,
+                modifier = Modifier
+                    .align(Alignment.BottomEnd)
+                    .navigationBarsPadding()
+                    .padding(end = 16.dp, bottom = 24.dp)
+            )
+        }
+    }
+}
+
+/** Верхняя панель. Кнопки «Сортировка» и «Ещё» из макета вернутся, когда появятся сами функции. */
+@Composable
+private fun GroupTopBar(onBack: () -> Unit) {
+    Row(
+        Modifier
+            .fillMaxWidth()
+            .height(60.dp)
+            .padding(horizontal = 16.dp),
+        verticalAlignment = Alignment.CenterVertically
+    ) {
+        SquareIconButton(ChekkiIcons.Back, stringResource(R.string.action_back), onBack)
+    }
+}
+
+/**
+ * Шапка группы: у «Сегодня» и «Просроченных» яркая карточка, как на главном экране, у остальных —
+ * карточка в цвете группы, как плитка. Счётчик показывает невыполненные задачи, у «Сегодня» —
+ * «выполнено/всего» с полосой прогресса. Пока задачи грузятся, счётчик прозрачный, но место занимает.
+ */
+@Composable
+private fun GroupHeader(state: GroupUiState, modifier: Modifier = Modifier) {
+    val title = stringResource(state.group.title)
+    val subtitle = groupSubtitle(state.group, state.today)
+    val countAlpha = if (state.isLoading) 0f else 1f
+    val openCount = state.tasks.count { !it.done }
+    when (state.group) {
+        TaskGroup.Today -> {
+            val colors = ChekkiTheme.colors.today
+            val done = state.tasks.count { it.done }
+            HighlightCard(colors, modifier) {
+                HeaderTitleRow(title, subtitle, colors.content, colors.contentSecondary, countAlpha) {
+                    ProgressCountText(done, state.tasks.size, colors)
+                }
+                CardProgressBar(
+                    done = done,
+                    total = state.tasks.size,
+                    trackColor = ChekkiTheme.colors.todayProgressTrack,
+                    color = colors.content,
+                    modifier = Modifier
+                        .padding(top = 14.dp)
+                        .alpha(countAlpha)
+                )
+            }
+        }
+        TaskGroup.Overdue -> {
+            val colors = ChekkiTheme.colors.overdue
+            HighlightCard(colors, modifier) {
+                HeaderTitleRow(title, subtitle, colors.content, colors.contentSecondary, countAlpha) {
+                    CountText(openCount, colors.content)
+                }
+            }
+        }
+        else -> {
+            val color = groupColor(state.group)
+            TintedCard(color, modifier) {
+                HeaderTitleRow(
+                    title,
+                    subtitle,
+                    MaterialTheme.colorScheme.onSurface,
+                    MaterialTheme.colorScheme.onSurfaceVariant,
+                    countAlpha
+                ) {
+                    CountText(openCount, color.tint)
+                }
+            }
+        }
+    }
+}
+
+/** Карточка в цвете группы: диагональный градиент, как у плиток главного экрана. */
+@Composable
+private fun TintedCard(color: GroupColor, modifier: Modifier = Modifier, content: @Composable ColumnScope.() -> Unit) {
+    Column(
+        modifier
+            .fillMaxWidth()
+            .clip(MaterialTheme.shapes.extraLarge)
+            .background(cssLinearGradient(145f, color.base.copy(alpha = 0.28f), color.base.copy(alpha = 0.08f)))
+            .padding(16.dp),
+        content = content
+    )
+}
+
+/** Название группы с подписью слева и счётчик справа, по нижнему краю. */
+@Composable
+private fun HeaderTitleRow(
+    title: String,
+    subtitle: String?,
+    titleColor: Color,
+    subtitleColor: Color,
+    countAlpha: Float,
+    count: @Composable () -> Unit
+) {
+    Row(verticalAlignment = Alignment.Bottom) {
+        Column(Modifier.weight(1f)) {
+            Text(
+                text = title,
+                modifier = Modifier.semantics { heading() },
+                style = MaterialTheme.typography.headlineLarge,
+                color = titleColor
+            )
+            if (subtitle != null) {
+                Text(
+                    text = subtitle,
+                    modifier = Modifier.padding(top = 2.dp),
+                    style = MaterialTheme.typography.bodyMedium,
+                    fontWeight = FontWeight.SemiBold,
+                    color = subtitleColor
+                )
+            }
+        }
+        Box(Modifier.alpha(countAlpha)) {
+            count()
+        }
+    }
+}
+
+@Composable
+private fun CountText(count: Int, color: Color) {
+    Text(count.toString(), style = MaterialTheme.typography.headlineMedium, color = color)
+}
+
+/** Подпись под названием группы: день для «Сегодня» и «Завтра». */
+private fun groupSubtitle(group: TaskGroup, today: LocalDate): String? = when (group) {
+    TaskGroup.Today -> formatDayTitle(today)
+    TaskGroup.Tomorrow -> formatDayTitle(today.plusDays(1))
+    else -> null
+}
+
+/** Цвета группы для карточки-шапки. У «Сегодня» и «Просроченных» свои яркие карточки. */
+@Composable
+private fun groupColor(group: TaskGroup): GroupColor = with(ChekkiTheme.colors) {
+    when (group) {
+        TaskGroup.NoDate -> noDate
+        TaskGroup.Tomorrow -> tomorrow
+        TaskGroup.ThisWeek -> thisWeek
+        TaskGroup.ThisMonth -> thisMonth
+        TaskGroup.Later -> later
+        TaskGroup.Done -> done
+        TaskGroup.Overdue, TaskGroup.Today -> error("У группы $group яркая карточка")
+    }
+}
+
+@get:StringRes
+private val TaskGroup.title: Int
+    get() = when (this) {
+        TaskGroup.NoDate -> R.string.group_no_date
+        TaskGroup.Overdue -> R.string.group_overdue
+        TaskGroup.Today -> R.string.group_today
+        TaskGroup.Done -> R.string.group_done
+        TaskGroup.Tomorrow -> R.string.group_tomorrow
+        TaskGroup.ThisWeek -> R.string.group_this_week
+        TaskGroup.ThisMonth -> R.string.group_this_month
+        TaskGroup.Later -> R.string.group_later
+    }
+
+@get:StringRes
+private val TaskGroup.emptyText: Int
+    get() = when (this) {
+        TaskGroup.Today -> R.string.group_empty_today
+        TaskGroup.Tomorrow -> R.string.group_empty_tomorrow
+        TaskGroup.NoDate -> R.string.group_empty_no_date
+        else -> R.string.group_empty
+    }
+
+@Preview(widthDp = 412, heightDp = 915)
+@Composable
+private fun TodayGroupPreview() {
+    ChekkiTheme {
+        var tasks by remember { mutableStateOf(sampleTodayTasks()) }
+        GroupScreen(
+            state = GroupUiState(TaskGroup.Today, today = LocalDate.of(2026, 10, 22), tasks = tasks),
+            onToggleDone = { task ->
+                tasks = tasks.map { if (it.id == task.id) it.copy(done = !it.done) else it }
+            }
+        )
+    }
+}
+
+@Preview(widthDp = 412, heightDp = 915)
+@Composable
+private fun TomorrowGroupPreview() {
+    ChekkiTheme {
+        GroupScreen(
+            state = GroupUiState(
+                TaskGroup.Tomorrow,
+                today = LocalDate.of(2026, 10, 22),
+                tasks = sampleTodayTasks().take(3).map { it.copy(done = false) }
+            )
+        )
+    }
+}
+
+@Preview(widthDp = 412, heightDp = 915)
+@Composable
+private fun EmptyNoDateGroupPreview() {
+    ChekkiTheme {
+        GroupScreen(state = GroupUiState(TaskGroup.NoDate, today = LocalDate.of(2026, 10, 22), tasks = emptyList()))
+    }
+}
