@@ -123,6 +123,47 @@ class TaskRepositoryTest {
     }
 
     @Test
+    fun просроченныеИПотомБерутсяОткрытымиДиапазонами() {
+        runBlocking {
+            assertEquals(
+                listOf("Вернуть книгу в библиотеку", "Оплатить интернет", "Записаться к врачу"),
+                repository.observeOpenTasksBetween(LocalDate.MIN..today.minusDays(1)).first().map { it.task.title }
+            )
+            assertEquals(
+                listOf("Поменять масло в машине", "Сдать показания счётчиков", "Забронировать отель на отпуск", "Продлить страховку"),
+                repository.observeOpenTasksBetween(GroupRanges.of(today).laterFrom..LocalDate.MAX).first().map { it.task.title }
+            )
+        }
+    }
+
+    @Test
+    fun выполненноеСвежееСверхуИСОграничением() {
+        runBlocking {
+            // Из тестовых задач выполнены две: пробежка и резюме, резюме создано позже
+            assertEquals(2, repository.observeDoneCount().first())
+            assertEquals(
+                listOf("Отправить резюме", "Утренняя пробежка"),
+                repository.observeDoneTasks(limit = 10).first().map { it.task.title }
+            )
+            assertEquals(listOf("Отправить резюме"), repository.observeDoneTasks(limit = 1).first().map { it.task.title })
+        }
+    }
+
+    @Test
+    fun снятаяНаЭкранеВыполненногоЗадачаОстаётсяВСписке() {
+        runBlocking {
+            val resume = repository.observeDoneTasks(limit = 1).first().single()
+            repository.toggleDone(resume.task.id, today = today)
+
+            assertEquals(1, repository.observeDoneCount().first())
+            val kept = repository.observeDoneTasks(limit = 1, keepIds = setOf(resume.task.id)).first()
+            // Вернувшаяся в работу задача не вытесняет выполненные из первой страницы
+            assertEquals(listOf("Утренняя пробежка", "Отправить резюме"), kept.map { it.task.title })
+            assertFalse(kept.single { it.task.id == resume.task.id }.task.isDone)
+        }
+    }
+
+    @Test
     fun задачиБезДатыНовыеСверху() {
         runBlocking {
             assertEquals(

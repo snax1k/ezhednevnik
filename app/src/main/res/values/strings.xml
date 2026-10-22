@@ -30,7 +30,16 @@
     <string name="group_empty_today">На сегодня задач нет</string>
     <string name="group_empty_tomorrow">На завтра задач нет</string>
     <string name="group_empty_no_date">Задач без даты нет</string>
-    <string name="group_empty">Здесь пока пусто</string>
+    <string name="group_empty_overdue">Просроченных задач нет</string>
+    <string name="group_empty_this_week">До конца недели задач нет</string>
+    <string name="group_empty_this_month">До конца месяца задач нет</string>
+    <string name="group_empty_later">Задач на потом нет</string>
+    <string name="group_empty_done">Выполненных задач пока нет</string>
+    <!-- Подпись группы «Потом»: «с 1 ноября» -->
+    <string name="group_later_from">с %1$s</string>
+    <string name="day_today">Сегодня</string>
+    <string name="day_yesterday">Вчера</string>
+    <string name="list_show_more">Показать ещё</string>
     <string name="list_sort">Сортировка</string>
     <string name="list_more">Ещё</string>
     <string name="task_all_day">Весь день</string>

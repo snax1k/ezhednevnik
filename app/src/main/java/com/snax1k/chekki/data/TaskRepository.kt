@@ -78,7 +78,11 @@ class TaskRepository(
     /** Задачи на дату, включая выполненные. */
     fun observeTasksOn(date: LocalDate): Flow<List<TaskWithDetails>> = taskDao.observeTasksOn(date)
 
-    /** Невыполненные задачи в диапазоне дат. Задачи из [keepIds] остаются в списке, даже если их выполнили. */
+    /**
+     * Невыполненные задачи в диапазоне дат. Задачи из [keepIds] остаются в списке, даже если их выполнили.
+     * Для открытых диапазонов («Просроченные», «Потом») границей служат `LocalDate.MIN` и `LocalDate.MAX`:
+     * в базе это просто очень большие числа дней.
+     */
     fun observeOpenTasksBetween(
         dates: ClosedRange<LocalDate>,
         keepIds: Set<Long> = emptySet()
@@ -88,6 +92,13 @@ class TaskRepository(
     /** Невыполненные задачи без даты, новые сверху. [keepIds] — как в [observeOpenTasksBetween]. */
     fun observeOpenTasksWithoutDate(keepIds: Set<Long> = emptySet()): Flow<List<TaskWithDetails>> =
         taskDao.observeOpenTasksWithoutDate(keepIds.toList())
+
+    /** Последние [limit] выполненных задач, свежие сверху, и задачи из [keepIds], даже если с них сняли отметку. */
+    fun observeDoneTasks(limit: Int, keepIds: Set<Long> = emptySet()): Flow<List<TaskWithDetails>> =
+        taskDao.observeDoneTasks(limit, keepIds.toList())
+
+    /** Сколько всего выполненных задач: по нему экран решает, показывать ли «Показать ещё». */
+    fun observeDoneCount(): Flow<Int> = taskDao.observeDoneCount()
 
     /** Число невыполненных задач по группам главного экрана для дня [today]. */
     fun observeGroupCounts(today: LocalDate): Flow<GroupCounts> {

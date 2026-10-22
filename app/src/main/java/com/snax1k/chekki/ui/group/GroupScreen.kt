@@ -2,6 +2,7 @@ package com.snax1k.chekki.ui.group
 
 import androidx.annotation.StringRes
 import androidx.compose.foundation.background
+import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
@@ -33,6 +34,7 @@ import androidx.compose.ui.draw.alpha
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.res.stringResource
+import androidx.compose.ui.semantics.Role
 import androidx.compose.ui.semantics.heading
 import androidx.compose.ui.semantics.semantics
 import androidx.compose.ui.text.font.FontWeight
@@ -40,6 +42,7 @@ import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.unit.dp
 import com.snax1k.chekki.R
+import com.snax1k.chekki.data.GroupRanges
 import com.snax1k.chekki.ui.components.BottomFade
 import com.snax1k.chekki.ui.components.CardProgressBar
 import com.snax1k.chekki.ui.components.FloatingButtonsAreaHeight
@@ -47,7 +50,10 @@ import com.snax1k.chekki.ui.components.FloatingTaskButtons
 import com.snax1k.chekki.ui.components.HighlightCard
 import com.snax1k.chekki.ui.components.ProgressCountText
 import com.snax1k.chekki.ui.components.SquareIconButton
+import com.snax1k.chekki.ui.components.formatDateRange
+import com.snax1k.chekki.ui.components.formatDayMonth
 import com.snax1k.chekki.ui.components.formatDayTitle
+import com.snax1k.chekki.ui.components.formatShortDate
 import com.snax1k.chekki.ui.icons.ChekkiIcons
 import com.snax1k.chekki.ui.main.TaskGroup
 import com.snax1k.chekki.ui.main.sampleTodayTasks
@@ -68,6 +74,7 @@ fun GroupScreen(
     modifier: Modifier = Modifier,
     onBack: () -> Unit = {},
     onToggleDone: (TaskUi) -> Unit = {},
+    onShowMore: () -> Unit = {},
     onVoiceClick: () -> Unit = {},
     onAddClick: () -> Unit = {}
 ) {
@@ -93,10 +100,22 @@ fun GroupScreen(
                     item {
                         GroupHeader(state, Modifier.padding(bottom = 6.dp))
                     }
-                    items(state.tasks, key = { it.id }) { task ->
-                        TaskRow(task = task, onToggleDone = { onToggleDone(task) })
+                    for (section in state.sections) {
+                        if (section.day != null) {
+                            item(key = "day-${section.day}", contentType = "day") {
+                                DayHeader(dayTitle(section.day, state.today))
+                            }
+                        }
+                        items(section.tasks, key = { it.id }, contentType = { "task" }) { task ->
+                            TaskRow(task = task, onToggleDone = { onToggleDone(task) })
+                        }
                     }
-                    if (!state.isLoading && state.tasks.isEmpty()) {
+                    if (state.canShowMore) {
+                        item(key = "show-more") {
+                            ShowMoreButton(onShowMore, Modifier.padding(top = 4.dp))
+                        }
+                    }
+                    if (!state.isLoading && state.sections.isEmpty()) {
                         item {
                             Text(
                                 text = stringResource(state.group.emptyText),
@@ -138,10 +157,52 @@ private fun GroupTopBar(onBack: () -> Unit) {
     }
 }
 
+/** Подзаголовок дня в группах на несколько дней и в «Выполненном». */
+@Composable
+private fun DayHeader(text: String) {
+    Text(
+        text = text,
+        modifier = Modifier
+            .fillMaxWidth()
+            .padding(start = 4.dp, top = 10.dp)
+            .semantics { heading() },
+        style = MaterialTheme.typography.titleSmall,
+        color = MaterialTheme.colorScheme.onSurfaceVariant
+    )
+}
+
+@Composable
+private fun dayTitle(day: LocalDate, today: LocalDate): String = when (day) {
+    today -> stringResource(R.string.day_today)
+    today.minusDays(1) -> stringResource(R.string.day_yesterday)
+    else -> formatShortDate(day, today)
+}
+
+/** «Показать ещё» в конце «Выполненного». */
+@Composable
+private fun ShowMoreButton(onClick: () -> Unit, modifier: Modifier = Modifier) {
+    Box(
+        modifier
+            .fillMaxWidth()
+            .height(52.dp)
+            .clip(MaterialTheme.shapes.medium)
+            .background(MaterialTheme.colorScheme.surfaceContainer)
+            .clickable(role = Role.Button, onClick = onClick),
+        contentAlignment = Alignment.Center
+    ) {
+        Text(
+            text = stringResource(R.string.list_show_more),
+            style = MaterialTheme.typography.titleSmall,
+            color = MaterialTheme.colorScheme.primary
+        )
+    }
+}
+
 /**
  * Шапка группы: у «Сегодня» и «Просроченных» яркая карточка, как на главном экране, у остальных —
  * карточка в цвете группы, как плитка. Счётчик показывает невыполненные задачи, у «Сегодня» —
- * «выполнено/всего» с полосой прогресса. Пока задачи грузятся, счётчик прозрачный, но место занимает.
+ * «выполнено/всего» с полосой прогресса, у «Выполненного» счётчика нет (как на главном).
+ * Пока задачи грузятся, счётчик прозрачный, но место занимает.
  */
 @Composable
 private fun GroupHeader(state: GroupUiState, modifier: Modifier = Modifier) {
@@ -186,7 +247,9 @@ private fun GroupHeader(state: GroupUiState, modifier: Modifier = Modifier) {
                     MaterialTheme.colorScheme.onSurfaceVariant,
                     countAlpha
                 ) {
-                    CountText(openCount, color.tint)
+                    if (state.group != TaskGroup.Done) {
+                        CountText(openCount, color.tint)
+                    }
                 }
             }
         }
@@ -245,11 +308,20 @@ private fun CountText(count: Int, color: Color) {
     Text(count.toString(), style = MaterialTheme.typography.headlineMedium, color = color)
 }
 
-/** Подпись под названием группы: день для «Сегодня» и «Завтра». */
-private fun groupSubtitle(group: TaskGroup, today: LocalDate): String? = when (group) {
-    TaskGroup.Today -> formatDayTitle(today)
-    TaskGroup.Tomorrow -> formatDayTitle(today.plusDays(1))
-    else -> null
+/** Подпись под названием группы: день или даты, которые в неё входят. */
+@Composable
+private fun groupSubtitle(group: TaskGroup, today: LocalDate): String? {
+    val ranges = GroupRanges.of(today)
+    // В субботу и воскресенье «На неделе» пустая, а в конце месяца бывает пустым «В этом месяце»
+    fun range(dates: ClosedRange<LocalDate>) = if (dates.isEmpty()) null else formatDateRange(dates)
+    return when (group) {
+        TaskGroup.Today -> formatDayTitle(today)
+        TaskGroup.Tomorrow -> formatDayTitle(ranges.tomorrow)
+        TaskGroup.ThisWeek -> range(ranges.thisWeek)
+        TaskGroup.ThisMonth -> range(ranges.thisMonth)
+        TaskGroup.Later -> stringResource(R.string.group_later_from, formatDayMonth(ranges.laterFrom, today))
+        TaskGroup.NoDate, TaskGroup.Overdue, TaskGroup.Done -> null
+    }
 }
 
 /** Цвета группы для карточки-шапки. У «Сегодня» и «Просроченных» свои яркие карточки. */
@@ -285,8 +357,14 @@ private val TaskGroup.emptyText: Int
         TaskGroup.Today -> R.string.group_empty_today
         TaskGroup.Tomorrow -> R.string.group_empty_tomorrow
         TaskGroup.NoDate -> R.string.group_empty_no_date
-        else -> R.string.group_empty
+        TaskGroup.Overdue -> R.string.group_empty_overdue
+        TaskGroup.ThisWeek -> R.string.group_empty_this_week
+        TaskGroup.ThisMonth -> R.string.group_empty_this_month
+        TaskGroup.Later -> R.string.group_empty_later
+        TaskGroup.Done -> R.string.group_empty_done
     }
+
+private val PreviewToday = LocalDate.of(2026, 10, 22)
 
 @Preview(widthDp = 412, heightDp = 915)
 @Composable
@@ -294,7 +372,7 @@ private fun TodayGroupPreview() {
     ChekkiTheme {
         var tasks by remember { mutableStateOf(sampleTodayTasks()) }
         GroupScreen(
-            state = GroupUiState(TaskGroup.Today, today = LocalDate.of(2026, 10, 22), tasks = tasks),
+            state = GroupUiState(TaskGroup.Today, PreviewToday, sections = listOf(TaskSection(null, tasks))),
             onToggleDone = { task ->
                 tasks = tasks.map { if (it.id == task.id) it.copy(done = !it.done) else it }
             }
@@ -304,13 +382,36 @@ private fun TodayGroupPreview() {
 
 @Preview(widthDp = 412, heightDp = 915)
 @Composable
-private fun TomorrowGroupPreview() {
+private fun ThisMonthGroupPreview() {
     ChekkiTheme {
+        val tasks = sampleTodayTasks().map { it.copy(done = false) }
         GroupScreen(
             state = GroupUiState(
-                TaskGroup.Tomorrow,
-                today = LocalDate.of(2026, 10, 22),
-                tasks = sampleTodayTasks().take(3).map { it.copy(done = false) }
+                TaskGroup.ThisMonth,
+                PreviewToday,
+                sections = listOf(
+                    TaskSection(PreviewToday.plusDays(4), tasks.take(2)),
+                    TaskSection(PreviewToday.plusDays(7), tasks.drop(2).take(3))
+                )
+            )
+        )
+    }
+}
+
+@Preview(widthDp = 412, heightDp = 915)
+@Composable
+private fun DoneGroupPreview() {
+    ChekkiTheme {
+        val tasks = sampleTodayTasks().map { it.copy(done = true) }
+        GroupScreen(
+            state = GroupUiState(
+                TaskGroup.Done,
+                PreviewToday,
+                sections = listOf(
+                    TaskSection(PreviewToday, tasks.take(2)),
+                    TaskSection(PreviewToday.minusDays(1), tasks.drop(2).take(2))
+                ),
+                canShowMore = true
             )
         )
     }
@@ -320,6 +421,6 @@ private fun TomorrowGroupPreview() {
 @Composable
 private fun EmptyNoDateGroupPreview() {
     ChekkiTheme {
-        GroupScreen(state = GroupUiState(TaskGroup.NoDate, today = LocalDate.of(2026, 10, 22), tasks = emptyList()))
+        GroupScreen(state = GroupUiState(TaskGroup.NoDate, PreviewToday, sections = emptyList()))
     }
 }

@@ -83,6 +83,30 @@ interface TaskDao {
     fun observeOpenTasksWithoutDate(keepIds: List<Long>): Flow<List<TaskWithDetails>>
 
     /**
+     * Последние [limit] выполненных задач, свежие сверху, и задачи из [keepIds], даже если с них уже сняли
+     * отметку: так задача, которую вернули в работу на экране «Выполненное», не пропадает сразу.
+     * У снятой задачи время выполнения стёрто, поэтому она оказывается в конце — порядок восстанавливает экран.
+     */
+    @Query(
+        """
+        SELECT t.*,
+            c.name AS category_name,
+            c.color_index AS category_color_index,
+            (SELECT COUNT(*) FROM subtasks s WHERE s.task_id = t.id AND s.is_done = 1) AS subtasks_done,
+            (SELECT COUNT(*) FROM subtasks s WHERE s.task_id = t.id) AS subtasks_total
+        FROM tasks t
+        LEFT JOIN categories c ON c.id = t.category_id
+        WHERE t.id IN (SELECT id FROM tasks WHERE is_done = 1 ORDER BY completed_at DESC, id DESC LIMIT :limit)
+            OR t.id IN (:keepIds)
+        ORDER BY t.completed_at DESC, t.id DESC
+        """
+    )
+    fun observeDoneTasks(limit: Int, keepIds: List<Long>): Flow<List<TaskWithDetails>>
+
+    @Query("SELECT COUNT(*) FROM tasks WHERE is_done = 1")
+    fun observeDoneCount(): Flow<Int>
+
+    /**
      * Счётчики групп одним запросом. Границы считает [com.snax1k.chekki.data.GroupRanges];
      * если начало диапазона позже конца, BETWEEN ничего не находит и группа получает 0.
      */

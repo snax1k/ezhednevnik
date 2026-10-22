@@ -37,9 +37,6 @@ data object MainRoute : NavKey
 @Serializable
 data class GroupRoute(val group: TaskGroup) : NavKey
 
-/** Группы, у которых уже готов список. Группы на несколько дней и «Выполненное» — следующий шаг. */
-private val OpenableGroups = setOf(TaskGroup.Today, TaskGroup.Tomorrow, TaskGroup.NoDate)
-
 /** Корень приложения: стек экранов (Navigation 3) и переходы между ними. */
 @Composable
 fun ChekkiApp() {
@@ -71,7 +68,7 @@ fun ChekkiApp() {
                 val state by viewModel.uiState.collectAsStateWithLifecycle()
                 MainScreen(
                     state = state,
-                    onGroupClick = { group -> if (group in OpenableGroups) backStack.add(GroupRoute(group)) },
+                    onGroupClick = { group -> backStack.add(GroupRoute(group)) },
                     onAddClick = { isAddTaskOpen = true }
                 )
             }
@@ -84,6 +81,7 @@ fun ChekkiApp() {
                     state = state,
                     onBack = { backStack.removeLastOrNull() },
                     onToggleDone = { task -> viewModel.toggleDone(task.id) },
+                    onShowMore = viewModel::showMore,
                     onAddClick = { isAddTaskOpen = true }
                 )
             }
