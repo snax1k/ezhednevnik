@@ -1,0 +1,20 @@
+*.iml
+.gradle
+/local.properties
+/.idea/caches
+/.idea/libraries
+/.idea/modules.xml
+/.idea/workspace.xml
+/.idea/navEditor.xml
+/.idea/assetWizardSettings.xml
+.DS_Store
+/build
+/captures
+.externalNativeBuild
+.cxx
+local.properties
+# Служебная папка Kotlin (сессии демона, отчёты об ошибках)
+.kotlin
+# Настройки Android Studio, привязанные к этому компьютеру и эмулятору
+/.idea/deploymentTargetSelector.xml
+/.idea/deviceHardwareInput.xml

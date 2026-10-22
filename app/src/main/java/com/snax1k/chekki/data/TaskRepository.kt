@@ -1,0 +1,147 @@
+package com.snax1k.chekki.data
+
+import androidx.room.withTransaction
+import com.snax1k.chekki.data.db.CategoryEntity
+import com.snax1k.chekki.data.db.ChekkiDatabase
+import com.snax1k.chekki.data.db.GroupCounts
+import com.snax1k.chekki.data.db.RepeatRule
+import com.snax1k.chekki.data.db.SubtaskEntity
+import com.snax1k.chekki.data.db.TaskEntity
+import com.snax1k.chekki.data.db.TaskPriority
+import com.snax1k.chekki.data.db.TaskWithDetails
+import com.snax1k.chekki.reminders.ReminderScheduler
+import kotlinx.coroutines.flow.Flow
+import java.time.Instant
+import java.time.LocalDate
+import java.time.LocalTime
+
+/**
+ * Задачи для экранов. Все списки и счётчики — потоки: при изменении базы экраны обновятся сами.
+ * Об изменениях задач с напоминаниями сообщает [reminders], чтобы будильники совпадали с базой.
+ */
+class TaskRepository(
+    private val database: ChekkiDatabase,
+    private val reminders: ReminderScheduler = ReminderScheduler.None
+) {
+
+    private val taskDao = database.taskDao()
+    private val categoryDao = database.categoryDao()
+
+    /** Все категории в порядке списка. */
+    fun observeCategories(): Flow<List<CategoryEntity>> = categoryDao.observeAll()
+
+    /**
+     * Новая задача. [time] null — на весь день; [reminderMinutesBefore] null — без напоминания.
+     * Подзадачи сохраняются в том же порядке, неотмеченными. Возвращает id задачи.
+     */
+    suspend fun addTask(
+        title: String,
+        note: String,
+        date: LocalDate?,
+        time: LocalTime?,
+        categoryId: Long?,
+        priority: TaskPriority,
+        repeat: RepeatRule = RepeatRule.None,
+        reminderMinutesBefore: Int? = null,
+        subtasks: List<String> = emptyList(),
+        now: Instant = Instant.now()
+    ): Long {
+        val task = TaskEntity(
+            title = title,
+            note = note,
+            date = date,
+            time = time,
+            categoryId = categoryId,
+            priority = priority,
+            repeat = repeat,
+            reminderMinutesBefore = reminderMinutesBefore,
+            createdAt = now
+        )
+        val taskId = database.withTransaction {
+            val taskId = taskDao.insertTask(task)
+            if (subtasks.isNotEmpty()) {
+                taskDao.insertSubtasks(
+                    subtasks.mapIndexed { index, subtaskTitle ->
+                        SubtaskEntity(taskId = taskId, title = subtaskTitle, position = index)
+                    }
+                )
+            }
+            taskId
+        }
+        reminders.update(task.copy(id = taskId))
+        return taskId
+    }
+
+    /** Задача с категорией и подзадачами; null — задачи уже нет. */
+    suspend fun getTaskWithDetails(id: Long): TaskWithDetails? = taskDao.getTaskWithDetails(id)
+
+    /** Задачи на дату, включая выполненные. */
+    fun observeTasksOn(date: LocalDate): Flow<List<TaskWithDetails>> = taskDao.observeTasksOn(date)
+
+    /** Число невыполненных задач по группам главного экрана для дня [today]. */
+    fun observeGroupCounts(today: LocalDate): Flow<GroupCounts> {
+        val ranges = GroupRanges.of(today)
+        return taskDao.observeGroupCounts(
+            today = today,
+            tomorrow = ranges.tomorrow,
+            weekStart = ranges.thisWeek.start,
+            weekEnd = ranges.thisWeek.endInclusive,
+            monthStart = ranges.thisMonth.start,
+            monthEnd = ranges.thisMonth.endInclusive,
+            laterFrom = ranges.laterFrom
+        )
+    }
+
+    /** Названия первых [limit] просроченных задач. */
+    fun observeOverdueTitles(today: LocalDate, limit: Int): Flow<List<String>> =
+        taskDao.observeOverdueTitles(today, limit)
+
+    /**
+     * Ставит или снимает отметку выполнения.
+     * Выполненная повторяющаяся задача остаётся выполненной, а рядом создаётся копия на следующую дату
+     * с неотмеченными подзадачами. Если отметку снять, эта копия удаляется, пока её саму не выполнили.
+     */
+    suspend fun toggleDone(taskId: Long, today: LocalDate = LocalDate.now(), now: Instant = Instant.now()) {
+        // Будильники трогаем после транзакции, когда изменения уже в базе
+        val remindersToUpdate = mutableListOf<TaskEntity>()
+        val remindersToCancel = mutableListOf<Long>()
+        database.withTransaction {
+            val task = taskDao.getTask(taskId) ?: return@withTransaction
+            if (task.isDone) {
+                taskDao.setDone(taskId, isDone = false, completedAt = null)
+                remindersToCancel += taskDao.getOpenRepeatIds(taskId)
+                taskDao.deleteOpenRepeatsOf(taskId)
+                remindersToUpdate += task.copy(isDone = false, completedAt = null)
+                return@withTransaction
+            }
+            taskDao.setDone(taskId, isDone = true, completedAt = now)
+            remindersToCancel += taskId
+            val nextDate = task.date?.let { task.repeat.nextOccurrence(after = it, notBefore = today) }
+                ?: return@withTransaction
+            val copy = task.copy(
+                id = 0,
+                date = nextDate,
+                isDone = false,
+                completedAt = null,
+                createdAt = now,
+                repeatedFromId = task.id
+            )
+            val copyId = taskDao.insertTask(copy)
+            remindersToUpdate += copy.copy(id = copyId)
+            val subtasks = taskDao.getSubtasks(taskId)
+            if (subtasks.isNotEmpty()) {
+                taskDao.insertSubtasks(subtasks.map { it.copy(id = 0, taskId = copyId, isDone = false) })
+            }
+        }
+        remindersToCancel.forEach(reminders::cancel)
+        remindersToUpdate.forEach(reminders::update)
+    }
+
+    /**
+     * Ставит будильники всех будущих напоминаний заново: при запуске приложения, после перезагрузки,
+     * смены времени или часового пояса.
+     */
+    suspend fun rescheduleAllReminders(today: LocalDate = LocalDate.now()) {
+        taskDao.getUpcomingReminders(today).forEach(reminders::update)
+    }
+}
