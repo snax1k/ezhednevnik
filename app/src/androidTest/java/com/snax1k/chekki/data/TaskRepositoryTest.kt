@@ -515,6 +515,42 @@ class TaskRepositoryTest {
         }
     }
 
+    @Test
+    fun переносЗадачиМеняетТолькоДатуИПереставляетБудильник() {
+        runBlocking {
+            val scheduler = RecordingScheduler()
+            val repository = TaskRepository(database, scheduler)
+            val call = repository.observeTasksOn(today).first().single { it.task.title == "Позвонить маме" }
+
+            val moved = repository.moveTask(call.task.id, today.plusDays(1))!!
+            assertEquals(today, moved.previousDate)
+            val updated = repository.getTaskWithDetails(call.task.id)!!.task
+            assertEquals(today.plusDays(1), updated.date)
+            // Время, повтор и напоминание остаются как были
+            assertEquals(call.task.time, updated.time)
+            assertEquals(call.task.repeat, updated.repeat)
+            assertEquals(call.task.reminderMinutesBefore, updated.reminderMinutesBefore)
+            assertEquals(listOf(updated), scheduler.updated)
+
+            // «Отменить» возвращает прежнюю дату
+            repository.moveTask(moved.taskId, moved.previousDate)
+            assertEquals(today, repository.getTaskWithDetails(call.task.id)!!.task.date)
+        }
+    }
+
+    @Test
+    fun задачуБезДатыМожноОтложитьИВернутьБезДаты() {
+        runBlocking {
+            val shelf = repository.observeOpenTasksWithoutDate().first().single { it.task.title == "Разобрать антресоль" }
+            val moved = repository.moveTask(shelf.task.id, today.plusDays(1))!!
+            assertEquals(null, moved.previousDate)
+            assertTrue(repository.observeOpenTasksWithoutDate().first().none { it.task.id == shelf.task.id })
+
+            repository.moveTask(moved.taskId, moved.previousDate)
+            assertTrue(repository.observeOpenTasksWithoutDate().first().any { it.task.id == shelf.task.id })
+        }
+    }
+
     private fun countTasks(): Int =
         database.openHelper.readableDatabase.query("SELECT COUNT(*) FROM tasks").use { cursor ->
             cursor.moveToFirst()

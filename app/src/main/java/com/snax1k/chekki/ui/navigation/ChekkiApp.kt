@@ -37,6 +37,7 @@ import androidx.navigation3.ui.NavDisplay
 import com.snax1k.chekki.ChekkiApplication
 import com.snax1k.chekki.R
 import com.snax1k.chekki.data.DeletedTask
+import com.snax1k.chekki.data.MovedTask
 import com.snax1k.chekki.ui.addtask.AddTaskSheet
 import com.snax1k.chekki.ui.addtask.AddTaskViewModel
 import com.snax1k.chekki.ui.components.LocalFloatingButtonsLift
@@ -47,8 +48,10 @@ import com.snax1k.chekki.ui.main.MainViewModel
 import com.snax1k.chekki.ui.main.TaskGroup
 import com.snax1k.chekki.ui.task.TaskScreen
 import com.snax1k.chekki.ui.task.TaskViewModel
+import com.snax1k.chekki.ui.tasks.postponedMessage
 import kotlinx.coroutines.launch
 import kotlinx.serialization.Serializable
+import java.time.LocalDate
 
 // Экраны приложения. @Serializable нужен, чтобы стек экранов сохранялся при повороте и после
 // выгрузки приложения из памяти.
@@ -76,21 +79,31 @@ fun ChekkiApp() {
         AddTaskViewModel(container.taskRepository, container.currentDate, container.reminderAccess)
     }
 
-    // Плашка «Задача удалена · Отменить» внизу экрана, поверх любого экрана
+    // Плашка «Задача удалена · Отменить» и «Задача отложена на … · Отменить» внизу, поверх любого экрана
     val snackbarHostState = remember { SnackbarHostState() }
     val scope = rememberCoroutineScope()
+    val context = LocalContext.current
     val deletedMessage = stringResource(R.string.task_deleted)
     val undoLabel = stringResource(R.string.action_undo)
-    val showUndoDelete: (DeletedTask) -> Unit = { deleted ->
+    val showUndo: (message: String, undo: suspend () -> Unit) -> Unit = { message, undo ->
         scope.launch {
-            // Новая плашка заменяет прежнюю: прошлое удаление уже не отменить
+            // Новая плашка заменяет прежнюю: прошлое действие уже не отменить
             snackbarHostState.currentSnackbarData?.dismiss()
             // Short — 4 секунды, как в макете; с TalkBack Material держит плашку дольше
-            val result = snackbarHostState.showSnackbar(deletedMessage, undoLabel, duration = SnackbarDuration.Short)
+            val result = snackbarHostState.showSnackbar(message, undoLabel, duration = SnackbarDuration.Short)
             if (result == SnackbarResult.ActionPerformed) {
-                // Возвращаем в фоне приложения: экран могут закрыть раньше, чем база ответит
-                container.applicationScope.launch { container.taskRepository.restoreTask(deleted) }
+                // Отменяем в фоне приложения: экран могут закрыть раньше, чем база ответит
+                container.applicationScope.launch { undo() }
             }
+        }
+    }
+    val showUndoDelete: (DeletedTask) -> Unit = { deleted ->
+        showUndo(deletedMessage) { container.taskRepository.restoreTask(deleted) }
+    }
+    val showUndoPostpone: (MovedTask) -> Unit = { moved ->
+        val newDate = moved.newDate ?: LocalDate.now()
+        showUndo(postponedMessage(context, newDate, LocalDate.now())) {
+            container.taskRepository.moveTask(moved.taskId, moved.previousDate)
         }
     }
     val density = LocalDensity.current
@@ -153,6 +166,11 @@ fun ChekkiApp() {
                             onDeleted = { deleted ->
                                 backStack.removeLastOrNull()
                                 showUndoDelete(deleted)
+                            },
+                            // Отложенная задача уходит из группы, поэтому карточка закрывается, как при удалении
+                            onPostponed = { moved ->
+                                backStack.removeLastOrNull()
+                                showUndoPostpone(moved)
                             }
                         )
                     }

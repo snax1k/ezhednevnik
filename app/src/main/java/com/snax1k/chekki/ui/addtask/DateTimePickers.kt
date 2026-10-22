@@ -1,6 +1,7 @@
 package com.snax1k.chekki.ui.addtask
 
 import android.content.res.Configuration
+import androidx.annotation.StringRes
 import androidx.compose.foundation.layout.padding
 import androidx.compose.material3.DatePicker
 import androidx.compose.material3.DatePickerDialog
@@ -30,11 +31,17 @@ import java.time.temporal.ChronoUnit
 import java.util.Locale
 
 /**
- * Календарь: выбор даты, кнопки «Отмена» и «Далее».
+ * Календарь: выбор даты, кнопки «Отмена» и «Далее» ([confirmLabel] — если после календаря
+ * ничего не открывается, например «Готово» в «Отложить»).
  * Месяцы и дни недели по-русски и неделя с понедельника, даже если язык телефона другой.
  */
 @Composable
-fun TaskDatePickerDialog(initialDate: LocalDate, onDismiss: () -> Unit, onNext: (LocalDate) -> Unit) {
+fun TaskDatePickerDialog(
+    initialDate: LocalDate,
+    onDismiss: () -> Unit,
+    onNext: (LocalDate) -> Unit,
+    @StringRes confirmLabel: Int = R.string.action_next
+) {
     WithRussianLocale {
         val state = rememberDatePickerState(initialSelectedDateMillis = initialDate.toPickerMillis())
         DatePickerDialog(
@@ -44,7 +51,7 @@ fun TaskDatePickerDialog(initialDate: LocalDate, onDismiss: () -> Unit, onNext: 
                     onClick = { state.selectedDateMillis?.let { onNext(it.toPickerDate()) } },
                     enabled = state.selectedDateMillis != null
                 ) {
-                    Text(stringResource(R.string.action_next))
+                    Text(stringResource(confirmLabel))
                 }
             },
             dismissButton = {

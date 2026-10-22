@@ -111,6 +111,7 @@ object ChekkiIcons {
 
     // Карточка задачи
     val Delete: ImageVector by lazy { outlineIcon("Delete", "M4 7h16M10 11v6M14 11v6M6 7l1 13h10l1-13M9 7V4h6v3") }
+    val Postpone: ImageVector by lazy { outlineIcon("Postpone", "M12 3a9 9 0 1 0 9 9M12 7.5V12l3 2M16 3h5v5") }
 }
 
 private const val PriorityFlagPath = "M5 21V4M5 4h11.5l-2.2 4.2 2.2 4.3H5"

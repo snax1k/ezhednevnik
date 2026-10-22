@@ -212,6 +212,10 @@ interface TaskDao {
         reminderMinutesBefore: Int?
     )
 
+    /** Переносит задачу на другую дату; время, повтор и напоминание не трогает. */
+    @Query("UPDATE tasks SET date = :date WHERE id = :id")
+    suspend fun setDate(id: Long, date: LocalDate?)
+
     /** Удаляет задачу; подзадачи удаляются вместе с ней, у копий повтора связь обнуляется. */
     @Query("DELETE FROM tasks WHERE id = :id")
     suspend fun deleteTask(id: Long)

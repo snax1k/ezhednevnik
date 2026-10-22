@@ -132,6 +132,12 @@
     <string name="task_return">Вернуть</string>
     <string name="task_pick_date">Выбрать дату…</string>
     <string name="task_edit_subtask">Изменить подзадачу</string>
+    <string name="task_postpone">Отложить</string>
+    <string name="postpone_next_week">Через неделю</string>
+    <!-- Плашка после переноса: «Задача отложена на завтра», «…на 24 октября» -->
+    <string name="task_postponed">Задача отложена на %1$s</string>
+    <string name="postponed_today">сегодня</string>
+    <string name="postponed_tomorrow">завтра</string>
     <!-- Подзадачи в карточке: «1 из 3» для TalkBack -->
     <string name="task_subtasks_progress">%1$d из %2$d</string>
 </resources>

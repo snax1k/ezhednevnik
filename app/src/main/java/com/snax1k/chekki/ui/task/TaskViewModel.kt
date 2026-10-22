@@ -8,6 +8,7 @@ import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
 import com.snax1k.chekki.data.DeletedTask
 import com.snax1k.chekki.data.GroupRanges
+import com.snax1k.chekki.data.MovedTask
 import com.snax1k.chekki.data.TaskRepository
 import com.snax1k.chekki.data.db.RepeatRule
 import com.snax1k.chekki.data.db.TaskEntity
@@ -102,7 +103,8 @@ class TaskViewModel(
     /** Последняя несохранённая правка. Сохраняются по одной и по порядку; промежуточные при быстром наборе пропускаются. */
     private val pendingSave = MutableStateFlow<TaskDraft?>(null)
 
-    private var isDeleting = false
+    /** Задачу удаляют или откладывают, карточка закрывается: правки больше не сохраняем. */
+    private var isClosing = false
 
     /** Подзадача, которую сейчас правят; null — никакую. */
     var editingSubtask by mutableStateOf<SubtaskEditing?>(null)
@@ -125,7 +127,7 @@ class TaskViewModel(
     init {
         viewModelScope.launch {
             for (op in subtaskOps) {
-                if (isDeleting) continue
+                if (isClosing) continue
                 try {
                     op()
                 } catch (_: SQLiteConstraintException) {
@@ -143,7 +145,7 @@ class TaskViewModel(
             }
         }
         viewModelScope.launch {
-            pendingSave.filterNotNull().collect { if (!isDeleting) save(it) }
+            pendingSave.filterNotNull().collect { if (!isClosing) save(it) }
         }
     }
 
@@ -272,11 +274,24 @@ class TaskViewModel(
      * дописывает последнюю правку, чтобы «Отменить» вернул задачу такой, какой её видели.
      */
     fun delete(onDeleted: (DeletedTask) -> Unit) {
-        if (isDeleting) return
-        isDeleting = true
+        if (isClosing) return
+        isClosing = true
         viewModelScope.launch {
             draft?.let { save(it) }
             repository.deleteTask(taskId)?.let(onDeleted)
+        }
+    }
+
+    /**
+     * «Отложить»: переносит задачу на [date] и передаёт в [onPostponed] прежнюю дату для отмены.
+     * Как и удаление, сначала дописывает последнюю правку: иначе запоздавшее сохранение вернуло бы старую дату.
+     */
+    fun postpone(date: LocalDate, onPostponed: (MovedTask) -> Unit) {
+        if (isClosing) return
+        isClosing = true
+        viewModelScope.launch {
+            draft?.let { save(it) }
+            repository.moveTask(taskId, date)?.let(onPostponed)
         }
     }
 

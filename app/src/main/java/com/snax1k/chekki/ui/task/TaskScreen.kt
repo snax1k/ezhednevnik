@@ -69,6 +69,7 @@ import androidx.compose.ui.unit.dp
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import com.snax1k.chekki.R
 import com.snax1k.chekki.data.DeletedTask
+import com.snax1k.chekki.data.MovedTask
 import com.snax1k.chekki.data.db.RepeatRule
 import com.snax1k.chekki.data.db.TaskPriority
 import com.snax1k.chekki.reminders.exactAlarmSettingsIntent
@@ -100,6 +101,7 @@ import com.snax1k.chekki.ui.components.CardProgressBar
 import com.snax1k.chekki.ui.components.SquareIconButton
 import com.snax1k.chekki.ui.icons.ChekkiIcons
 import com.snax1k.chekki.ui.main.TaskGroup
+import com.snax1k.chekki.ui.tasks.PostponeMenu
 import com.snax1k.chekki.ui.tasks.TaskCheckbox
 import com.snax1k.chekki.ui.theme.ChekkiTheme
 import com.snax1k.chekki.ui.theme.GroupColor
@@ -111,7 +113,12 @@ import java.time.LocalTime
  * Удаление закрывает карточку; вернуть задачу можно с плашки «Отменить» на предыдущем экране.
  */
 @Composable
-fun TaskScreen(viewModel: TaskViewModel, onBack: () -> Unit, onDeleted: (DeletedTask) -> Unit) {
+fun TaskScreen(
+    viewModel: TaskViewModel,
+    onBack: () -> Unit,
+    onDeleted: (DeletedTask) -> Unit,
+    onPostponed: (MovedTask) -> Unit
+) {
     val isDone by viewModel.isDone.collectAsStateWithLifecycle()
     val subtasks by viewModel.subtasks.collectAsStateWithLifecycle()
     val categories by viewModel.categories.collectAsStateWithLifecycle()
@@ -131,6 +138,7 @@ fun TaskScreen(viewModel: TaskViewModel, onBack: () -> Unit, onDeleted: (Deleted
         today = today,
         onBack = onBack,
         onDelete = { viewModel.delete(onDeleted) },
+        onPostpone = { date -> viewModel.postpone(date, onPostponed) },
         onToggleDone = viewModel::toggleDone,
         onTitleChange = viewModel::onTitleChange,
         onTitleEditEnd = viewModel::onTitleEditEnd,
@@ -180,8 +188,8 @@ fun TaskScreen(viewModel: TaskViewModel, onBack: () -> Unit, onDeleted: (Deleted
     }
 }
 
-/** Какое окно выбора открыто: сначала календарь, после «Далее» — циферблат. */
-private enum class PickerStep { Date, Time }
+/** Какое окно выбора открыто: календарь и после «Далее» циферблат для «Дата и время» или календарь для «Отложить». */
+private enum class PickerStep { Date, Time, PostponeDate }
 
 @Composable
 private fun TaskContent(
@@ -192,6 +200,7 @@ private fun TaskContent(
     today: LocalDate,
     onBack: () -> Unit,
     onDelete: () -> Unit,
+    onPostpone: (LocalDate) -> Unit,
     onToggleDone: () -> Unit,
     onTitleChange: (String) -> Unit,
     onTitleEditEnd: () -> Unit,
@@ -227,6 +236,8 @@ private fun TaskContent(
                     categories = categories,
                     today = today,
                     onToggleDone = onToggleDone,
+                    onPostpone = onPostpone,
+                    onPostponePickDate = { pickerStep = PickerStep.PostponeDate },
                     onTitleChange = onTitleChange,
                     onTitleEditEnd = onTitleEditEnd,
                     onNoteChange = onNoteChange,
@@ -268,6 +279,16 @@ private fun TaskContent(
                     pickerStep = null
                 }
             )
+            // «Отложить» → «Выбрать дату…»: только день, время остаётся прежним
+            PickerStep.PostponeDate -> TaskDatePickerDialog(
+                initialDate = today.plusDays(1),
+                onDismiss = { pickerStep = null },
+                onNext = { picked ->
+                    pickerStep = null
+                    onPostpone(picked)
+                },
+                confirmLabel = R.string.action_done
+            )
             null -> Unit
         }
     }
@@ -282,6 +303,8 @@ private fun ColumnScope.TaskBody(
     categories: List<CategoryOption>,
     today: LocalDate,
     onToggleDone: () -> Unit,
+    onPostpone: (LocalDate) -> Unit,
+    onPostponePickDate: () -> Unit,
     onTitleChange: (String) -> Unit,
     onTitleEditEnd: () -> Unit,
     onNoteChange: (String) -> Unit,
@@ -348,7 +371,14 @@ private fun ColumnScope.TaskBody(
         SubtasksCard(subtasks, subtaskRows, subtaskActions, Modifier.padding(top = 16.dp))
         Spacer(Modifier.height(24.dp))
     }
-    DoneButtonBar(isDone, onToggleDone)
+    BottomButtons(
+        isDone = isDone,
+        date = date,
+        today = today,
+        onToggleDone = onToggleDone,
+        onPostpone = onPostpone,
+        onPostponePickDate = onPostponePickDate
+    )
 }
 
 /** Верхняя панель: «Назад» и «Удалить». Кнопка «Ещё» из макета появится, когда будет что в ней показать. */
@@ -787,34 +817,84 @@ private fun RowDivider() {
     HorizontalDivider(color = MaterialTheme.colorScheme.outlineVariant)
 }
 
-/** Кнопка внизу: «Выполнено», у выполненной задачи — «Вернуть». */
+/**
+ * Кнопки внизу, как в макете: «Отложить» и «Выполнено» поровну. У выполненной задачи —
+ * одна «Вернуть»: откладывать выполненное незачем.
+ */
 @Composable
-private fun DoneButtonBar(isDone: Boolean, onToggleDone: () -> Unit) {
+private fun BottomButtons(
+    isDone: Boolean,
+    date: LocalDate?,
+    today: LocalDate,
+    onToggleDone: () -> Unit,
+    onPostpone: (LocalDate) -> Unit,
+    onPostponePickDate: () -> Unit
+) {
     val colors = ChekkiTheme.colors
+    var postponeMenuOpen by remember { mutableStateOf(false) }
     Column(Modifier.background(MaterialTheme.colorScheme.background)) {
         HorizontalDivider(color = MaterialTheme.colorScheme.outlineVariant)
         Row(
             Modifier
                 .navigationBarsPadding()
                 .padding(start = 16.dp, end = 16.dp, top = 12.dp, bottom = 16.dp)
-                .fillMaxWidth()
-                .height(56.dp)
-                .clip(MaterialTheme.shapes.medium)
-                .background(if (isDone) MaterialTheme.colorScheme.surfaceContainerHigh else colors.taskDone)
-                .clickable(role = Role.Button, onClick = onToggleDone),
-            horizontalArrangement = Arrangement.spacedBy(8.dp, Alignment.CenterHorizontally),
-            verticalAlignment = Alignment.CenterVertically
+                .fillMaxWidth(),
+            horizontalArrangement = Arrangement.spacedBy(12.dp)
         ) {
-            val contentColor = if (isDone) MaterialTheme.colorScheme.onSurface else colors.onTaskDone
             if (!isDone) {
-                Icon(ChekkiIcons.Check, contentDescription = null, Modifier.size(20.dp), tint = contentColor)
+                Box(Modifier.weight(1f)) {
+                    BottomButton(
+                        icon = ChekkiIcons.Postpone,
+                        text = stringResource(R.string.task_postpone),
+                        background = MaterialTheme.colorScheme.surfaceContainerHigh,
+                        contentColor = MaterialTheme.colorScheme.onSurface,
+                        onClick = { postponeMenuOpen = true }
+                    )
+                    PostponeMenu(
+                        expanded = postponeMenuOpen,
+                        onDismiss = { postponeMenuOpen = false },
+                        today = today,
+                        currentDate = date,
+                        onSelect = onPostpone,
+                        onPickDate = onPostponePickDate
+                    )
+                }
             }
-            Text(
+            BottomButton(
+                icon = if (isDone) null else ChekkiIcons.Check,
                 text = stringResource(if (isDone) R.string.task_return else R.string.task_complete),
-                style = MaterialTheme.typography.titleMedium,
-                color = contentColor
+                background = if (isDone) MaterialTheme.colorScheme.surfaceContainerHigh else colors.taskDone,
+                contentColor = if (isDone) MaterialTheme.colorScheme.onSurface else colors.onTaskDone,
+                onClick = onToggleDone,
+                modifier = Modifier.weight(1f)
             )
         }
+    }
+}
+
+@Composable
+private fun BottomButton(
+    icon: ImageVector?,
+    text: String,
+    background: Color,
+    contentColor: Color,
+    onClick: () -> Unit,
+    modifier: Modifier = Modifier
+) {
+    Row(
+        modifier
+            .fillMaxWidth()
+            .height(56.dp)
+            .clip(MaterialTheme.shapes.medium)
+            .background(background)
+            .clickable(role = Role.Button, onClick = onClick),
+        horizontalArrangement = Arrangement.spacedBy(8.dp, Alignment.CenterHorizontally),
+        verticalAlignment = Alignment.CenterVertically
+    ) {
+        if (icon != null) {
+            Icon(icon, contentDescription = null, Modifier.size(20.dp), tint = contentColor)
+        }
+        Text(text = text, style = MaterialTheme.typography.titleMedium, color = contentColor)
     }
 }
 
@@ -870,6 +950,7 @@ private fun TaskContentPreview() {
             today = LocalDate.of(2026, 10, 22),
             onBack = {},
             onDelete = {},
+            onPostpone = {},
             onToggleDone = {},
             onTitleChange = {},
             onTitleEditEnd = {},

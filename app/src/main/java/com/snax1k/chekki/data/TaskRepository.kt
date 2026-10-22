@@ -116,6 +116,20 @@ class TaskRepository(
     }
 
     /**
+     * Переносит задачу на [date] («Отложить»): время, повтор и напоминание остаются, будильник
+     * переставляется на новую дату. Возвращает прежнюю дату для отмены; null — задачи нет.
+     */
+    suspend fun moveTask(id: Long, date: LocalDate?): MovedTask? {
+        val moved = database.withTransaction {
+            val task = taskDao.getTask(id) ?: return@withTransaction null
+            taskDao.setDate(id, date)
+            task.copy(date = date) to MovedTask(id, previousDate = task.date, newDate = date)
+        } ?: return null
+        reminders.update(moved.first)
+        return moved.second
+    }
+
+    /**
      * Удаляет задачу вместе с подзадачами и будильником. Возвращает всё, что нужно для [restoreTask];
      * null — задачи уже не было.
      */
@@ -250,4 +264,11 @@ data class DeletedTask(
     val subtasks: List<SubtaskEntity>,
     /** Копии повтора, созданные из этой задачи: при удалении их связь обнуляется, при отмене возвращается. */
     val repeatCopyIds: List<Long>
+)
+
+/** Перенесённая задача: прежняя дата нужна, чтобы вернуть её кнопкой «Отменить». */
+data class MovedTask(
+    val taskId: Long,
+    val previousDate: LocalDate?,
+    val newDate: LocalDate?
 )
