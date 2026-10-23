@@ -194,7 +194,8 @@ internal fun CategoryRow(
                     expanded = false
                 }
             )
-            categories.forEach { category ->
+            // Архивные не предлагаются; выбранная остаётся в меню, даже если её убрали в архив
+            categories.filter { !it.isArchived || it.id == selectedId }.forEach { category ->
                 CategoryMenuItem(
                     name = category.name,
                     icon = category.icon,

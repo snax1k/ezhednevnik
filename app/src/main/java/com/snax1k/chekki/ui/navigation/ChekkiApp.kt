@@ -252,6 +252,7 @@ fun ChekkiApp() {
                         onCategoryClick = { categoryId -> backStack.add(CategoryRoute(categoryId)) },
                         onCategoryLongClick = { categoryId -> openCategorySheet(categoryId) },
                         onAddCategory = { openCategorySheet(null) },
+                        onReorder = viewModel::reorder,
                         onUncategorizedClick = { backStack.add(CategoryRoute(null)) }
                     )
                 }

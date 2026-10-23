@@ -16,7 +16,10 @@ interface CategoryDao {
     @Query("SELECT * FROM categories WHERE id = :id")
     fun observeCategory(id: Long): Flow<CategoryEntity?>
 
-    /** Категории не в архиве для экрана «Категории»: невыполненные задачи и задачи на [today]. */
+    /**
+     * Категории для экрана «Категории» — не в архиве или, при [archived], архивные: невыполненные задачи
+     * и задачи на [today].
+     */
     @Query(
         """
         SELECT c.*,
@@ -24,11 +27,17 @@ interface CategoryDao {
             (SELECT COUNT(*) FROM tasks t WHERE t.category_id = c.id AND t.date = :today) AS today_total,
             (SELECT COUNT(*) FROM tasks t WHERE t.category_id = c.id AND t.date = :today AND t.is_done = 1) AS today_done
         FROM categories c
-        WHERE c.is_archived = 0
+        WHERE c.is_archived = :archived
         ORDER BY c.position, c.id
         """
     )
-    fun observeSummaries(today: LocalDate): Flow<List<CategorySummary>>
+    fun observeSummaries(today: LocalDate, archived: Boolean): Flow<List<CategorySummary>>
+
+    @Query("UPDATE categories SET position = :position WHERE id = :id")
+    suspend fun setPosition(id: Long, position: Int)
+
+    @Query("UPDATE categories SET is_archived = :archived WHERE id = :id")
+    suspend fun setArchived(id: Long, archived: Boolean)
 
     @Query("SELECT * FROM categories WHERE id = :id")
     suspend fun getCategory(id: Long): CategoryEntity?

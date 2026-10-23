@@ -11,6 +11,7 @@ import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.combine
 import kotlinx.coroutines.flow.flatMapLatest
 import kotlinx.coroutines.flow.stateIn
+import kotlinx.coroutines.launch
 import java.time.LocalDate
 
 /** Что показывает экран «Категории». */
@@ -19,13 +20,15 @@ data class CategoriesUiState(
     val categories: List<CategorySummary>,
     /** Невыполненные задачи без категории. */
     val uncategorizedCount: Int,
+    /** Категории в архиве, по порядку. */
+    val archived: List<CategorySummary> = emptyList(),
     /** База ещё не ответила: счётчики пока не показываем. */
     val isLoading: Boolean = false
 )
 
-/** Экран «Категории»: плитки со счётчиками. Счётчики «на сегодня» пересчитываются в полночь. */
+/** Экран «Категории»: плитки со счётчиками, порядок, архив. Счётчики «на сегодня» пересчитываются в полночь. */
 class CategoriesViewModel(
-    repository: TaskRepository,
+    private val repository: TaskRepository,
     currentDate: Flow<LocalDate>
 ) : ViewModel() {
 
@@ -34,12 +37,18 @@ class CategoriesViewModel(
         .flatMapLatest { today ->
             combine(
                 repository.observeCategorySummaries(today),
-                repository.observeUncategorizedOpenCount()
-            ) { categories, uncategorized -> CategoriesUiState(categories, uncategorized) }
+                repository.observeUncategorizedOpenCount(),
+                repository.observeCategorySummaries(today, archived = true)
+            ) { categories, uncategorized, archived -> CategoriesUiState(categories, uncategorized, archived) }
         }
         .stateIn(
             scope = viewModelScope,
             started = SharingStarted.WhileSubscribed(5_000),
             initialValue = CategoriesUiState(emptyList(), uncategorizedCount = 0, isLoading = true)
         )
+
+    /** Порядок после перетаскивания: id категорий не в архиве сверху вниз. */
+    fun reorder(categoryIds: List<Long>) {
+        viewModelScope.launch { repository.reorderCategories(categoryIds) }
+    }
 }

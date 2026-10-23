@@ -88,7 +88,9 @@ class TaskViewModel(
         .stateIn(viewModelScope, SharingStarted.WhileSubscribed(5_000), emptyList())
 
     val categories: StateFlow<List<CategoryOption>> = repository.observeCategories()
-        .map { list -> list.map { CategoryOption(id = it.id, name = it.name, colorIndex = it.colorIndex, icon = it.icon) } }
+        .map { list ->
+            list.map { CategoryOption(id = it.id, name = it.name, colorIndex = it.colorIndex, icon = it.icon, isArchived = it.isArchived) }
+        }
         .stateIn(viewModelScope, SharingStarted.WhileSubscribed(5_000), emptyList())
 
     val today: StateFlow<LocalDate> = currentDate

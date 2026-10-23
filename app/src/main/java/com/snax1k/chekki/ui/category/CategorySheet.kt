@@ -83,11 +83,13 @@ fun CategorySheet(viewModel: CategoryEditorViewModel, onDismiss: () -> Unit, onD
             CategoryContent(
                 draft = viewModel.draft,
                 isNew = viewModel.editingId == null,
+                isArchived = viewModel.isArchived,
                 onNameChange = viewModel::onNameChange,
                 onIconSelect = viewModel::onIconSelect,
                 onColorSelect = viewModel::onColorSelect,
                 onClose = hideAndDismiss,
                 onSave = { viewModel.save(onSaved = hideAndDismiss) },
+                onArchiveToggle = { viewModel.toggleArchived(onDone = hideAndDismiss) },
                 onDelete = {
                     viewModel.delete { deleted ->
                         hideAndDismiss()
@@ -103,11 +105,13 @@ fun CategorySheet(viewModel: CategoryEditorViewModel, onDismiss: () -> Unit, onD
 private fun CategoryContent(
     draft: CategoryDraft,
     isNew: Boolean,
+    isArchived: Boolean,
     onNameChange: (String) -> Unit,
     onIconSelect: (CategoryIcon) -> Unit,
     onColorSelect: (Int) -> Unit,
     onClose: () -> Unit,
     onSave: () -> Unit,
+    onArchiveToggle: () -> Unit,
     onDelete: () -> Unit,
     autoFocusName: Boolean = true
 ) {
@@ -161,6 +165,20 @@ private fun CategoryContent(
             SectionLabel(stringResource(R.string.habit_color))
             ColorPicker(selected = draft.colorIndex, onSelect = onColorSelect)
             if (!isNew) {
+                TextButton(onClick = onArchiveToggle, enabled = draft.canSave, modifier = Modifier.padding(top = 8.dp)) {
+                    Text(
+                        text = stringResource(if (isArchived) R.string.category_unarchive else R.string.category_archive),
+                        style = MaterialTheme.typography.titleSmall
+                    )
+                }
+                if (!isArchived) {
+                    Text(
+                        text = stringResource(R.string.category_archived_hint),
+                        modifier = Modifier.padding(start = 12.dp),
+                        style = MaterialTheme.typography.bodySmall,
+                        color = MaterialTheme.colorScheme.onSurfaceVariant
+                    )
+                }
                 TextButton(onClick = onDelete, modifier = Modifier.padding(top = 8.dp)) {
                     Text(
                         text = stringResource(R.string.category_delete),
@@ -283,11 +301,13 @@ private fun CategoryContentPreview() {
             CategoryContent(
                 draft = CategoryDraft(name = "Поездки", icon = CategoryIcon.Travel, colorIndex = 8),
                 isNew = false,
+                isArchived = false,
                 onNameChange = {},
                 onIconSelect = {},
                 onColorSelect = {},
                 onClose = {},
                 onSave = {},
+                onArchiveToggle = {},
                 onDelete = {},
                 autoFocusName = false
             )

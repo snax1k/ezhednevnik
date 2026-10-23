@@ -24,6 +24,10 @@ class CategoryEditorViewModel(private val repository: TaskRepository) : ViewMode
     var editingId by mutableStateOf<Long?>(null)
         private set
 
+    /** Меняемая категория в архиве: в панели «Вернуть из архива» вместо «В архив». */
+    var isArchived by mutableStateOf(false)
+        private set
+
     /** Категория для изменения ещё грузится: поля пока не показываем. */
     var isLoading by mutableStateOf(false)
         private set
@@ -41,6 +45,7 @@ class CategoryEditorViewModel(private val repository: TaskRepository) : ViewMode
     fun startNew() {
         isStarted = true
         editingId = null
+        isArchived = false
         draft = CategoryDraft()
         isLoading = true
         viewModelScope.launch {
@@ -54,7 +59,10 @@ class CategoryEditorViewModel(private val repository: TaskRepository) : ViewMode
         editingId = categoryId
         isLoading = true
         viewModelScope.launch {
-            repository.getCategory(categoryId)?.let { draft = CategoryDraft.of(it) }
+            repository.getCategory(categoryId)?.let {
+                draft = CategoryDraft.of(it)
+                isArchived = it.isArchived
+            }
             isLoading = false
         }
     }
@@ -86,6 +94,23 @@ class CategoryEditorViewModel(private val repository: TaskRepository) : ViewMode
                     repository.updateCategory(id, name, current.icon, current.colorIndex)
                 }
                 onSaved()
+            } finally {
+                isBusy = false
+            }
+        }
+    }
+
+    /** «В архив» или «Вернуть из архива»; правки названия, иконки и цвета тоже сохраняются. */
+    fun toggleArchived(onDone: () -> Unit) {
+        val id = editingId ?: return
+        val current = draft
+        if (!current.canSave || isBusy) return
+        isBusy = true
+        viewModelScope.launch {
+            try {
+                repository.updateCategory(id, current.name.trim(), current.icon, current.colorIndex)
+                repository.setCategoryArchived(id, !isArchived)
+                onDone()
             } finally {
                 isBusy = false
             }

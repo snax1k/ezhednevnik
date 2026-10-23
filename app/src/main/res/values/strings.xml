@@ -203,6 +203,12 @@
     <string name="category_empty">В этой категории задач нет</string>
     <string name="category_empty_uncategorized">Задач без категории нет</string>
     <string name="category_new">Новая категория</string>
+    <string name="categories_reorder">Изменить порядок</string>
+    <string name="categories_order_title">Порядок категорий</string>
+    <string name="categories_archive">Архив</string>
+    <string name="category_archive">В архив</string>
+    <string name="category_unarchive">Вернуть из архива</string>
+    <string name="category_archived_hint">Не предлагается при выборе категории, задачи остаются</string>
     <string name="category_edit">Категория</string>
     <string name="category_edit_action">Изменить категорию</string>
     <string name="category_name_label">Название категории</string>

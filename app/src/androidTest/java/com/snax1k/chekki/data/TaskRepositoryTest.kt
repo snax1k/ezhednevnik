@@ -658,4 +658,33 @@ class TaskRepositoryTest {
             assertEquals("Дом", repository.observeCategorySummaries(today).first()[2].category.name)
         }
     }
+
+    @Test
+    fun новыйПорядокКатегорий() {
+        runBlocking {
+            // «Финансы» перетащили в начало
+            repository.reorderCategories(listOf(6, 1, 2, 3, 4, 5))
+            assertEquals(
+                listOf("Финансы", "Работа", "Личное", "Дом", "Здоровье", "Учёба"),
+                repository.observeCategorySummaries(today).first().map { it.category.name }
+            )
+        }
+    }
+
+    @Test
+    fun архивУбираетКатегориюИзПлитокАВозвратСтавитВКонец() {
+        runBlocking {
+            val homeTasks = repository.observeOpenTasksOfCategory(3).first().size
+            repository.setCategoryArchived(3, archived = true)
+            assertTrue(repository.observeCategorySummaries(today).first().none { it.category.id == 3L })
+            val archived = repository.observeCategorySummaries(today, archived = true).first().single()
+            assertEquals("Дом", archived.category.name)
+            // Задачи остаются в категории
+            assertEquals(homeTasks, archived.openCount)
+
+            repository.setCategoryArchived(3, archived = false)
+            assertEquals("Дом", repository.observeCategorySummaries(today).first().last().category.name)
+            assertTrue(repository.observeCategorySummaries(today, archived = true).first().isEmpty())
+        }
+    }
 }

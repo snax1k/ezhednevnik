@@ -1,5 +1,7 @@
 package com.snax1k.chekki.ui.category
 
+import androidx.activity.compose.BackHandler
+import androidx.compose.animation.core.animateFloatAsState
 import androidx.compose.foundation.background
 import androidx.compose.foundation.border
 import androidx.compose.foundation.clickable
@@ -21,16 +23,23 @@ import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.statusBarsPadding
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
+import androidx.compose.foundation.lazy.rememberLazyListState
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material3.Icon
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Surface
 import androidx.compose.material3.Text
+import androidx.compose.material3.TextButton
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableStateOf
+import androidx.compose.runtime.saveable.rememberSaveable
+import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.alpha
 import androidx.compose.ui.draw.clip
+import androidx.compose.ui.draw.rotate
 import androidx.compose.ui.res.pluralStringResource
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.semantics.Role
@@ -54,7 +63,9 @@ import com.snax1k.chekki.ui.theme.cssLinearGradient
 
 /**
  * Категории: плитки в два столбца по макету «Категории», переведённому на стиль Б (плитки как у групп
- * главного экрана), под ними «Без категории». Нажатие на плитку открывает задачи категории.
+ * главного экрана), под ними «Новая категория», «Без категории» и свёрнутый «Архив». Нажатие на плитку
+ * открывает задачи категории. Карандаш вверху («Изменить порядок») превращает плитки в список,
+ * где строки перетаскиваются за ручку; «Готово» возвращает плитки.
  */
 @Composable
 fun CategoriesScreen(
@@ -64,9 +75,17 @@ fun CategoriesScreen(
     onCategoryClick: (Long) -> Unit = {},
     onCategoryLongClick: (Long) -> Unit = {},
     onAddCategory: () -> Unit = {},
-    onUncategorizedClick: () -> Unit = {}
+    onUncategorizedClick: () -> Unit = {},
+    onReorder: (List<Long>) -> Unit = {}
 ) {
     val navigationBarHeight = WindowInsets.navigationBars.asPaddingValues().calculateBottomPadding()
+    var reordering by rememberSaveable { mutableStateOf(false) }
+    var archiveExpanded by rememberSaveable { mutableStateOf(false) }
+    val listState = rememberLazyListState()
+    val orderState = rememberCategoryOrderState(listState)
+    SyncCategoryOrder(orderState, state.categories)
+    // «Назад» в режиме порядка возвращает плитки, а не закрывает экран
+    BackHandler(enabled = reordering) { reordering = false }
     Surface(modifier = modifier.fillMaxSize(), color = MaterialTheme.colorScheme.background) {
         Column(
             Modifier
@@ -81,15 +100,24 @@ fun CategoriesScreen(
                 verticalAlignment = Alignment.CenterVertically
             ) {
                 SquareIconButton(ChekkiIcons.Back, stringResource(R.string.action_back), onBack)
+                Spacer(Modifier.weight(1f))
+                if (reordering) {
+                    TextButton(onClick = { reordering = false }) {
+                        Text(stringResource(R.string.action_done), style = MaterialTheme.typography.titleSmall)
+                    }
+                } else if (state.categories.size > 1) {
+                    SquareIconButton(ChekkiIcons.Edit, stringResource(R.string.categories_reorder), onClick = { reordering = true })
+                }
             }
             LazyColumn(
                 Modifier.fillMaxSize(),
+                state = listState,
                 contentPadding = PaddingValues(start = 16.dp, end = 16.dp, top = 6.dp, bottom = 24.dp + navigationBarHeight),
                 verticalArrangement = Arrangement.spacedBy(10.dp)
             ) {
                 item(key = "title") {
                     Text(
-                        text = stringResource(R.string.categories_title),
+                        text = stringResource(if (reordering) R.string.categories_order_title else R.string.categories_title),
                         modifier = Modifier
                             .padding(start = 4.dp, bottom = 8.dp)
                             .semantics { heading() },
@@ -97,8 +125,12 @@ fun CategoriesScreen(
                         color = MaterialTheme.colorScheme.onSurface
                     )
                 }
+                if (reordering) {
+                    categoryOrderItems(state.categories, orderState, onReorder)
+                    return@LazyColumn
+                }
                 // Две плитки в ряд; у последней нечётной — пустое место справа
-                items(state.categories.chunked(2), key = { row -> row.first().category.id }) { row ->
+                items(state.categories.chunked(2), key = { row -> "row-${row.first().category.id}" }) { row ->
                     Row(horizontalArrangement = Arrangement.spacedBy(10.dp)) {
                         row.forEach { summary ->
                             CategoryTile(
@@ -120,6 +152,24 @@ fun CategoriesScreen(
                         onClick = onUncategorizedClick,
                         modifier = Modifier.padding(top = 14.dp)
                     )
+                }
+                if (state.archived.isNotEmpty()) {
+                    item(key = "archive") {
+                        ArchiveRow(
+                            count = state.archived.size,
+                            expanded = archiveExpanded,
+                            onToggle = { archiveExpanded = !archiveExpanded }
+                        )
+                    }
+                    if (archiveExpanded) {
+                        items(state.archived, key = { "archived-${it.category.id}" }) { summary ->
+                            ArchivedCategoryRow(
+                                summary = summary,
+                                onClick = { onCategoryClick(summary.category.id) },
+                                modifier = Modifier.animateItem()
+                            )
+                        }
+                    }
                 }
             }
         }
@@ -267,6 +317,68 @@ private fun UncategorizedRow(count: Int, countAlpha: Float, onClick: () -> Unit,
             color = MaterialTheme.colorScheme.onSurfaceVariant
         )
         Icon(ChekkiIcons.ChevronRight, contentDescription = null, Modifier.size(20.dp), tint = MaterialTheme.colorScheme.outline)
+    }
+}
+
+/** «Архив · 2» со стрелкой: архивные категории свёрнуты, пока их не откроют. */
+@Composable
+private fun ArchiveRow(count: Int, expanded: Boolean, onToggle: () -> Unit) {
+    val rotation by animateFloatAsState(if (expanded) 90f else 0f, label = "categoryArchiveChevron")
+    Row(
+        Modifier
+            .fillMaxWidth()
+            .height(56.dp)
+            .clip(MaterialTheme.shapes.medium)
+            .background(MaterialTheme.colorScheme.surfaceContainer)
+            .clickable(role = Role.Button, onClick = onToggle)
+            .padding(start = 16.dp, end = 12.dp),
+        horizontalArrangement = Arrangement.spacedBy(14.dp),
+        verticalAlignment = Alignment.CenterVertically
+    ) {
+        Icon(ChekkiIcons.Archive, contentDescription = null, Modifier.size(22.dp), tint = MaterialTheme.colorScheme.onSurfaceVariant)
+        Text(
+            text = stringResource(R.string.categories_archive),
+            modifier = Modifier.weight(1f),
+            style = MaterialTheme.typography.titleSmall,
+            color = MaterialTheme.colorScheme.onSurface
+        )
+        Text(count.toString(), style = MaterialTheme.typography.bodyLarge, color = MaterialTheme.colorScheme.onSurfaceVariant)
+        Icon(
+            ChekkiIcons.ChevronRight,
+            contentDescription = null,
+            modifier = Modifier
+                .size(20.dp)
+                .rotate(rotation),
+            tint = MaterialTheme.colorScheme.outline
+        )
+    }
+}
+
+/** Архивная категория: бледная иконка, название и число невыполненных задач. Открывает её задачи. */
+@Composable
+private fun ArchivedCategoryRow(summary: CategorySummary, onClick: () -> Unit, modifier: Modifier = Modifier) {
+    val category = summary.category
+    val color = categoryColor(category.colorIndex)
+    Row(
+        modifier
+            .fillMaxWidth()
+            .height(56.dp)
+            .clip(MaterialTheme.shapes.medium)
+            .clickable(role = Role.Button, onClick = onClick)
+            .padding(start = 16.dp, end = 12.dp),
+        horizontalArrangement = Arrangement.spacedBy(14.dp),
+        verticalAlignment = Alignment.CenterVertically
+    ) {
+        Icon(category.icon.vector, contentDescription = null, Modifier.size(22.dp), tint = color.copy(alpha = 0.6f))
+        Text(
+            text = category.name,
+            modifier = Modifier.weight(1f),
+            style = MaterialTheme.typography.titleSmall,
+            color = MaterialTheme.colorScheme.onSurfaceVariant,
+            maxLines = 1,
+            overflow = TextOverflow.Ellipsis
+        )
+        Text(summary.openCount.toString(), style = MaterialTheme.typography.bodyLarge, color = MaterialTheme.colorScheme.onSurfaceVariant)
     }
 }
 

@@ -35,8 +35,23 @@ class TaskRepository(
     /** Категория; null — её удалили. */
     fun observeCategory(id: Long): Flow<CategoryEntity?> = categoryDao.observeCategory(id)
 
-    /** Категории для экрана «Категории» со счётчиками на [today]. */
-    fun observeCategorySummaries(today: LocalDate): Flow<List<CategorySummary>> = categoryDao.observeSummaries(today)
+    /** Категории не в архиве (или, при [archived], архивные) со счётчиками на [today]. */
+    fun observeCategorySummaries(today: LocalDate, archived: Boolean = false): Flow<List<CategorySummary>> =
+        categoryDao.observeSummaries(today, archived)
+
+    /** Новый порядок категорий не в архиве (перетаскивание на экране «Категории»): места по порядку списка. */
+    suspend fun reorderCategories(categoryIds: List<Long>) = database.withTransaction {
+        categoryIds.forEachIndexed { index, id -> categoryDao.setPosition(id, index) }
+    }
+
+    /**
+     * Категория уходит в архив или возвращается из него. Архивная не предлагается при выборе категории,
+     * её задачи остаются. Вернувшаяся встаёт в конец списка.
+     */
+    suspend fun setCategoryArchived(id: Long, archived: Boolean) = database.withTransaction {
+        if (!archived) categoryDao.setPosition(id, categoryDao.nextPosition())
+        categoryDao.setArchived(id, archived)
+    }
 
     /** Сколько невыполненных задач без категории. */
     fun observeUncategorizedOpenCount(): Flow<Int> = categoryDao.observeUncategorizedOpenCount()
