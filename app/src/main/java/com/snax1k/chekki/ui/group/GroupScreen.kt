@@ -9,6 +9,7 @@ import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.ColumnScope
 import androidx.compose.foundation.layout.PaddingValues
 import androidx.compose.foundation.layout.Row
+import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.WindowInsets
 import androidx.compose.foundation.layout.asPaddingValues
 import androidx.compose.foundation.layout.fillMaxSize
@@ -113,6 +114,8 @@ fun TaskListScreen(
     emptyText: String,
     header: @Composable (Modifier) -> Unit,
     modifier: Modifier = Modifier,
+    /** Кнопка справа в верхней панели (у категории — «Изменить»). */
+    topBarAction: @Composable () -> Unit = {},
     canShowMore: Boolean = false,
     onBack: () -> Unit = {},
     onToggleDone: (TaskUi) -> Unit = {},
@@ -133,7 +136,7 @@ fun TaskListScreen(
                     .fillMaxSize()
                     .statusBarsPadding()
             ) {
-                GroupTopBar(onBack)
+                GroupTopBar(onBack, topBarAction)
                 LazyColumn(
                     Modifier.fillMaxSize(),
                     contentPadding = PaddingValues(
@@ -208,7 +211,7 @@ fun TaskListScreen(
 
 /** Верхняя панель. Кнопки «Сортировка» и «Ещё» из макета вернутся, когда появятся сами функции. */
 @Composable
-private fun GroupTopBar(onBack: () -> Unit) {
+private fun GroupTopBar(onBack: () -> Unit, action: @Composable () -> Unit) {
     Row(
         Modifier
             .fillMaxWidth()
@@ -217,6 +220,8 @@ private fun GroupTopBar(onBack: () -> Unit) {
         verticalAlignment = Alignment.CenterVertically
     ) {
         SquareIconButton(ChekkiIcons.Back, stringResource(R.string.action_back), onBack)
+        Spacer(Modifier.weight(1f))
+        action()
     }
 }
 

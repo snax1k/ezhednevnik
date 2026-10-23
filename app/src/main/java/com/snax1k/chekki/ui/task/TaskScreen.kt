@@ -75,7 +75,7 @@ import com.snax1k.chekki.data.db.TaskPriority
 import com.snax1k.chekki.reminders.exactAlarmSettingsIntent
 import com.snax1k.chekki.reminders.notificationSettingsIntent
 import com.snax1k.chekki.ui.addtask.AddSubtaskButton
-import com.snax1k.chekki.ui.addtask.CategoryDot
+import com.snax1k.chekki.ui.addtask.CategoryMark
 import com.snax1k.chekki.ui.addtask.CategoryOption
 import com.snax1k.chekki.ui.addtask.CategoryRow
 import com.snax1k.chekki.ui.addtask.DateTimeRow
@@ -422,7 +422,7 @@ private fun TaskChips(group: TaskGroup, category: CategoryOption?) {
         if (category != null) {
             val palette = colors.categories
             Chip(background = MaterialTheme.colorScheme.surfaceContainer) {
-                CategoryDot(palette[category.colorIndex % palette.size])
+                CategoryMark(category.icon, palette[category.colorIndex % palette.size], size = 14.dp)
                 Text(category.name, style = MaterialTheme.typography.labelLarge)
             }
         }

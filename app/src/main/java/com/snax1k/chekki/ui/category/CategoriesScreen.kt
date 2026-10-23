@@ -1,7 +1,9 @@
 package com.snax1k.chekki.ui.category
 
 import androidx.compose.foundation.background
+import androidx.compose.foundation.border
 import androidx.compose.foundation.clickable
+import androidx.compose.foundation.combinedClickable
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
@@ -60,6 +62,8 @@ fun CategoriesScreen(
     modifier: Modifier = Modifier,
     onBack: () -> Unit = {},
     onCategoryClick: (Long) -> Unit = {},
+    onCategoryLongClick: (Long) -> Unit = {},
+    onAddCategory: () -> Unit = {},
     onUncategorizedClick: () -> Unit = {}
 ) {
     val navigationBarHeight = WindowInsets.navigationBars.asPaddingValues().calculateBottomPadding()
@@ -101,12 +105,14 @@ fun CategoriesScreen(
                                 summary = summary,
                                 countAlpha = if (state.isLoading) 0f else 1f,
                                 onClick = { onCategoryClick(summary.category.id) },
+                                onLongClick = { onCategoryLongClick(summary.category.id) },
                                 modifier = Modifier.weight(1f)
                             )
                         }
                         if (row.size == 1) Spacer(Modifier.weight(1f))
                     }
                 }
+                item(key = "add") { AddCategoryRow(onAddCategory) }
                 item(key = "uncategorized") {
                     UncategorizedRow(
                         count = state.uncategorizedCount,
@@ -125,7 +131,13 @@ fun CategoriesScreen(
  * на сегодня («сегодня 2/6»).
  */
 @Composable
-private fun CategoryTile(summary: CategorySummary, countAlpha: Float, onClick: () -> Unit, modifier: Modifier = Modifier) {
+private fun CategoryTile(
+    summary: CategorySummary,
+    countAlpha: Float,
+    onClick: () -> Unit,
+    onLongClick: () -> Unit,
+    modifier: Modifier = Modifier
+) {
     val category = summary.category
     val color = categoryColor(category.colorIndex)
     val openText = pluralStringResource(R.plurals.category_open_tasks, summary.openCount, summary.openCount)
@@ -140,12 +152,14 @@ private fun CategoryTile(summary: CategorySummary, countAlpha: Float, onClick: (
         todayText
     }
     val description = stringResource(R.string.category_tile_description, category.name, openText, todayDescription)
+    val editLabel = stringResource(R.string.category_edit_action)
     Column(
         modifier
             .height(132.dp)
             .clip(MaterialTheme.shapes.large)
             .background(cssLinearGradient(145f, color.copy(alpha = 0.28f), color.copy(alpha = 0.08f)))
-            .clickable(role = Role.Button, onClick = onClick)
+            // Долгое нажатие — изменить категорию, как долгое нажатие на круг привычки
+            .combinedClickable(role = Role.Button, onLongClickLabel = editLabel, onLongClick = onLongClick, onClick = onClick)
             .clearAndSetSemantics {
                 contentDescription = description
                 role = Role.Button
@@ -199,6 +213,29 @@ private fun CategoryTile(summary: CategorySummary, countAlpha: Float, onClick: (
                 Text(todayText, style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
             }
         }
+    }
+}
+
+/** «+ Новая категория» под плитками. */
+@Composable
+private fun AddCategoryRow(onClick: () -> Unit) {
+    Row(
+        Modifier
+            .fillMaxWidth()
+            .height(56.dp)
+            .clip(MaterialTheme.shapes.medium)
+            .border(1.dp, MaterialTheme.colorScheme.outlineVariant, MaterialTheme.shapes.medium)
+            .clickable(role = Role.Button, onClick = onClick),
+        horizontalArrangement = Arrangement.Center,
+        verticalAlignment = Alignment.CenterVertically
+    ) {
+        Icon(ChekkiIcons.Add, contentDescription = null, Modifier.size(20.dp), tint = MaterialTheme.colorScheme.primary)
+        Text(
+            text = stringResource(R.string.category_new),
+            modifier = Modifier.padding(start = 8.dp),
+            style = MaterialTheme.typography.titleSmall,
+            color = MaterialTheme.colorScheme.primary
+        )
     }
 }
 

@@ -2,6 +2,7 @@ package com.snax1k.chekki.data
 
 import androidx.room.withTransaction
 import com.snax1k.chekki.data.db.CategoryEntity
+import com.snax1k.chekki.data.db.CategoryIcon
 import com.snax1k.chekki.data.db.CategorySummary
 import com.snax1k.chekki.data.db.ChekkiDatabase
 import com.snax1k.chekki.data.db.GroupCounts
@@ -39,6 +40,42 @@ class TaskRepository(
 
     /** Сколько невыполненных задач без категории. */
     fun observeUncategorizedOpenCount(): Flow<Int> = categoryDao.observeUncategorizedOpenCount()
+
+    suspend fun getCategory(id: Long): CategoryEntity? = categoryDao.getCategory(id)
+
+    /** Цвета, которые уже заняты категориями. */
+    suspend fun getCategoryColorIndexes(): List<Int> = categoryDao.getColorIndexes()
+
+    /** Новая категория в конце списка. Возвращает её id. */
+    suspend fun addCategory(name: String, icon: CategoryIcon, colorIndex: Int): Long =
+        database.withTransaction {
+            categoryDao.insertCategory(
+                CategoryEntity(name = name, colorIndex = colorIndex, icon = icon, position = categoryDao.nextPosition())
+            )
+        }
+
+    suspend fun updateCategory(id: Long, name: String, icon: CategoryIcon, colorIndex: Int) =
+        categoryDao.updateCategory(id, name, icon, colorIndex)
+
+    /**
+     * Удаляет категорию. Задачи остаются без категории; возвращает всё, что нужно для [restoreCategory].
+     * null — категории уже нет.
+     */
+    suspend fun deleteCategory(id: Long): DeletedCategory? = database.withTransaction {
+        val category = categoryDao.getCategory(id) ?: return@withTransaction null
+        val taskIds = categoryDao.getTaskIds(id)
+        categoryDao.deleteCategory(id)
+        DeletedCategory(category, taskIds)
+    }
+
+    /**
+     * Возвращает удалённую категорию с тем же id и местом и снова ставит её задачам. Задачи, которые
+     * успели удалить или перевести в другую категорию, не трогаются.
+     */
+    suspend fun restoreCategory(deleted: DeletedCategory) = database.withTransaction {
+        categoryDao.insertCategory(deleted.category)
+        if (deleted.taskIds.isNotEmpty()) categoryDao.setCategory(deleted.taskIds, deleted.category.id)
+    }
 
     /** Невыполненные задачи категории ([categoryId] null — без категории), задачи без даты в конце. */
     fun observeOpenTasksOfCategory(categoryId: Long?, keepIds: Set<Long> = emptySet()): Flow<List<TaskWithDetails>> =
@@ -286,3 +323,6 @@ data class MovedTask(
     val previousDate: LocalDate?,
     val newDate: LocalDate?
 )
+
+/** Удалённая категория и задачи, которые в ней были, — чтобы вернуть всё кнопкой «Отменить». */
+data class DeletedCategory(val category: CategoryEntity, val taskIds: List<Long>)

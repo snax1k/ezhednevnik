@@ -160,6 +160,8 @@ object ChekkiIcons {
     val Postpone: ImageVector by lazy { outlineIcon("Postpone", "M12 3a9 9 0 1 0 9 9M12 7.5V12l3 2M16 3h5v5") }
     val DragHandle: ImageVector by lazy { outlineIcon("DragHandle", "M5 9h14M5 15h14") }
     val Pause: ImageVector by lazy { outlineIcon("Pause", "M9 6v12M15 6v12") }
+    // Карандаш из макета «Категории»
+    val Edit: ImageVector by lazy { outlineIcon("Edit", "M4 20h4L19 9l-4-4L4 16zM14 6l4 4") }
 
     // Категории: первые шесть из макета «Категории», остальные нарисованы в том же стиле
     val Work: ImageVector by lazy {

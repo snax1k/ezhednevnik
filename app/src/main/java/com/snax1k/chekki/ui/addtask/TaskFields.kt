@@ -1,5 +1,7 @@
 package com.snax1k.chekki.ui.addtask
 
+import com.snax1k.chekki.ui.category.vector
+import com.snax1k.chekki.data.db.CategoryIcon
 import android.Manifest
 import android.os.Build
 import androidx.activity.compose.rememberLauncherForActivityResult
@@ -168,7 +170,7 @@ internal fun CategoryRow(
             placement = placement
         ) {
             if (selected != null) {
-                CategoryDot(palette[selected.colorIndex % palette.size])
+                CategoryMark(selected.icon, palette[selected.colorIndex % palette.size])
             }
             Text(
                 text = selected?.name ?: stringResource(R.string.add_task_no_category),
@@ -184,7 +186,8 @@ internal fun CategoryRow(
         ) {
             CategoryMenuItem(
                 name = stringResource(R.string.add_task_no_category),
-                dotColor = null,
+                icon = null,
+                color = null,
                 isSelected = selectedId == null,
                 onClick = {
                     onSelect(null)
@@ -194,7 +197,8 @@ internal fun CategoryRow(
             categories.forEach { category ->
                 CategoryMenuItem(
                     name = category.name,
-                    dotColor = palette[category.colorIndex % palette.size],
+                    icon = category.icon,
+                    color = palette[category.colorIndex % palette.size],
                     isSelected = category.id == selectedId,
                     onClick = {
                         onSelect(category.id)
@@ -438,12 +442,12 @@ internal fun reminderLabel(minutesBefore: Int?, allDay: Boolean): String {
 }
 
 @Composable
-private fun CategoryMenuItem(name: String, dotColor: Color?, isSelected: Boolean, onClick: () -> Unit) {
+private fun CategoryMenuItem(name: String, icon: CategoryIcon?, color: Color?, isSelected: Boolean, onClick: () -> Unit) {
     DropdownMenuItem(
         text = { Text(name, style = MaterialTheme.typography.bodyLarge) },
         onClick = onClick,
         leadingIcon = {
-            if (dotColor != null) CategoryDot(dotColor) else Spacer(Modifier.width(10.dp))
+            if (icon != null && color != null) CategoryMark(icon, color) else Spacer(Modifier.width(18.dp))
         },
         trailingIcon = {
             if (isSelected) {
@@ -453,14 +457,10 @@ private fun CategoryMenuItem(name: String, dotColor: Color?, isSelected: Boolean
     )
 }
 
+/** Иконка категории в её цвете — в выборе категории и на плашке карточки задачи. */
 @Composable
-internal fun CategoryDot(color: Color) {
-    Box(
-        Modifier
-            .size(10.dp)
-            .clip(CircleShape)
-            .background(color)
-    )
+internal fun CategoryMark(icon: CategoryIcon, color: Color, size: Dp = 18.dp) {
+    Icon(icon.vector, contentDescription = null, Modifier.size(size), tint = color)
 }
 
 @Composable

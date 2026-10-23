@@ -266,7 +266,7 @@ private fun HabitContent(
 }
 
 @Composable
-private fun SheetHeader(title: String, onClose: () -> Unit) {
+internal fun SheetHeader(title: String, onClose: () -> Unit) {
     Row(
         Modifier
             .fillMaxWidth()
@@ -297,7 +297,7 @@ private fun SheetHeader(title: String, onClose: () -> Unit) {
 }
 
 @Composable
-private fun SectionLabel(text: String) {
+internal fun SectionLabel(text: String) {
     Text(
         text = text,
         modifier = Modifier.padding(top = 16.dp, bottom = 6.dp),

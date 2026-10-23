@@ -202,6 +202,43 @@
     </plurals>
     <string name="category_empty">В этой категории задач нет</string>
     <string name="category_empty_uncategorized">Задач без категории нет</string>
+    <string name="category_new">Новая категория</string>
+    <string name="category_edit">Категория</string>
+    <string name="category_edit_action">Изменить категорию</string>
+    <string name="category_name_label">Название категории</string>
+    <string name="category_name_hint">Например, Поездки</string>
+    <string name="category_add">Добавить категорию</string>
+    <string name="category_delete">Удалить категорию</string>
+    <string name="category_delete_hint">Задачи останутся, просто без категории</string>
+    <string name="category_deleted">Категория удалена</string>
+    <string name="category_icon_work">Портфель</string>
+    <string name="category_icon_personal">Человек</string>
+    <string name="category_icon_home">Дом</string>
+    <string name="category_icon_health">Пульс</string>
+    <string name="category_icon_study">Книга</string>
+    <string name="category_icon_finance">Кошелёк</string>
+    <string name="category_icon_shopping">Корзина</string>
+    <string name="category_icon_car">Машина</string>
+    <string name="category_icon_travel">Путешествия</string>
+    <string name="category_icon_gift">Подарок</string>
+    <string name="category_icon_heart">Сердце</string>
+    <string name="category_icon_star">Звезда</string>
+    <string name="category_icon_phone">Телефон</string>
+    <string name="category_icon_code">Код</string>
+    <string name="category_icon_music">Музыка</string>
+    <string name="category_icon_tag">Ярлык</string>
+    <string name="category_color_blue">Голубой</string>
+    <string name="category_color_pink">Розовый</string>
+    <string name="category_color_amber">Янтарный</string>
+    <string name="category_color_green">Зелёный</string>
+    <string name="category_color_violet">Фиолетовый</string>
+    <string name="category_color_teal">Бирюзовый</string>
+    <string name="category_color_coral">Коралловый</string>
+    <string name="category_color_lime">Салатовый</string>
+    <string name="category_color_sky">Небесный</string>
+    <string name="category_color_lilac">Сиреневый</string>
+    <string name="category_color_sand">Песочный</string>
+    <string name="category_color_grey">Серый</string>
 
     <!-- Все привычки -->
     <string name="habits_title">Привычки</string>

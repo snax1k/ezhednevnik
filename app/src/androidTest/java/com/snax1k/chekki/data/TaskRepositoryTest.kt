@@ -3,6 +3,7 @@ package com.snax1k.chekki.data
 import androidx.room.Room
 import androidx.test.ext.junit.runners.AndroidJUnit4
 import androidx.test.platform.app.InstrumentationRegistry
+import com.snax1k.chekki.data.db.CategoryIcon
 import com.snax1k.chekki.data.db.ChekkiDatabase
 import com.snax1k.chekki.data.db.GroupCounts
 import com.snax1k.chekki.data.db.InitialDataCallback
@@ -611,6 +612,50 @@ class TaskRepositoryTest {
             val tasks = repository.observeOpenTasksOfCategory(null).first()
             assertEquals(before + 1, tasks.size)
             assertTrue(tasks.all { it.task.categoryId == null && !it.task.isDone })
+        }
+    }
+
+    @Test
+    fun новаяКатегорияВКонцеСписка() {
+        runBlocking {
+            val id = repository.addCategory("Поездки", CategoryIcon.Travel, colorIndex = 8)
+            val last = repository.observeCategorySummaries(today).first().last().category
+            assertEquals(id, last.id)
+            assertEquals("Поездки", last.name)
+            assertEquals(CategoryIcon.Travel, last.icon)
+            assertEquals(8, last.colorIndex)
+        }
+    }
+
+    @Test
+    fun изменениеКатегории() {
+        runBlocking {
+            // «Дом» — третья категория
+            repository.updateCategory(3, "Квартира", CategoryIcon.Home, colorIndex = 10)
+            val home = repository.getCategory(3)!!
+            assertEquals("Квартира", home.name)
+            assertEquals(10, home.colorIndex)
+            // Задачи видят новое название
+            val shopping = repository.observeTasksOn(today).first().single { it.task.title == "Купить продукты" }
+            assertEquals("Квартира", shopping.categoryName)
+        }
+    }
+
+    @Test
+    fun удалениеКатегорииОставляетЗадачиАОтменаВозвращает() {
+        runBlocking {
+            val homeTasks = repository.observeOpenTasksOfCategory(3).first().map { it.task.id }
+            assertTrue(homeTasks.isNotEmpty())
+
+            val deleted = repository.deleteCategory(3)!!
+            assertEquals(null, repository.getCategory(3))
+            val uncategorized = repository.observeOpenTasksOfCategory(null).first().map { it.task.id }
+            assertTrue(uncategorized.containsAll(homeTasks))
+
+            repository.restoreCategory(deleted)
+            assertEquals("Дом", repository.getCategory(3)!!.name)
+            assertEquals(homeTasks, repository.observeOpenTasksOfCategory(3).first().map { it.task.id })
+            assertEquals("Дом", repository.observeCategorySummaries(today).first()[2].category.name)
         }
     }
 }

@@ -16,6 +16,7 @@ import androidx.compose.ui.unit.dp
 import com.snax1k.chekki.R
 import com.snax1k.chekki.data.db.CategoryEntity
 import com.snax1k.chekki.data.db.CategoryIcon
+import com.snax1k.chekki.ui.components.SquareIconButton
 import com.snax1k.chekki.ui.group.CountText
 import com.snax1k.chekki.ui.group.HeaderTitleRow
 import com.snax1k.chekki.ui.group.TaskListScreen
@@ -41,6 +42,7 @@ fun CategoryTasksScreen(
     onTaskClick: (TaskUi) -> Unit = {},
     onPostpone: (TaskUi, LocalDate) -> Unit = { _, _ -> },
     onDelete: (TaskUi) -> Unit = {},
+    onEditCategory: () -> Unit = {},
     onVoiceClick: () -> Unit = {},
     onAddClick: () -> Unit = {}
 ) {
@@ -51,6 +53,12 @@ fun CategoryTasksScreen(
         emptyText = stringResource(if (state.categoryId == null) R.string.category_empty_uncategorized else R.string.category_empty),
         header = { headerModifier -> CategoryHeader(state, headerModifier) },
         modifier = modifier,
+        topBarAction = {
+            // У «Без категории» менять нечего
+            if (state.categoryId != null) {
+                SquareIconButton(ChekkiIcons.Edit, stringResource(R.string.category_edit_action), onEditCategory)
+            }
+        },
         onBack = onBack,
         onToggleDone = onToggleDone,
         onTaskClick = onTaskClick,

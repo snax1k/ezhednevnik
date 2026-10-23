@@ -1,5 +1,6 @@
 package com.snax1k.chekki.ui.addtask
 
+import com.snax1k.chekki.data.db.CategoryIcon
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.setValue
@@ -22,7 +23,8 @@ import java.time.LocalTime
 data class CategoryOption(
     val id: Long,
     val name: String,
-    val colorIndex: Int
+    val colorIndex: Int,
+    val icon: CategoryIcon = CategoryIcon.Tag
 )
 
 /**
@@ -40,7 +42,7 @@ class AddTaskViewModel(
         private set
 
     val categories: StateFlow<List<CategoryOption>> = repository.observeCategories()
-        .map { list -> list.map { CategoryOption(id = it.id, name = it.name, colorIndex = it.colorIndex) } }
+        .map { list -> list.map { CategoryOption(id = it.id, name = it.name, colorIndex = it.colorIndex, icon = it.icon) } }
         .stateIn(viewModelScope, SharingStarted.WhileSubscribed(5_000), emptyList())
 
     /** Сегодняшняя дата: по ней «Завтра» и «На выходных» превращаются в конкретный день. */

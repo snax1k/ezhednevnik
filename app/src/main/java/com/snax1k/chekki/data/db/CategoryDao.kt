@@ -1,6 +1,7 @@
 package com.snax1k.chekki.data.db
 
 import androidx.room.Dao
+import androidx.room.Insert
 import androidx.room.Query
 import kotlinx.coroutines.flow.Flow
 import java.time.LocalDate
@@ -28,6 +29,34 @@ interface CategoryDao {
         """
     )
     fun observeSummaries(today: LocalDate): Flow<List<CategorySummary>>
+
+    @Query("SELECT * FROM categories WHERE id = :id")
+    suspend fun getCategory(id: Long): CategoryEntity?
+
+    /** Цвета всех категорий — чтобы новой предложить ещё не занятый. */
+    @Query("SELECT color_index FROM categories")
+    suspend fun getColorIndexes(): List<Int>
+
+    /** Место для новой категории — после последней. */
+    @Query("SELECT COALESCE(MAX(position) + 1, 0) FROM categories")
+    suspend fun nextPosition(): Int
+
+    @Insert
+    suspend fun insertCategory(category: CategoryEntity): Long
+
+    @Query("UPDATE categories SET name = :name, icon = :icon, color_index = :colorIndex WHERE id = :id")
+    suspend fun updateCategory(id: Long, name: String, icon: CategoryIcon, colorIndex: Int)
+
+    /** Задачи категории — их нужно запомнить перед удалением, чтобы «Отменить» вернул им категорию. */
+    @Query("SELECT id FROM tasks WHERE category_id = :categoryId")
+    suspend fun getTaskIds(categoryId: Long): List<Long>
+
+    /** Удаляет категорию; её задачи остаются без категории (внешний ключ SET NULL). */
+    @Query("DELETE FROM categories WHERE id = :id")
+    suspend fun deleteCategory(id: Long)
+
+    @Query("UPDATE tasks SET category_id = :categoryId WHERE id IN (:taskIds)")
+    suspend fun setCategory(taskIds: List<Long>, categoryId: Long)
 
     /** Невыполненные задачи без категории. */
     @Query("SELECT COUNT(*) FROM tasks WHERE category_id IS NULL AND is_done = 0")

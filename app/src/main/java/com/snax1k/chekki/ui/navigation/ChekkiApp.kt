@@ -34,6 +34,7 @@ import androidx.navigation3.runtime.rememberSaveableStateHolderNavEntryDecorator
 import androidx.navigation3.ui.NavDisplay
 import com.snax1k.chekki.ChekkiApplication
 import com.snax1k.chekki.R
+import com.snax1k.chekki.data.DeletedCategory
 import com.snax1k.chekki.data.DeletedHabit
 import com.snax1k.chekki.data.DeletedTask
 import com.snax1k.chekki.data.MovedTask
@@ -41,6 +42,8 @@ import com.snax1k.chekki.ui.addtask.AddTaskSheet
 import com.snax1k.chekki.ui.addtask.AddTaskViewModel
 import com.snax1k.chekki.ui.category.CategoriesScreen
 import com.snax1k.chekki.ui.category.CategoriesViewModel
+import com.snax1k.chekki.ui.category.CategoryEditorViewModel
+import com.snax1k.chekki.ui.category.CategorySheet
 import com.snax1k.chekki.ui.category.CategoryTasksScreen
 import com.snax1k.chekki.ui.category.CategoryTasksViewModel
 import com.snax1k.chekki.ui.components.AboveFloatingButtons
@@ -107,6 +110,16 @@ fun ChekkiApp() {
         if (habitId == null) habitEditorViewModel.startNew() else habitEditorViewModel.startEdit(habitId)
         habitSheetFor = habitId ?: NEW_HABIT
     }
+    // Панель категории: какую категорию меняем (NEW_CATEGORY — новая), null — панель закрыта
+    var categorySheetFor by rememberSaveable { mutableStateOf<Long?>(null) }
+    val categoryEditorViewModel = viewModel { CategoryEditorViewModel(container.taskRepository) }
+    val openCategorySheet: (Long?) -> Unit = { categoryId ->
+        if (categoryId == null) categoryEditorViewModel.startNew() else categoryEditorViewModel.startEdit(categoryId)
+        categorySheetFor = categoryId ?: NEW_CATEGORY
+    }
+    LaunchedEffect(categorySheetFor) {
+        categorySheetFor?.let { categoryEditorViewModel.restoreIfNeeded(it.takeIf { id -> id != NEW_CATEGORY }) }
+    }
     // Карточка привычки по долгому нажатию на круг или из «Всех привычек»; null — закрыта
     var habitCardFor by rememberSaveable { mutableStateOf<Long?>(null) }
     val habitCardViewModel = viewModel { HabitCardViewModel(container.habitRepository, container.currentDate) }
@@ -146,6 +159,10 @@ fun ChekkiApp() {
     val habitDeletedMessage = stringResource(R.string.habit_deleted)
     val showUndoHabitDelete: (DeletedHabit) -> Unit = { deleted ->
         showUndo(habitDeletedMessage) { container.habitRepository.restoreHabit(deleted) }
+    }
+    val categoryDeletedMessage = stringResource(R.string.category_deleted)
+    val showUndoCategoryDelete: (DeletedCategory) -> Unit = { deleted ->
+        showUndo(categoryDeletedMessage) { container.taskRepository.restoreCategory(deleted) }
     }
     val showUndoPostpone: (MovedTask) -> Unit = { moved ->
         val newDate = moved.newDate ?: LocalDate.now()
@@ -233,6 +250,8 @@ fun ChekkiApp() {
                         state = state,
                         onBack = { backStack.removeLastOrNull() },
                         onCategoryClick = { categoryId -> backStack.add(CategoryRoute(categoryId)) },
+                        onCategoryLongClick = { categoryId -> openCategorySheet(categoryId) },
+                        onAddCategory = { openCategorySheet(null) },
                         onUncategorizedClick = { backStack.add(CategoryRoute(null)) }
                     )
                 }
@@ -252,6 +271,7 @@ fun ChekkiApp() {
                         onTaskClick = { task -> backStack.add(TaskRoute(task.id)) },
                         onPostpone = { task, date -> viewModel.postpone(task.id, date, showUndoPostpone) },
                         onDelete = { task -> viewModel.delete(task.id, showUndoDelete) },
+                        onEditCategory = { route.categoryId?.let(openCategorySheet) },
                         onAddClick = {
                             // Новая задача с этого экрана сразу в этой категории
                             addTaskViewModel.onCategorySelect(route.categoryId)
@@ -305,6 +325,13 @@ fun ChekkiApp() {
             }
         )
     }
+    if (categorySheetFor != null) {
+        CategorySheet(
+            viewModel = categoryEditorViewModel,
+            onDismiss = { categorySheetFor = null },
+            onDeleted = showUndoCategoryDelete
+        )
+    }
     if (habitSheetFor != null) {
         HabitSheet(
             viewModel = habitEditorViewModel,
@@ -316,3 +343,6 @@ fun ChekkiApp() {
 
 /** Значение [habitSheetFor] для новой привычки: у настоящих привычек id положительные. */
 private const val NEW_HABIT = -1L
+
+/** Значение [categorySheetFor] для новой категории. */
+private const val NEW_CATEGORY = -1L
