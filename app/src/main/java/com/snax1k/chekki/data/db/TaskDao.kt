@@ -67,6 +67,26 @@ interface TaskDao {
     )
     fun observeOpenTasksBetween(from: LocalDate, to: LocalDate, keepIds: List<Long>): Flow<List<TaskWithDetails>>
 
+    /**
+     * Невыполненные задачи категории ([categoryId] null — задачи без категории): по дате, внутри дня по времени,
+     * задачи без даты в конце, новые сверху. [keepIds] — как в [observeOpenTasksBetween].
+     */
+    @Query(
+        """
+        SELECT t.*,
+            c.name AS category_name,
+            c.color_index AS category_color_index,
+            (SELECT COUNT(*) FROM subtasks s WHERE s.task_id = t.id AND s.is_done = 1) AS subtasks_done,
+            (SELECT COUNT(*) FROM subtasks s WHERE s.task_id = t.id) AS subtasks_total
+        FROM tasks t
+        LEFT JOIN categories c ON c.id = t.category_id
+        WHERE t.category_id IS :categoryId AND (t.is_done = 0 OR t.id IN (:keepIds))
+        ORDER BY t.date IS NULL, t.date, t.time IS NULL, t.time,
+            CASE WHEN t.date IS NULL THEN -t.created_at ELSE t.created_at END, t.id
+        """
+    )
+    fun observeOpenTasksOfCategory(categoryId: Long?, keepIds: List<Long>): Flow<List<TaskWithDetails>>
+
     /** Невыполненные задачи без даты, новые сверху. [keepIds] — как в [observeOpenTasksBetween]. */
     @Query(
         """

@@ -96,7 +96,7 @@ data class ChekkiColors(
     val habits: List<TrackerColors>,
     val trackerRing: Color,
     val trackerRingTrack: Color,
-    /** Палитра категорий: Работа, Личное, Дом, Здоровье, Учёба, Финансы. */
+    /** Палитра категорий, 12 цветов: первые шесть — Работа, Личное, Дом, Здоровье, Учёба, Финансы. */
     val categories: List<Color>,
     val priorityHigh: Color,
     val priorityMedium: Color,
@@ -167,7 +167,14 @@ internal val DarkChekkiColors = ChekkiColors(
         Color(0xFFF5BE6A),
         Color(0xFF7BD49A),
         Color(0xFFB89CFF),
-        Color(0xFF6FD3CF)
+        Color(0xFF6FD3CF),
+        // В макете нет: коралловый, салатовый, небесный, сиреневый, песочный, серый — той же светлоты
+        Color(0xFFFF9A7B),
+        Color(0xFFC8E07A),
+        Color(0xFF6FC6F2),
+        Color(0xFFE58BEA),
+        Color(0xFFD7B48C),
+        Color(0xFFB3B9C5)
     ),
     priorityHigh = Color(0xFFFF8A7A),
     priorityMedium = Color(0xFFF5BE6A),

@@ -31,4 +31,15 @@ class TaskSectionsTest {
     fun пустойСписокДаётПустыеСекции() {
         assertEquals(emptyList<TaskSection>(), sectionsByDay(emptyList()))
     }
+
+    @Test
+    fun задачиБезДатыИдутПодЗаголовкомВКонце() {
+        val today = LocalDate.of(2026, 10, 23)
+        val sections = sectionsWithNoDateLast(
+            listOf(today.minusDays(2) to task(1), today to task(2), null to task(3), null to task(4))
+        )
+        assertEquals(listOf(today.minusDays(2), today, null), sections.map { it.day })
+        assertEquals(listOf(false, false, true), sections.map { it.isNoDate })
+        assertEquals(listOf(3L, 4L), sections.last().tasks.map { it.id })
+    }
 }

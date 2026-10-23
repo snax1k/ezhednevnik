@@ -20,6 +20,7 @@ import org.junit.Assert.assertTrue
 import org.junit.Before
 import org.junit.Test
 import org.junit.runner.RunWith
+import java.time.Instant
 import java.time.LocalDate
 import java.time.LocalTime
 
@@ -556,4 +557,60 @@ class TaskRepositoryTest {
             cursor.moveToFirst()
             cursor.getInt(0)
         }
+
+    /** Новая категория «Поездки» в конце списка: так счётчики не зависят от тестовых задач. */
+    private fun insertTripsCategory(): Long =
+        database.openHelper.writableDatabase.run {
+            execSQL("INSERT INTO categories (name, color_index, icon, position, is_archived) VALUES ('Поездки', 8, 9, 10, 0)")
+            query("SELECT id FROM categories WHERE name = 'Поездки'").use { cursor ->
+                cursor.moveToFirst()
+                cursor.getLong(0)
+            }
+        }
+
+    @Test
+    fun счётчикиКатегории() {
+        runBlocking {
+            val trips = insertTripsCategory()
+            repository.addTask("Купить билеты", "", today, null, trips, TaskPriority.None)
+            val packed = repository.addTask("Собрать чемодан", "", today, null, trips, TaskPriority.None)
+            repository.addTask("Забронировать отель", "", today.plusDays(3), null, trips, TaskPriority.None)
+            repository.addTask("Выбрать маршрут", "", null, null, trips, TaskPriority.None)
+            repository.toggleDone(packed)
+
+            val summary = repository.observeCategorySummaries(today).first().last()
+            assertEquals("Поездки", summary.category.name)
+            assertEquals(3, summary.openCount)
+            assertEquals(2, summary.todayTotal)
+            assertEquals(1, summary.todayDone)
+        }
+    }
+
+    @Test
+    fun задачиКатегорииПоДатеБезДатыВКонцеНовыеСверху() {
+        runBlocking {
+            val trips = insertTripsCategory()
+            val start = Instant.parse("2026-10-20T10:00:00Z")
+            repository.addTask("Старая без даты", "", null, null, trips, TaskPriority.None, now = start)
+            repository.addTask("Новая без даты", "", null, null, trips, TaskPriority.None, now = start.plusSeconds(60))
+            repository.addTask("Отель", "", today.plusDays(3), null, trips, TaskPriority.None)
+            repository.addTask("Билеты", "", today, LocalTime.of(18, 0), trips, TaskPriority.None)
+            repository.addTask("Виза", "", today.minusDays(2), null, trips, TaskPriority.None)
+
+            val titles = repository.observeOpenTasksOfCategory(trips).first().map { it.task.title }
+            assertEquals(listOf("Виза", "Билеты", "Отель", "Новая без даты", "Старая без даты"), titles)
+        }
+    }
+
+    @Test
+    fun задачиБезКатегории() {
+        runBlocking {
+            val before = repository.observeUncategorizedOpenCount().first()
+            repository.addTask("Без категории", "", null, null, null, TaskPriority.None)
+            assertEquals(before + 1, repository.observeUncategorizedOpenCount().first())
+            val tasks = repository.observeOpenTasksOfCategory(null).first()
+            assertEquals(before + 1, tasks.size)
+            assertTrue(tasks.all { it.task.categoryId == null && !it.task.isDone })
+        }
+    }
 }

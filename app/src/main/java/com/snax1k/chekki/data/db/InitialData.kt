@@ -7,7 +7,14 @@ import androidx.sqlite.db.SupportSQLiteDatabase
 import java.time.LocalDate
 
 /** Категории первого запуска. Номер в списке + 1 — это id, номер в списке — цвет в палитре темы. */
-internal val DefaultCategories = listOf("Работа", "Личное", "Дом", "Здоровье", "Учёба", "Финансы")
+internal val DefaultCategories = listOf(
+    "Работа" to CategoryIcon.Work,
+    "Личное" to CategoryIcon.Personal,
+    "Дом" to CategoryIcon.Home,
+    "Здоровье" to CategoryIcon.Health,
+    "Учёба" to CategoryIcon.Study,
+    "Финансы" to CategoryIcon.Finance
+)
 
 /**
  * Начальные данные при создании базы: стандартные категории всегда, тестовые задачи и привычки — только
@@ -34,11 +41,18 @@ class InitialDataCallback(private val today: () -> LocalDate = LocalDate::now) :
     }
 
     private fun fill(db: SupportSQLiteDatabase) {
-        DefaultCategories.forEachIndexed { index, name ->
+        DefaultCategories.forEachIndexed { index, (name, icon) ->
             db.insert(
                 "categories",
                 SQLiteDatabase.CONFLICT_ABORT,
-                contentValuesOf("id" to index + 1L, "name" to name, "color_index" to index, "position" to index)
+                contentValuesOf(
+                    "id" to index + 1L,
+                    "name" to name,
+                    "color_index" to index,
+                    "icon" to icon.code,
+                    "position" to index,
+                    "is_archived" to 0
+                )
             )
         }
         SampleTasks.insert(db, today())

@@ -160,6 +160,39 @@ object ChekkiIcons {
     val Postpone: ImageVector by lazy { outlineIcon("Postpone", "M12 3a9 9 0 1 0 9 9M12 7.5V12l3 2M16 3h5v5") }
     val DragHandle: ImageVector by lazy { outlineIcon("DragHandle", "M5 9h14M5 15h14") }
     val Pause: ImageVector by lazy { outlineIcon("Pause", "M9 6v12M15 6v12") }
+
+    // Категории: первые шесть из макета «Категории», остальные нарисованы в том же стиле
+    val Work: ImageVector by lazy {
+        outlineIcon(
+            "Work",
+            "M4 8h16a1 1 0 0 1 1 1v10a1 1 0 0 1-1 1H4a1 1 0 0 1-1-1V9a1 1 0 0 1 1-1zM9 8V5.5A1.5 1.5 0 0 1 10.5 4h3A1.5 1.5 0 0 1 15 5.5V8M3 13h18"
+        )
+    }
+    val Personal: ImageVector by lazy { outlineIcon("Personal", "M12 4a4 4 0 1 0 0 8a4 4 0 1 0 0-8zM4.5 20a7.5 7.5 0 0 1 15 0") }
+    val Home: ImageVector by lazy { outlineIcon("Home", "M4 11l8-7 8 7M6 9.5V20h12V9.5M10 20v-5h4v5") }
+    val Health: ImageVector by lazy { outlineIcon("Health", "M3 12h4l3-7 4 14 3-7h4") }
+    val Study: ImageVector by lazy { outlineIcon("Study", "M5 5a2 2 0 0 1 2-2h12v15H7a2 2 0 0 0-2 2zM5 20V5M9 7h6") }
+    val Finance: ImageVector by lazy {
+        outlineIcon("Finance", "M4 7h15a1 1 0 0 1 1 1v11a1 1 0 0 1-1 1H5a1 1 0 0 1-1-1V6a2 2 0 0 1 2-2h11v3M16 13.5h.01")
+    }
+    val Shopping: ImageVector by lazy { outlineIcon("Shopping", "M3 4h2.5l2.2 10.5h10.6L20.5 7H6.6M9.5 19.5h.01M17 19.5h.01") }
+    val Car: ImageVector by lazy {
+        outlineIcon("Car", "M5 17v-5.5L7 6.5h10l2 5V17M5 17h14M5 17v2M19 17v2M3.5 11.5h17M8 14h.01M16 14h.01")
+    }
+    val Travel: ImageVector by lazy { outlineIcon("Travel", "M21 3L3 10.5l7 2.5 2.5 7zM10 13L21 3") }
+    val Gift: ImageVector by lazy {
+        outlineIcon("Gift", "M4 11h16v9H4zM3 7.5h18V11H3zM12 7.5V20M12 7.5C11 4.5 7.5 4 7.5 6s3.5 1.5 4.5 1.5M12 7.5c1-3 4.5-3.5 4.5-1.5S13 7.5 12 7.5")
+    }
+    val Star: ImageVector by lazy {
+        outlineIcon("Star", "M12 3.5l2.6 5.3 5.9.9-4.3 4.1 1 5.8-5.2-2.7-5.2 2.7 1-5.8-4.3-4.1 5.9-.9z")
+    }
+    val Phone: ImageVector by lazy {
+        outlineIcon("Phone", "M8 3h8a1 1 0 0 1 1 1v16a1 1 0 0 1-1 1H8a1 1 0 0 1-1-1V4a1 1 0 0 1 1-1zM11 18h2")
+    }
+    val Code: ImageVector by lazy { outlineIcon("Code", "M8 8l-4 4 4 4M16 8l4 4-4 4M13.5 5l-3 14") }
+    val Music: ImageVector by lazy {
+        outlineIcon("Music", "M9 18V5l11-2v13M9 18a3 3 0 1 1-6 0a3 3 0 1 1 6 0zM20 16a3 3 0 1 1-6 0a3 3 0 1 1 6 0z")
+    }
 }
 
 private const val PriorityFlagPath = "M5 21V4M5 4h11.5l-2.2 4.2 2.2 4.3H5"

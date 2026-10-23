@@ -44,4 +44,10 @@ class Converters {
 
     @TypeConverter
     fun codeToHabitIcon(code: Int): HabitIcon = HabitIcon.fromCode(code)
+
+    @TypeConverter
+    fun categoryIconToCode(icon: CategoryIcon): Int = icon.code
+
+    @TypeConverter
+    fun codeToCategoryIcon(code: Int): CategoryIcon = CategoryIcon.fromCode(code)
 }

@@ -39,6 +39,10 @@ import com.snax1k.chekki.data.DeletedTask
 import com.snax1k.chekki.data.MovedTask
 import com.snax1k.chekki.ui.addtask.AddTaskSheet
 import com.snax1k.chekki.ui.addtask.AddTaskViewModel
+import com.snax1k.chekki.ui.category.CategoriesScreen
+import com.snax1k.chekki.ui.category.CategoriesViewModel
+import com.snax1k.chekki.ui.category.CategoryTasksScreen
+import com.snax1k.chekki.ui.category.CategoryTasksViewModel
 import com.snax1k.chekki.ui.components.AboveFloatingButtons
 import com.snax1k.chekki.ui.group.GroupScreen
 import com.snax1k.chekki.ui.group.GroupViewModel
@@ -50,6 +54,7 @@ import com.snax1k.chekki.ui.habit.HabitsScreen
 import com.snax1k.chekki.ui.habit.HabitsViewModel
 import com.snax1k.chekki.ui.main.MainScreen
 import com.snax1k.chekki.ui.main.MainViewModel
+import com.snax1k.chekki.ui.main.QuickEntry
 import com.snax1k.chekki.ui.main.TaskGroup
 import com.snax1k.chekki.ui.task.TaskScreen
 import com.snax1k.chekki.ui.task.TaskViewModel
@@ -75,6 +80,14 @@ data class TaskRoute(val taskId: Long) : NavKey
 /** Все привычки: порядок, архив. */
 @Serializable
 data object HabitsRoute : NavKey
+
+/** Плитки категорий. */
+@Serializable
+data object CategoriesRoute : NavKey
+
+/** Задачи категории; [categoryId] null — задачи без категории. */
+@Serializable
+data class CategoryRoute(val categoryId: Long?) : NavKey
 
 /** Корень приложения: стек экранов (Navigation 3) и переходы между ними. */
 @Composable
@@ -166,6 +179,10 @@ fun ChekkiApp() {
                         onTrackerClick = { tracker -> viewModel.checkHabit(tracker.habitId) },
                         onTrackerLongClick = { tracker -> openHabitCard(tracker.habitId) },
                         onAddHabitClick = { openHabitSheet(null) },
+                        onQuickEntryClick = { entry ->
+                            // Календарь и поиск пока не сделаны
+                            if (entry == QuickEntry.Categories) backStack.add(CategoriesRoute)
+                        },
                         onGroupClick = { group -> backStack.add(GroupRoute(group)) },
                         onAddClick = { isAddTaskOpen = true }
                     )
@@ -206,6 +223,39 @@ fun ChekkiApp() {
                         onPostponed = { moved ->
                             backStack.removeLastOrNull()
                             showUndoPostpone(moved)
+                        }
+                    )
+                }
+                entry<CategoriesRoute> {
+                    val viewModel = viewModel { CategoriesViewModel(container.taskRepository, container.currentDate) }
+                    val state by viewModel.uiState.collectAsStateWithLifecycle()
+                    CategoriesScreen(
+                        state = state,
+                        onBack = { backStack.removeLastOrNull() },
+                        onCategoryClick = { categoryId -> backStack.add(CategoryRoute(categoryId)) },
+                        onUncategorizedClick = { backStack.add(CategoryRoute(null)) }
+                    )
+                }
+                entry<CategoryRoute> { route ->
+                    val viewModel = viewModel {
+                        CategoryTasksViewModel(route.categoryId, container.taskRepository, container.currentDate)
+                    }
+                    val state by viewModel.uiState.collectAsStateWithLifecycle()
+                    // Категорию удалили, пока экран был открыт
+                    LaunchedEffect(state.isCategoryMissing) {
+                        if (state.isCategoryMissing) backStack.remove(route)
+                    }
+                    CategoryTasksScreen(
+                        state = state,
+                        onBack = { backStack.removeLastOrNull() },
+                        onToggleDone = { task -> viewModel.toggleDone(task.id) },
+                        onTaskClick = { task -> backStack.add(TaskRoute(task.id)) },
+                        onPostpone = { task, date -> viewModel.postpone(task.id, date, showUndoPostpone) },
+                        onDelete = { task -> viewModel.delete(task.id, showUndoDelete) },
+                        onAddClick = {
+                            // Новая задача с этого экрана сразу в этой категории
+                            addTaskViewModel.onCategorySelect(route.categoryId)
+                            isAddTaskOpen = true
                         }
                     )
                 }

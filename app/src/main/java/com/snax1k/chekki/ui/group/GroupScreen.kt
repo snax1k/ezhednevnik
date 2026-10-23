@@ -82,6 +82,47 @@ fun GroupScreen(
     onVoiceClick: () -> Unit = {},
     onAddClick: () -> Unit = {}
 ) {
+    TaskListScreen(
+        today = state.today,
+        sections = state.sections,
+        isLoading = state.isLoading,
+        emptyText = stringResource(state.group.emptyText),
+        header = { headerModifier -> GroupHeader(state, headerModifier) },
+        modifier = modifier,
+        canShowMore = state.canShowMore,
+        onBack = onBack,
+        onToggleDone = onToggleDone,
+        onTaskClick = onTaskClick,
+        onPostpone = onPostpone,
+        onDelete = onDelete,
+        onShowMore = onShowMore,
+        onVoiceClick = onVoiceClick,
+        onAddClick = onAddClick
+    )
+}
+
+/**
+ * Общий каркас списка задач — групп и категорий: «Назад», шапка [header], задачи по дням со свайпами,
+ * подпись [emptyText] у пустого списка, «+» и микрофон внизу.
+ */
+@Composable
+fun TaskListScreen(
+    today: LocalDate,
+    sections: List<TaskSection>,
+    isLoading: Boolean,
+    emptyText: String,
+    header: @Composable (Modifier) -> Unit,
+    modifier: Modifier = Modifier,
+    canShowMore: Boolean = false,
+    onBack: () -> Unit = {},
+    onToggleDone: (TaskUi) -> Unit = {},
+    onTaskClick: (TaskUi) -> Unit = {},
+    onPostpone: (TaskUi, LocalDate) -> Unit = { _, _ -> },
+    onDelete: (TaskUi) -> Unit = {},
+    onShowMore: () -> Unit = {},
+    onVoiceClick: () -> Unit = {},
+    onAddClick: () -> Unit = {}
+) {
     val navigationBarHeight = WindowInsets.navigationBars.asPaddingValues().calculateBottomPadding()
     // Строка, открытая свайпом влево: открытой может быть только одна
     var openTaskId by remember { mutableStateOf<Long?>(null) }
@@ -104,18 +145,22 @@ fun GroupScreen(
                     verticalArrangement = Arrangement.spacedBy(8.dp)
                 ) {
                     item {
-                        GroupHeader(state, Modifier.padding(bottom = 6.dp))
+                        header(Modifier.padding(bottom = 6.dp))
                     }
-                    for (section in state.sections) {
+                    for (section in sections) {
                         if (section.day != null) {
                             item(key = "day-${section.day}", contentType = "day") {
-                                DayHeader(dayTitle(section.day, state.today))
+                                DayHeader(dayTitle(section.day, today))
+                            }
+                        } else if (section.isNoDate) {
+                            item(key = "no-date", contentType = "day") {
+                                DayHeader(stringResource(R.string.group_no_date))
                             }
                         }
                         items(section.tasks, key = { it.id }, contentType = { "task" }) { task ->
                             SwipeableTaskRow(
                                 task = task,
-                                today = state.today,
+                                today = today,
                                 isOpen = openTaskId == task.id,
                                 onOpen = { openTaskId = task.id },
                                 onClose = { if (openTaskId == task.id) openTaskId = null },
@@ -128,15 +173,15 @@ fun GroupScreen(
                             )
                         }
                     }
-                    if (state.canShowMore) {
+                    if (canShowMore) {
                         item(key = "show-more") {
                             ShowMoreButton(onShowMore, Modifier.padding(top = 4.dp))
                         }
                     }
-                    if (!state.isLoading && state.sections.isEmpty()) {
+                    if (!isLoading && sections.isEmpty()) {
                         item {
                             Text(
-                                text = stringResource(state.group.emptyText),
+                                text = emptyText,
                                 modifier = Modifier
                                     .fillMaxWidth()
                                     .padding(top = 24.dp),
@@ -175,7 +220,7 @@ private fun GroupTopBar(onBack: () -> Unit) {
     }
 }
 
-/** Подзаголовок дня в группах на несколько дней и в «Выполненном». */
+/** Подзаголовок дня в группах на несколько дней, в «Выполненном» и в категориях. */
 @Composable
 private fun DayHeader(text: String) {
     Text(
@@ -193,6 +238,7 @@ private fun DayHeader(text: String) {
 private fun dayTitle(day: LocalDate, today: LocalDate): String = when (day) {
     today -> stringResource(R.string.day_today)
     today.minusDays(1) -> stringResource(R.string.day_yesterday)
+    today.plusDays(1) -> stringResource(R.string.day_tomorrow)
     else -> formatShortDate(day, today)
 }
 
@@ -274,9 +320,9 @@ private fun GroupHeader(state: GroupUiState, modifier: Modifier = Modifier) {
     }
 }
 
-/** Карточка в цвете группы: диагональный градиент, как у плиток главного экрана. */
+/** Карточка в цвете группы или категории: диагональный градиент, как у плиток главного экрана. */
 @Composable
-private fun TintedCard(color: GroupColor, modifier: Modifier = Modifier, content: @Composable ColumnScope.() -> Unit) {
+internal fun TintedCard(color: GroupColor, modifier: Modifier = Modifier, content: @Composable ColumnScope.() -> Unit) {
     Column(
         modifier
             .fillMaxWidth()
@@ -289,7 +335,7 @@ private fun TintedCard(color: GroupColor, modifier: Modifier = Modifier, content
 
 /** Название группы с подписью слева и счётчик справа, по нижнему краю. */
 @Composable
-private fun HeaderTitleRow(
+internal fun HeaderTitleRow(
     title: String,
     subtitle: String?,
     titleColor: Color,
@@ -322,7 +368,7 @@ private fun HeaderTitleRow(
 }
 
 @Composable
-private fun CountText(count: Int, color: Color) {
+internal fun CountText(count: Int, color: Color) {
     Text(count.toString(), style = MaterialTheme.typography.headlineMedium, color = color)
 }
 

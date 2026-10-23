@@ -6,7 +6,8 @@ import androidx.room.Room
 import androidx.room.RoomDatabase
 import androidx.room.TypeConverters
 
-/** База задач и привычек. Версия 2 — привычки и их отметки, версия 3 — напоминания привычек, версия 4 — паузы привычек. */
+/** База задач и привычек. Версия 2 — привычки и их отметки, версия 3 — напоминания привычек, версия 4 — паузы привычек,
+ * версия 5 — иконка и архив у категорий. */
 @Database(
     entities = [
         CategoryEntity::class,
@@ -17,7 +18,7 @@ import androidx.room.TypeConverters
         HabitReminderEntity::class,
         HabitPauseEntity::class
     ],
-    version = 4,
+    version = 5,
     exportSchema = true
 )
 @TypeConverters(Converters::class)

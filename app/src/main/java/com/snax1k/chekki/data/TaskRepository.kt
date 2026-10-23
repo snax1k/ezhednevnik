@@ -2,6 +2,7 @@ package com.snax1k.chekki.data
 
 import androidx.room.withTransaction
 import com.snax1k.chekki.data.db.CategoryEntity
+import com.snax1k.chekki.data.db.CategorySummary
 import com.snax1k.chekki.data.db.ChekkiDatabase
 import com.snax1k.chekki.data.db.GroupCounts
 import com.snax1k.chekki.data.db.RepeatRule
@@ -29,6 +30,19 @@ class TaskRepository(
 
     /** Все категории в порядке списка. */
     fun observeCategories(): Flow<List<CategoryEntity>> = categoryDao.observeAll()
+
+    /** Категория; null — её удалили. */
+    fun observeCategory(id: Long): Flow<CategoryEntity?> = categoryDao.observeCategory(id)
+
+    /** Категории для экрана «Категории» со счётчиками на [today]. */
+    fun observeCategorySummaries(today: LocalDate): Flow<List<CategorySummary>> = categoryDao.observeSummaries(today)
+
+    /** Сколько невыполненных задач без категории. */
+    fun observeUncategorizedOpenCount(): Flow<Int> = categoryDao.observeUncategorizedOpenCount()
+
+    /** Невыполненные задачи категории ([categoryId] null — без категории), задачи без даты в конце. */
+    fun observeOpenTasksOfCategory(categoryId: Long?, keepIds: Set<Long> = emptySet()): Flow<List<TaskWithDetails>> =
+        taskDao.observeOpenTasksOfCategory(categoryId, keepIds.toList())
 
     /**
      * Новая задача. [time] null — на весь день; [reminderMinutesBefore] null — без напоминания.
