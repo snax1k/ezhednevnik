@@ -1,6 +1,6 @@
 package com.snax1k.chekki.ui.main
 
-import com.snax1k.chekki.ui.icons.ChekkiIcons
+import com.snax1k.chekki.data.db.HabitIcon
 import com.snax1k.chekki.ui.tasks.CategoryUi
 import com.snax1k.chekki.ui.tasks.Priority
 import com.snax1k.chekki.ui.tasks.TaskUi
@@ -53,14 +53,14 @@ fun sampleTodayTasks(): List<TaskUi> = listOf(
 )
 
 /**
- * Трекеры верхней панели. Пока тестовые и в базе не хранятся: набор трекеров не утверждён.
- * В макете у всех 0, здесь часть заполнена, чтобы было видно кольца.
+ * Привычки верхней панели для превью. В приложении они берутся из базы (`HabitRepository`).
+ * В макете у всех 0, здесь часть заполнена, чтобы было видно кольца и галочку.
  */
 fun sampleTrackers(): List<TrackerUi> = listOf(
-    TrackerUi(name = "Привычки", icon = ChekkiIcons.Habits, done = 0, total = 1),
-    TrackerUi(name = "Вода", icon = ChekkiIcons.Water, done = 2, total = 6),
-    TrackerUi(name = "Цели", icon = ChekkiIcons.Goals, done = 1, total = 2),
-    TrackerUi(name = "Растяжка", icon = ChekkiIcons.Stretching, done = 0, total = 1)
+    TrackerUi(habitId = 1, name = "Утренняя рутина", icon = HabitIcon.Sprout, colorIndex = 0, done = 0, total = 1),
+    TrackerUi(habitId = 2, name = "Пить воду", icon = HabitIcon.Water, colorIndex = 1, done = 2, total = 6),
+    TrackerUi(habitId = 3, name = "Английский", icon = HabitIcon.Goal, colorIndex = 2, done = 1, total = 2),
+    TrackerUi(habitId = 4, name = "Растяжка", icon = HabitIcon.Stretch, colorIndex = 3, done = 1, total = 1)
 )
 
 /** Главный экран для превью. Карточка «Сегодня» считается по [todayTasks], остальные счётчики из макета. */

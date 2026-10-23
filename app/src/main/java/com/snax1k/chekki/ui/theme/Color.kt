@@ -92,8 +92,8 @@ data class ChekkiColors(
     val onFab: Color,
     /** Тень круглых кнопок, у которых нет своего цвета тени (голосовой ввод). */
     val floatingShadow: Color,
-    /** Заливки круглых трекеров по порядку. Набор трекеров ещё не утверждён. */
-    val trackers: List<TrackerColors>,
+    /** Палитра привычек: круги наверху главного экрана. Привычка хранит номер цвета в этой палитре. */
+    val habits: List<TrackerColors>,
     val trackerRing: Color,
     val trackerRingTrack: Color,
     /** Палитра категорий: Работа, Личное, Дом, Здоровье, Учёба, Финансы. */
@@ -147,15 +147,17 @@ internal val DarkChekkiColors = ChekkiColors(
     fabShadow = Color(0xFFF27A45).copy(alpha = 0.4f),
     onFab = OnAccent,
     floatingShadow = Color.Black.copy(alpha = 0.4f),
-    trackers = listOf(
-        // Привычки
+    habits = listOf(
+        // Первые четыре — цвета трекеров из макета: голубой, синий, бирюзовый, оранжевый
         TrackerColors(fill = Color(0xFF2C7FA8), content = Color.White),
-        // Вода
         TrackerColors(fill = Color(0xFF4A55C9), content = Color.White),
-        // Цели
         TrackerColors(fill = Color(0xFF16857C), content = Color.White),
-        // Растяжка
-        TrackerColors(fill = Color(0xFFF0924A), content = OnAccent)
+        TrackerColors(fill = Color(0xFFF0924A), content = OnAccent),
+        // В макете нет: малиновый, фиолетовый, зелёный, горчичный — той же насыщенности
+        TrackerColors(fill = Color(0xFFC2477A), content = Color.White),
+        TrackerColors(fill = Color(0xFF7E4FC9), content = Color.White),
+        TrackerColors(fill = Color(0xFF3F8F45), content = Color.White),
+        TrackerColors(fill = Color(0xFFD9A93A), content = OnAccent)
     ),
     trackerRing = Color.White,
     trackerRingTrack = Color.White.copy(alpha = 0.10f),

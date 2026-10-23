@@ -4,6 +4,8 @@ import androidx.compose.animation.core.animateFloatAsState
 import androidx.compose.foundation.background
 import androidx.compose.foundation.border
 import androidx.compose.foundation.clickable
+import androidx.compose.foundation.combinedClickable
+import androidx.compose.foundation.horizontalScroll
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
@@ -24,6 +26,7 @@ import androidx.compose.material3.Surface
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.getValue
+import androidx.compose.runtime.key
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.alpha
@@ -34,6 +37,8 @@ import androidx.compose.ui.geometry.Size
 import androidx.compose.ui.graphics.StrokeCap
 import androidx.compose.ui.graphics.drawscope.Stroke
 import androidx.compose.ui.graphics.vector.ImageVector
+import androidx.compose.ui.hapticfeedback.HapticFeedbackType
+import androidx.compose.ui.platform.LocalHapticFeedback
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.semantics.Role
 import androidx.compose.ui.semantics.clearAndSetSemantics
@@ -56,6 +61,7 @@ import com.snax1k.chekki.ui.components.ProgressCountText
 import com.snax1k.chekki.ui.components.SquareIconButton
 import com.snax1k.chekki.ui.components.formatDayTitle
 import com.snax1k.chekki.ui.components.formatTime
+import com.snax1k.chekki.ui.habit.vector
 import com.snax1k.chekki.ui.icons.ChekkiIcons
 import com.snax1k.chekki.ui.theme.ChekkiTheme
 import com.snax1k.chekki.ui.theme.GroupColor
@@ -72,6 +78,8 @@ fun MainScreen(
     onMenuClick: () -> Unit = {},
     onStatisticsClick: () -> Unit = {},
     onTrackerClick: (TrackerUi) -> Unit = {},
+    onTrackerLongClick: (TrackerUi) -> Unit = {},
+    onAddHabitClick: () -> Unit = {},
     onQuickEntryClick: (QuickEntry) -> Unit = {},
     onGroupClick: (TaskGroup) -> Unit = {},
     onVoiceClick: () -> Unit = {},
@@ -88,7 +96,7 @@ fun MainScreen(
                     .navigationBarsPadding()
                     .padding(start = 16.dp, end = 16.dp, bottom = FloatingButtonsAreaHeight)
             ) {
-                MainHeader(state.trackers, onMenuClick, onStatisticsClick, onTrackerClick)
+                MainHeader(state.trackers, onMenuClick, onStatisticsClick, onTrackerClick, onTrackerLongClick, onAddHabitClick)
                 DateAndTitle(state.date)
                 QuickEntries(onQuickEntryClick)
                 // Пока база не ответила, группы прозрачные, потом плавно появляются
@@ -122,9 +130,11 @@ private fun MainHeader(
     trackers: List<TrackerUi>,
     onMenuClick: () -> Unit,
     onStatisticsClick: () -> Unit,
-    onTrackerClick: (TrackerUi) -> Unit
+    onTrackerClick: (TrackerUi) -> Unit,
+    onTrackerLongClick: (TrackerUi) -> Unit,
+    onAddHabitClick: () -> Unit
 ) {
-    val trackerColors = ChekkiTheme.colors.trackers
+    val habitColors = ChekkiTheme.colors.habits
     Row(
         Modifier
             .fillMaxWidth()
@@ -133,49 +143,77 @@ private fun MainHeader(
         verticalAlignment = Alignment.CenterVertically
     ) {
         SquareIconButton(ChekkiIcons.Menu, stringResource(R.string.main_menu), onMenuClick)
-        Row(
-            Modifier.weight(1f),
-            horizontalArrangement = Arrangement.SpaceEvenly,
-            verticalAlignment = Alignment.CenterVertically
-        ) {
-            trackers.forEachIndexed { index, tracker ->
-                TrackerRing(
-                    tracker = tracker,
-                    colors = trackerColors[index % trackerColors.size],
-                    onClick = { onTrackerClick(tracker) }
-                )
+        // Привычки на сегодня; если не помещаются, ряд прокручивается вбок, «+» всегда последний
+        Box(Modifier.weight(1f), contentAlignment = Alignment.Center) {
+            Row(
+                Modifier.horizontalScroll(rememberScrollState()),
+                horizontalArrangement = Arrangement.spacedBy(8.dp),
+                verticalAlignment = Alignment.CenterVertically
+            ) {
+                trackers.forEach { tracker ->
+                    key(tracker.habitId) {
+                        TrackerRing(
+                            tracker = tracker,
+                            colors = habitColors[tracker.colorIndex.mod(habitColors.size)],
+                            onClick = { onTrackerClick(tracker) },
+                            onLongClick = { onTrackerLongClick(tracker) }
+                        )
+                    }
+                }
+                AddHabitCircle(onAddHabitClick)
             }
         }
         SquareIconButton(ChekkiIcons.Statistics, stringResource(R.string.main_statistics), onStatisticsClick)
     }
 }
 
-/** Круглый трекер: заливка своим цветом, белое кольцо прогресса, иконка и «сделано/всего». */
+/**
+ * Круг привычки: заливка её цветом, белое кольцо прогресса, иконка и «сделано/всего».
+ * Нажатие — ещё одна отметка (с вибрацией), долгое нажатие — изменить привычку.
+ * Когда цель на сегодня достигнута, вместо иконки галочка, а нажатие только коротко вибрирует.
+ */
 @Composable
-private fun TrackerRing(tracker: TrackerUi, colors: TrackerColors, onClick: () -> Unit) {
+private fun TrackerRing(tracker: TrackerUi, colors: TrackerColors, onClick: () -> Unit, onLongClick: () -> Unit) {
     val description = stringResource(
         R.string.main_tracker_description, tracker.name, tracker.done, tracker.total
     )
+    val haptics = LocalHapticFeedback.current
     val ringColor = ChekkiTheme.colors.trackerRing
     val ringTrackColor = ChekkiTheme.colors.trackerRingTrack
     val progress = if (tracker.total > 0) (tracker.done.toFloat() / tracker.total).coerceIn(0f, 1f) else 0f
+    val animatedProgress by animateFloatAsState(progress, label = "habitProgress")
     Box(
         Modifier
             .size(50.dp)
             .clip(CircleShape)
             .background(colors.fill)
-            .clickable(role = Role.Button, onClick = onClick)
+            .combinedClickable(
+                role = Role.Button,
+                onClickLabel = stringResource(R.string.habit_check),
+                onLongClickLabel = stringResource(R.string.habit_open),
+                onLongClick = onLongClick,
+                onClick = {
+                    haptics.performHapticFeedback(
+                        when {
+                            tracker.isComplete -> HapticFeedbackType.Reject
+                            tracker.done + 1 >= tracker.total -> HapticFeedbackType.Confirm
+                            else -> HapticFeedbackType.ContextClick
+                        }
+                    )
+                    if (!tracker.isComplete) onClick()
+                }
+            )
             .semantics { contentDescription = description }
             .drawBehind {
                 val strokeWidth = 3.dp.toPx()
                 // Кольцо на радиусе 23 из 25, как в макете
                 val radius = size.minDimension / 2 - 2.dp.toPx()
                 drawCircle(ringTrackColor, radius = radius, style = Stroke(strokeWidth))
-                if (progress > 0f) {
+                if (animatedProgress > 0f) {
                     drawArc(
                         color = ringColor,
                         startAngle = -90f,
-                        sweepAngle = 360f * progress,
+                        sweepAngle = 360f * animatedProgress,
                         useCenter = false,
                         topLeft = Offset(center.x - radius, center.y - radius),
                         size = Size(radius * 2, radius * 2),
@@ -189,7 +227,12 @@ private fun TrackerRing(tracker: TrackerUi, colors: TrackerColors, onClick: () -
             horizontalAlignment = Alignment.CenterHorizontally,
             verticalArrangement = Arrangement.spacedBy(1.dp)
         ) {
-            Icon(tracker.icon, contentDescription = null, Modifier.size(15.dp), tint = colors.content)
+            Icon(
+                imageVector = if (tracker.isComplete) ChekkiIcons.Check else tracker.icon.vector,
+                contentDescription = null,
+                modifier = Modifier.size(15.dp),
+                tint = colors.content
+            )
             Text(
                 text = "${tracker.done}/${tracker.total}",
                 // Для TalkBack хватает описания трекера, число отдельно не читаем
@@ -198,6 +241,26 @@ private fun TrackerRing(tracker: TrackerUi, colors: TrackerColors, onClick: () -
                 color = colors.content
             )
         }
+    }
+}
+
+/** Круг «+» в конце ряда привычек: новая привычка. Если привычек нет, наверху только он. */
+@Composable
+private fun AddHabitCircle(onClick: () -> Unit) {
+    Box(
+        Modifier
+            .size(50.dp)
+            .clip(CircleShape)
+            .background(MaterialTheme.colorScheme.surfaceContainer)
+            .clickable(role = Role.Button, onClick = onClick),
+        contentAlignment = Alignment.Center
+    ) {
+        Icon(
+            ChekkiIcons.Add,
+            contentDescription = stringResource(R.string.habit_add),
+            modifier = Modifier.size(20.dp),
+            tint = MaterialTheme.colorScheme.primary
+        )
     }
 }
 

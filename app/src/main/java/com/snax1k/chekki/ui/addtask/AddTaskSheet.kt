@@ -151,7 +151,7 @@ fun AddTaskSheet(viewModel: AddTaskViewModel, onDismiss: () -> Unit) {
 private enum class PickerStep { Date, Time }
 
 @Composable
-private fun DragHandle() {
+internal fun DragHandle() {
     Box(
         Modifier
             .padding(top = 12.dp, bottom = 4.dp)
@@ -556,7 +556,12 @@ private fun SubtaskField(
 private val SubtaskBoxShape = RoundedCornerShape(6.dp)
 
 @Composable
-private fun SaveButton(enabled: Boolean, onClick: () -> Unit, modifier: Modifier = Modifier) {
+internal fun SaveButton(
+    enabled: Boolean,
+    onClick: () -> Unit,
+    modifier: Modifier = Modifier,
+    text: String = stringResource(R.string.main_add_task)
+) {
     val colors = ChekkiTheme.colors
     Box(
         modifier
@@ -570,7 +575,7 @@ private fun SaveButton(enabled: Boolean, onClick: () -> Unit, modifier: Modifier
         contentAlignment = Alignment.Center
     ) {
         Text(
-            text = stringResource(R.string.main_add_task),
+            text = text,
             style = MaterialTheme.typography.titleMedium,
             color = colors.onFab
         )

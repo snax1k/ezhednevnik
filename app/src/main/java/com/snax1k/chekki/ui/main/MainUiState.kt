@@ -1,6 +1,6 @@
 package com.snax1k.chekki.ui.main
 
-import androidx.compose.ui.graphics.vector.ImageVector
+import com.snax1k.chekki.data.db.HabitIcon
 import java.time.LocalDate
 import java.time.LocalTime
 
@@ -10,13 +10,18 @@ enum class TaskGroup { NoDate, Overdue, Today, Done, Tomorrow, ThisWeek, ThisMon
 /** Быстрые входы под заголовком. */
 enum class QuickEntry { Categories, Calendar, Search }
 
-/** Круглый трекер в верхней панели. */
+/** Круг привычки в верхней панели: сколько раз отмечено сегодня из цели. */
 data class TrackerUi(
+    val habitId: Long,
     val name: String,
-    val icon: ImageVector,
+    val icon: HabitIcon,
+    /** Номер цвета в палитре привычек темы. */
+    val colorIndex: Int,
     val done: Int,
     val total: Int
-)
+) {
+    val isComplete: Boolean get() = total in 1..done
+}
 
 /** Задача в карточке «Сегодня». */
 data class TaskPreviewUi(

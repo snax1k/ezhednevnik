@@ -2,6 +2,7 @@ package com.snax1k.chekki.ui.main
 
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
+import com.snax1k.chekki.data.HabitRepository
 import com.snax1k.chekki.data.TaskRepository
 import kotlinx.coroutines.ExperimentalCoroutinesApi
 import kotlinx.coroutines.flow.Flow
@@ -10,6 +11,7 @@ import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.combine
 import kotlinx.coroutines.flow.flatMapLatest
 import kotlinx.coroutines.flow.stateIn
+import kotlinx.coroutines.launch
 import java.time.LocalDate
 
 /** Сколько просроченных задач называть в подписи карточки. */
@@ -19,11 +21,12 @@ private const val OVERDUE_TITLES_SHOWN = 2
 private const val TODAY_UPCOMING_SHOWN = 2
 
 /**
- * Главный экран из базы: счётчики групп, первые просроченные задачи и карточка «Сегодня».
- * Трекеры пока тестовые. При смене даты в полночь всё пересчитывается для нового дня.
+ * Главный экран из базы: привычки на сегодня, счётчики групп, первые просроченные задачи и карточка «Сегодня».
+ * При смене даты в полночь всё пересчитывается для нового дня.
  */
 class MainViewModel(
     private val repository: TaskRepository,
+    private val habitRepository: HabitRepository,
     currentDate: Flow<LocalDate>
 ) : ViewModel() {
 
@@ -33,11 +36,21 @@ class MainViewModel(
             combine(
                 repository.observeGroupCounts(today),
                 repository.observeOverdueTitles(today, limit = OVERDUE_TITLES_SHOWN),
-                repository.observeTasksOn(today)
-            ) { counts, overdueTitles, todayTasks ->
+                repository.observeTasksOn(today),
+                habitRepository.observeHabitsOn(today)
+            ) { counts, overdueTitles, todayTasks, habits ->
                 MainUiState(
                     date = today,
-                    trackers = sampleTrackers(),
+                    trackers = habits.map { (habit, count) ->
+                        TrackerUi(
+                            habitId = habit.id,
+                            name = habit.title,
+                            icon = habit.icon,
+                            colorIndex = habit.colorIndex,
+                            done = count,
+                            total = habit.dailyTarget
+                        )
+                    },
                     noDateCount = counts.noDate,
                     overdueCount = counts.overdue,
                     overdueTitles = overdueTitles,
@@ -61,9 +74,15 @@ class MainViewModel(
             initialValue = loadingState(LocalDate.now())
         )
 
+    /** Нажатие на круг привычки: ещё одна отметка за сегодня, но не больше цели. */
+    fun checkHabit(habitId: Long) {
+        val today = uiState.value.date
+        viewModelScope.launch { habitRepository.check(habitId, today) }
+    }
+
     private fun loadingState(today: LocalDate) = MainUiState(
         date = today,
-        trackers = sampleTrackers(),
+        trackers = emptyList(),
         noDateCount = 0,
         overdueCount = 0,
         overdueTitles = emptyList(),

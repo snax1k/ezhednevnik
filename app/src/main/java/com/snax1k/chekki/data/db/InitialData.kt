@@ -10,15 +10,28 @@ import java.time.LocalDate
 internal val DefaultCategories = listOf("Работа", "Личное", "Дом", "Здоровье", "Учёба", "Финансы")
 
 /**
- * Начальные данные при создании базы: стандартные категории всегда, тестовые задачи — только
- * в отладочной сборке. SampleTasks для отладки лежит в src/debug, для выпуска — пустой в src/release.
+ * Начальные данные при создании базы: стандартные категории всегда, тестовые задачи и привычки — только
+ * в отладочной сборке. SampleTasks и SampleHabits для отладки лежат в src/debug, для выпуска — пустые в src/release.
  */
 class InitialDataCallback(private val today: () -> LocalDate = LocalDate::now) : RoomDatabase.Callback() {
 
+    /** База пересоздана при смене схемы: заполнить её нужно, когда таблицы будут созданы заново. */
+    private var refillOnOpen = false
+
     override fun onCreate(db: SupportSQLiteDatabase) = fill(db)
 
-    // После пересоздания базы при смене схемы таблицы пустые, заполняем заново
-    override fun onDestructiveMigration(db: SupportSQLiteDatabase) = fill(db)
+    // Room 2.8 вызывает это между удалением старых таблиц и созданием новых: писать сюда ещё некуда
+    override fun onDestructiveMigration(db: SupportSQLiteDatabase) {
+        refillOnOpen = true
+    }
+
+    // После пересоздания таблицы уже созданы, но пустые — заполняем заново
+    override fun onOpen(db: SupportSQLiteDatabase) {
+        if (refillOnOpen) {
+            refillOnOpen = false
+            fill(db)
+        }
+    }
 
     private fun fill(db: SupportSQLiteDatabase) {
         DefaultCategories.forEachIndexed { index, name ->
@@ -29,5 +42,6 @@ class InitialDataCallback(private val today: () -> LocalDate = LocalDate::now) :
             )
         }
         SampleTasks.insert(db, today())
+        SampleHabits.insert(db, today())
     }
 }

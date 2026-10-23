@@ -40,6 +40,52 @@ object ChekkiIcons {
         outlineIcon("Stretching", "M14 4h6v6M10 20H4v-6M20 4l-6.5 6.5M4 20l6.5-6.5", strokeWidth = 2.3f)
     }
 
+    // Привычки: к иконкам трекеров из макета (росток, вода, флажок, растяжка) — свои, в том же стиле
+    val Run: ImageVector by lazy {
+        outlineIcon(
+            "Run",
+            "M14.5 4.5a1.5 1.5 0 1 0 3 0a1.5 1.5 0 1 0-3 0M15 8l-4 1.5-2.5 3M12.5 9l-1.5 5 3.5 2.5-1 4.5" +
+                "M11 14l-3.5 3.5H4.5M14.5 11.5l2.5 1.5 2.5-1",
+            strokeWidth = 2.3f
+        )
+    }
+    val Book: ImageVector by lazy {
+        outlineIcon("Book", "M12 6.5C10 5 7 4.5 4 5v13c3-.5 6 0 8 1.5 2-1.5 5-2 8-1.5V5c-3-.5-6 0-8 1.5zM12 6.5v13", strokeWidth = 2.3f)
+    }
+    val Pill: ImageVector by lazy {
+        outlineIcon("Pill", "M10.5 20a5 5 0 0 1-7-7l6-6a5 5 0 0 1 7 7zM7 10.5l6.5 6.5", strokeWidth = 2.3f)
+    }
+    val Sleep: ImageVector by lazy {
+        outlineIcon("Sleep", "M19.5 14.5A8 8 0 1 1 9.5 4.5a6.5 6.5 0 0 0 10 10z", strokeWidth = 2.3f)
+    }
+    val Tooth: ImageVector by lazy {
+        outlineIcon(
+            "Tooth",
+            "M8 3.5C5.5 3.5 4 5.5 4.5 8.5c.4 2.4 1.4 3.8 1.8 6.3.4 2.7.9 5.7 2.4 5.7s1.6-4 3.3-4 1.8 4 3.3 4 2-3 2.4-5.7" +
+                "c.4-2.5 1.4-3.9 1.8-6.3.5-3-1-5-3.5-5-1.8 0-2.6.9-4 .9S9.8 3.5 8 3.5z",
+            strokeWidth = 2.3f
+        )
+    }
+    val Shower: ImageVector by lazy {
+        outlineIcon(
+            "Shower",
+            "M5 21V7.5a3.5 3.5 0 0 1 7 0M8.5 10h7a3.5 3.5 0 0 0-7 0zM10 13.5v.5M12 13.5v.5M14 13.5v.5M11 17v.5M13 17v.5M12 20v.5",
+            strokeWidth = 2.3f
+        )
+    }
+    val Heart: ImageVector by lazy {
+        outlineIcon("Heart", "M12 20s-7.5-4.5-7.5-10A4.5 4.5 0 0 1 12 7a4.5 4.5 0 0 1 7.5 3c0 5.5-7.5 10-7.5 10z", strokeWidth = 2.3f)
+    }
+    val Sun: ImageVector by lazy {
+        outlineIcon(
+            "Sun",
+            "M12 8a4 4 0 1 0 0 8a4 4 0 1 0 0-8zM12 2.5v2M12 19.5v2M2.5 12h2M19.5 12h2M5.3 5.3l1.4 1.4M17.3 17.3l1.4 1.4" +
+                "M5.3 18.7l1.4-1.4M17.3 6.7l1.4-1.4",
+            strokeWidth = 2.3f
+        )
+    }
+    val Minus: ImageVector by lazy { outlineIcon("Minus", "M5 12h14", strokeWidth = 2.4f) }
+
     // Быстрые входы
     val Categories: ImageVector by lazy {
         outlineIcon("Categories", "M9 6h11M9 12h11M9 18h11M4.5 6h.01M4.5 12h.01M4.5 18h.01")

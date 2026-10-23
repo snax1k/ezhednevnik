@@ -2,6 +2,7 @@ package com.snax1k.chekki
 
 import android.app.Application
 import android.content.Context
+import com.snax1k.chekki.data.HabitRepository
 import com.snax1k.chekki.data.TaskRepository
 import com.snax1k.chekki.data.currentDateFlow
 import com.snax1k.chekki.data.db.ChekkiDatabase
@@ -39,6 +40,7 @@ class AppContainer(context: Context) {
     val reminderScheduler: ReminderScheduler by lazy { AlarmReminderScheduler(appContext) }
     val reminderAccess: ReminderAccess by lazy { ReminderAccess(appContext) }
     val taskRepository: TaskRepository by lazy { TaskRepository(database, reminderScheduler) }
+    val habitRepository: HabitRepository by lazy { HabitRepository(database) }
 
     /** Сегодняшняя дата, меняется в полночь. */
     val currentDate: Flow<LocalDate> = currentDateFlow()

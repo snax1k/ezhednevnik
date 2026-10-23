@@ -33,6 +33,7 @@ import androidx.navigation3.runtime.rememberSaveableStateHolderNavEntryDecorator
 import androidx.navigation3.ui.NavDisplay
 import com.snax1k.chekki.ChekkiApplication
 import com.snax1k.chekki.R
+import com.snax1k.chekki.data.DeletedHabit
 import com.snax1k.chekki.data.DeletedTask
 import com.snax1k.chekki.data.MovedTask
 import com.snax1k.chekki.ui.addtask.AddTaskSheet
@@ -40,6 +41,8 @@ import com.snax1k.chekki.ui.addtask.AddTaskViewModel
 import com.snax1k.chekki.ui.components.AboveFloatingButtons
 import com.snax1k.chekki.ui.group.GroupScreen
 import com.snax1k.chekki.ui.group.GroupViewModel
+import com.snax1k.chekki.ui.habit.HabitEditorViewModel
+import com.snax1k.chekki.ui.habit.HabitSheet
 import com.snax1k.chekki.ui.main.MainScreen
 import com.snax1k.chekki.ui.main.MainViewModel
 import com.snax1k.chekki.ui.main.TaskGroup
@@ -75,6 +78,13 @@ fun ChekkiApp() {
     val addTaskViewModel = viewModel {
         AddTaskViewModel(container.taskRepository, container.currentDate, container.reminderAccess)
     }
+    // Панель привычки: какую привычку меняем (NEW_HABIT — новая), null — панель закрыта
+    var habitSheetFor by rememberSaveable { mutableStateOf<Long?>(null) }
+    val habitEditorViewModel = viewModel { HabitEditorViewModel(container.habitRepository) }
+    val openHabitSheet: (Long?) -> Unit = { habitId ->
+        if (habitId == null) habitEditorViewModel.startNew() else habitEditorViewModel.startEdit(habitId)
+        habitSheetFor = habitId ?: NEW_HABIT
+    }
 
     // Плашка «Задача удалена · Отменить» и «Задача отложена на … · Отменить» внизу, поверх любого экрана
     val snackbarHostState = remember { SnackbarHostState() }
@@ -96,6 +106,10 @@ fun ChekkiApp() {
     }
     val showUndoDelete: (DeletedTask) -> Unit = { deleted ->
         showUndo(deletedMessage) { container.taskRepository.restoreTask(deleted) }
+    }
+    val habitDeletedMessage = stringResource(R.string.habit_deleted)
+    val showUndoHabitDelete: (DeletedHabit) -> Unit = { deleted ->
+        showUndo(habitDeletedMessage) { container.habitRepository.restoreHabit(deleted) }
     }
     val showUndoPostpone: (MovedTask) -> Unit = { moved ->
         val newDate = moved.newDate ?: LocalDate.now()
@@ -120,10 +134,16 @@ fun ChekkiApp() {
             predictivePopTransitionSpec = { slideInHorizontally { -it / 4 } togetherWith slideOutHorizontally { it } },
             entryProvider = entryProvider {
                 entry<MainRoute> {
-                    val viewModel = viewModel { MainViewModel(container.taskRepository, container.currentDate) }
+                    val viewModel = viewModel {
+                        MainViewModel(container.taskRepository, container.habitRepository, container.currentDate)
+                    }
                     val state by viewModel.uiState.collectAsStateWithLifecycle()
                     MainScreen(
                         state = state,
+                        onTrackerClick = { tracker -> viewModel.checkHabit(tracker.habitId) },
+                        // Карточки привычки пока нет (шаг 2), долгое нажатие открывает изменение
+                        onTrackerLongClick = { tracker -> openHabitSheet(tracker.habitId) },
+                        onAddHabitClick = { openHabitSheet(null) },
                         onGroupClick = { group -> backStack.add(GroupRoute(group)) },
                         onAddClick = { isAddTaskOpen = true }
                     )
@@ -182,4 +202,14 @@ fun ChekkiApp() {
     if (isAddTaskOpen) {
         AddTaskSheet(viewModel = addTaskViewModel, onDismiss = { isAddTaskOpen = false })
     }
+    if (habitSheetFor != null) {
+        HabitSheet(
+            viewModel = habitEditorViewModel,
+            onDismiss = { habitSheetFor = null },
+            onDeleted = showUndoHabitDelete
+        )
+    }
 }
+
+/** Значение [habitSheetFor] для новой привычки: у настоящих привычек id положительные. */
+private const val NEW_HABIT = -1L

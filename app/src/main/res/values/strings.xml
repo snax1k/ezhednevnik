@@ -146,4 +146,52 @@
     <string name="postponed_tomorrow">завтра</string>
     <!-- Подзадачи в карточке: «1 из 3» для TalkBack -->
     <string name="task_subtasks_progress">%1$d из %2$d</string>
+
+    <!-- Привычки -->
+    <string name="habit_add">Добавить привычку</string>
+    <string name="habit_new">Новая привычка</string>
+    <string name="habit_edit">Привычка</string>
+    <string name="habit_title_label">Название привычки</string>
+    <string name="habit_title_hint">Например, пить воду</string>
+    <string name="habit_icon">Иконка</string>
+    <string name="habit_color">Цвет</string>
+    <string name="habit_target">Сколько раз в день</string>
+    <string name="habit_target_decrease">Меньше</string>
+    <string name="habit_target_increase">Больше</string>
+    <plurals name="habit_times_per_day">
+        <item quantity="one">%d раз в день</item>
+        <item quantity="few">%d раза в день</item>
+        <item quantity="many">%d раз в день</item>
+        <item quantity="other">%d раза в день</item>
+    </plurals>
+    <string name="habit_days">Дни</string>
+    <string name="habit_days_every_day">Каждый день</string>
+    <string name="habit_days_weekdays">По будням</string>
+    <string name="habit_days_weekend">По выходным</string>
+    <string name="habit_save">Сохранить</string>
+    <string name="habit_delete">Удалить привычку</string>
+    <string name="habit_deleted">Привычка удалена</string>
+    <!-- Действия круга привычки для TalkBack -->
+    <string name="habit_check">Отметить</string>
+    <string name="habit_open">Изменить привычку</string>
+    <string name="habit_icon_sprout">Росток</string>
+    <string name="habit_icon_water">Вода</string>
+    <string name="habit_icon_goal">Флажок</string>
+    <string name="habit_icon_stretch">Растяжка</string>
+    <string name="habit_icon_run">Бег</string>
+    <string name="habit_icon_book">Книга</string>
+    <string name="habit_icon_pill">Таблетка</string>
+    <string name="habit_icon_sleep">Сон</string>
+    <string name="habit_icon_tooth">Зубы</string>
+    <string name="habit_icon_shower">Душ</string>
+    <string name="habit_icon_heart">Сердце</string>
+    <string name="habit_icon_sun">Солнце</string>
+    <string name="habit_color_light_blue">Голубой</string>
+    <string name="habit_color_blue">Синий</string>
+    <string name="habit_color_teal">Бирюзовый</string>
+    <string name="habit_color_orange">Оранжевый</string>
+    <string name="habit_color_raspberry">Малиновый</string>
+    <string name="habit_color_violet">Фиолетовый</string>
+    <string name="habit_color_green">Зелёный</string>
+    <string name="habit_color_mustard">Горчичный</string>
 </resources>

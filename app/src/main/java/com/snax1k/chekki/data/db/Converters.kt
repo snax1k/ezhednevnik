@@ -38,4 +38,10 @@ class Converters {
 
     @TypeConverter
     fun codeToRepeatUnit(code: Int): RepeatUnit = RepeatUnit.fromCode(code)
+
+    @TypeConverter
+    fun habitIconToCode(icon: HabitIcon): Int = icon.code
+
+    @TypeConverter
+    fun codeToHabitIcon(code: Int): HabitIcon = HabitIcon.fromCode(code)
 }
