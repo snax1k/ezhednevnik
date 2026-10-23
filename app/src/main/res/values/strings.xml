@@ -193,6 +193,18 @@
     <string name="habit_archive">В архив</string>
     <string name="habit_unarchive">Вернуть из архива</string>
     <string name="habit_menu_delete">Удалить</string>
+    <string name="habits_paused">На паузе</string>
+    <string name="habit_pause">На паузу</string>
+    <string name="habit_resume">Продолжить</string>
+    <string name="habit_pause_week">На неделю</string>
+    <string name="habit_pause_until_date">До даты…</string>
+    <string name="habit_pause_no_end">Без срока</string>
+    <!-- Справа от «На неделю»: «до 30 окт» -->
+    <string name="habit_pause_until">до %1$s</string>
+    <!-- Подпись привычки на паузе в списке: «До 30 окт» -->
+    <string name="habit_paused_until">До %1$s</string>
+    <string name="habit_card_paused_until">На паузе до %1$s</string>
+    <string name="habit_card_paused_no_end">На паузе без срока</string>
     <!-- Для TalkBack: «Меню: Пить воду», «Перетащить: Пить воду» -->
     <string name="habit_menu">Меню: %1$s</string>
     <string name="habit_drag">Перетащить: %1$s</string>

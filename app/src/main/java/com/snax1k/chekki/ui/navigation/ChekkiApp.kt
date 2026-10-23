@@ -210,7 +210,7 @@ fun ChekkiApp() {
                     )
                 }
                 entry<HabitsRoute> {
-                    val viewModel = viewModel { HabitsViewModel(container.habitRepository) }
+                    val viewModel = viewModel { HabitsViewModel(container.habitRepository, container.currentDate) }
                     val state by viewModel.uiState.collectAsStateWithLifecycle()
                     HabitsScreen(
                         state = state,
@@ -218,6 +218,8 @@ fun ChekkiApp() {
                         onHabitClick = openHabitCard,
                         onEdit = { habitId -> openHabitSheet(habitId) },
                         onArchive = viewModel::setArchived,
+                        onPause = viewModel::pause,
+                        onResume = viewModel::resume,
                         onDelete = { habitId -> viewModel.delete(habitId, showUndoHabitDelete) },
                         onReorder = viewModel::reorder,
                         onAdd = { openHabitSheet(null) }

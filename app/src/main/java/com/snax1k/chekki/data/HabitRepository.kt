@@ -6,9 +6,11 @@ import com.snax1k.chekki.data.db.HabitCheckEntity
 import com.snax1k.chekki.data.db.HabitEntity
 import com.snax1k.chekki.data.db.HabitIcon
 import com.snax1k.chekki.data.db.HabitListItem
+import com.snax1k.chekki.data.db.HabitPauseEntity
 import com.snax1k.chekki.data.db.HabitReminderEntity
 import com.snax1k.chekki.data.db.HabitWithCount
 import com.snax1k.chekki.data.db.bit
+import com.snax1k.chekki.data.db.pauseOn
 import com.snax1k.chekki.reminders.HabitReminderScheduler
 import kotlinx.coroutines.flow.Flow
 import java.time.Clock
@@ -41,8 +43,11 @@ class HabitRepository(
     /** Все отметки привычки по дням. */
     fun observeChecks(habitId: Long): Flow<List<HabitCheckEntity>> = habitDao.observeChecks(habitId)
 
-    /** Все привычки: действующие по порядку кругов, потом архив. */
-    fun observeAllHabits(): Flow<List<HabitListItem>> = habitDao.observeAllHabits()
+    /** Все привычки: не в архиве по порядку кругов, потом архив. Пауза — та, что идёт в [today]. */
+    fun observeAllHabits(today: LocalDate): Flow<List<HabitListItem>> = habitDao.observeAllHabits(today)
+
+    /** Паузы привычки, прошлые и нынешняя. */
+    fun observePauses(habitId: Long): Flow<List<HabitPauseEntity>> = habitDao.observePauses(habitId)
 
     /** Новый порядок действующих привычек (перетаскивание на экране «Все привычки»): места по порядку списка. */
     suspend fun reorder(habitIds: List<Long>) = database.withTransaction {
@@ -59,6 +64,39 @@ class HabitRepository(
             habitDao.setArchived(habitId, archived)
         }
         if (archived) reminders.dismiss(habitId)
+        reschedule(habitId)
+    }
+
+    /**
+     * Ставит привычку на паузу с [today] до [resumeDate] — дня, когда она снова начнёт действовать
+     * (null — без срока). Если она уже на паузе, у этой паузы меняется срок. Пока пауза идёт,
+     * привычки нет наверху, напоминаний не приходит, а дни паузы не рвут серию.
+     */
+    suspend fun pause(habitId: Long, resumeDate: LocalDate?, today: LocalDate = LocalDate.now(clock)) {
+        if (resumeDate != null && resumeDate <= today) return
+        database.withTransaction {
+            val current = habitDao.getPauses(habitId).pauseOn(today)
+            if (current != null) {
+                habitDao.setPauseResumeDate(current.id, resumeDate)
+            } else {
+                habitDao.insertPause(HabitPauseEntity(habitId = habitId, startDate = today, resumeDate = resumeDate))
+            }
+        }
+        reminders.dismiss(habitId)
+        reschedule(habitId)
+    }
+
+    /** «Продолжить»: пауза кончается сегодня, привычка сразу снова наверху и напоминает. */
+    suspend fun resume(habitId: Long, today: LocalDate = LocalDate.now(clock)) {
+        database.withTransaction {
+            val current = habitDao.getPauses(habitId).pauseOn(today) ?: return@withTransaction
+            // Пауза, начатая сегодня, следа не оставляет; более ранняя остаётся в истории до вчера
+            if (current.startDate >= today) {
+                habitDao.deletePause(current.id)
+            } else {
+                habitDao.setPauseResumeDate(current.id, today)
+            }
+        }
         reschedule(habitId)
     }
 
@@ -153,11 +191,11 @@ class HabitRepository(
         return count
     }
 
-    /** Удаляет привычку вместе с отметками и напоминаниями. Возвращает всё, что нужно для [restoreHabit]. */
+    /** Удаляет привычку вместе с отметками, напоминаниями и паузами. Возвращает всё, что нужно для [restoreHabit]. */
     suspend fun deleteHabit(id: Long): DeletedHabit? {
         val deleted = database.withTransaction {
             val habit = habitDao.getHabit(id) ?: return@withTransaction null
-            val deleted = DeletedHabit(habit, habitDao.getChecks(id), habitDao.getReminderTimes(id))
+            val deleted = DeletedHabit(habit, habitDao.getChecks(id), habitDao.getReminderTimes(id), habitDao.getPauses(id))
             habitDao.deleteHabit(id)
             deleted
         } ?: return null
@@ -165,11 +203,12 @@ class HabitRepository(
         return deleted
     }
 
-    /** Возвращает удалённую привычку как была: с тем же id, местом в ряду, отметками и напоминаниями. */
+    /** Возвращает удалённую привычку как была: с тем же id, местом в ряду, отметками, напоминаниями и паузами. */
     suspend fun restoreHabit(deleted: DeletedHabit) {
         database.withTransaction {
             habitDao.insertHabit(deleted.habit)
             if (deleted.checks.isNotEmpty()) habitDao.insertChecks(deleted.checks)
+            if (deleted.pauses.isNotEmpty()) habitDao.insertPauses(deleted.pauses)
             replaceReminders(deleted.habit.id, deleted.reminderTimes)
         }
         reschedule(deleted.habit.id)
@@ -177,8 +216,8 @@ class HabitRepository(
 
     /**
      * Сработал будильник привычки, поставленный на [firedAt]. Возвращает привычку и число отметок за сегодня,
-     * если уведомление нужно показать: время напоминания ещё есть у привычки, сегодня день по расписанию
-     * и цель не набрана. В любом случае ставит будильник на следующее напоминание.
+     * если уведомление нужно показать: время напоминания ещё есть у привычки, сегодня день по расписанию,
+     * привычка не на паузе и цель не набрана. В любом случае ставит будильник на следующее напоминание.
      */
     suspend fun reminderToShow(habitId: Long, firedAt: Instant): Pair<HabitEntity, Int>? {
         val today = LocalDate.now(clock)
@@ -186,6 +225,7 @@ class HabitRepository(
         val count = habitDao.getCheck(habitId, today)?.count ?: 0
         val firedTime = LocalDateTime.ofInstant(firedAt, clock.zone)
         val stillActual = !habit.isArchived && habit.isScheduledOn(today) && count < habit.dailyTarget &&
+            habitDao.getPauses(habitId).pauseOn(today) == null &&
             firedTime.toLocalDate() == today && firedTime.toLocalTime() in habitDao.getReminderTimes(habitId)
         reschedule(habitId)
         return if (stillActual) habit to count else null
@@ -207,7 +247,7 @@ class HabitRepository(
         val today = now.toLocalDate()
         val todayCheck = habitDao.getCheck(habitId, today)
         val todayComplete = todayCheck != null && todayCheck.count >= todayCheck.target
-        val next = nextHabitReminder(habit, habitDao.getReminderTimes(habitId), now, todayComplete)
+        val next = nextHabitReminder(habit, habitDao.getReminderTimes(habitId), now, todayComplete, habitDao.getPauses(habitId))
         reminders.update(habitId, next?.atZone(clock.zone)?.toInstant())
     }
 
@@ -218,9 +258,10 @@ class HabitRepository(
     }
 }
 
-/** Удалённая привычка со всеми отметками и напоминаниями — чтобы вернуть её кнопкой «Отменить». */
+/** Удалённая привычка со всеми отметками, напоминаниями и паузами — чтобы вернуть её кнопкой «Отменить». */
 data class DeletedHabit(
     val habit: HabitEntity,
     val checks: List<HabitCheckEntity>,
-    val reminderTimes: List<LocalTime>
+    val reminderTimes: List<LocalTime>,
+    val pauses: List<HabitPauseEntity> = emptyList()
 )

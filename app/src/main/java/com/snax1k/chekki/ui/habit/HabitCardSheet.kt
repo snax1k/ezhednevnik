@@ -111,6 +111,7 @@ fun HabitCardSheet(
                 onShowAll = {
                     scope.launch { sheetState.hide() }.invokeOnCompletion { onShowAll() }
                 },
+                onResume = viewModel::resume,
                 onSelectDay = viewModel::selectDay,
                 onIncrement = viewModel::increment,
                 onDecrement = viewModel::decrement
@@ -124,6 +125,7 @@ private fun HabitCardContent(
     state: HabitCardState,
     onEdit: () -> Unit,
     onShowAll: () -> Unit,
+    onResume: () -> Unit,
     onSelectDay: (LocalDate) -> Unit,
     onIncrement: () -> Unit,
     onDecrement: () -> Unit
@@ -137,6 +139,7 @@ private fun HabitCardContent(
             .padding(bottom = 20.dp)
     ) {
         CardHeader(state.habit, colors, onEdit)
+        state.pause?.let { pause -> PauseBanner(pause.resumeDate, state.today, onResume, Modifier.padding(top = 16.dp)) }
         val dayTitle = dayTitle(state.selectedDay.date, state.today)
         Text(
             text = dayTitle,
@@ -172,6 +175,36 @@ private fun HabitCardContent(
                     .padding(start = 4.dp)
                     .size(16.dp)
             )
+        }
+    }
+}
+
+/** «На паузе до 30 окт» и «Продолжить» — у привычки на паузе. */
+@Composable
+private fun PauseBanner(resumeDate: LocalDate?, today: LocalDate, onResume: () -> Unit, modifier: Modifier = Modifier) {
+    Row(
+        modifier
+            .fillMaxWidth()
+            .clip(MaterialTheme.shapes.medium)
+            .background(MaterialTheme.colorScheme.surfaceContainerHigh)
+            .padding(start = 14.dp, end = 4.dp, top = 4.dp, bottom = 4.dp),
+        verticalAlignment = Alignment.CenterVertically
+    ) {
+        Icon(ChekkiIcons.Pause, contentDescription = null, Modifier.size(18.dp), tint = MaterialTheme.colorScheme.onSurfaceVariant)
+        Text(
+            text = if (resumeDate == null) {
+                stringResource(R.string.habit_card_paused_no_end)
+            } else {
+                stringResource(R.string.habit_card_paused_until, pauseEndText(resumeDate, today))
+            },
+            modifier = Modifier
+                .weight(1f)
+                .padding(start = 10.dp),
+            style = MaterialTheme.typography.bodyMedium,
+            color = MaterialTheme.colorScheme.onSurface
+        )
+        TextButton(onClick = onResume) {
+            Text(stringResource(R.string.habit_resume), style = MaterialTheme.typography.titleSmall)
         }
     }
 }
@@ -459,6 +492,7 @@ private fun HabitCardContentPreview() {
                 state = HabitCardState(habit, today, week.last(), week, HabitStreaks(current = 2, best = 9)),
                 onEdit = {},
                 onShowAll = {},
+                onResume = {},
                 onSelectDay = {},
                 onIncrement = {},
                 onDecrement = {}

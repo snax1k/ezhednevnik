@@ -66,10 +66,13 @@ data class HabitCheckEntity(
     val target: Int
 )
 
-/** Привычка для списка «Все привычки»: сколько у неё напоминаний. */
+/** Привычка для списка «Все привычки»: сколько у неё напоминаний и на паузе ли она сегодня. */
 data class HabitListItem(
     @Embedded val habit: HabitEntity,
-    @ColumnInfo(name = "reminder_count") val reminderCount: Int
+    @ColumnInfo(name = "reminder_count") val reminderCount: Int,
+    @ColumnInfo(name = "is_paused") val isPaused: Boolean = false,
+    /** Когда пауза кончится (см. [HabitPauseEntity.resumeDate]); null у паузы без срока. */
+    @ColumnInfo(name = "pause_resume_date") val pauseResumeDate: LocalDate? = null
 )
 
 /** Привычка вместе с отметками за день. */
@@ -120,3 +123,34 @@ data class HabitReminderEntity(
     @ColumnInfo(name = "habit_id") val habitId: Long,
     val time: LocalTime
 )
+
+/**
+ * Пауза привычки: с [startDate] включительно до [resumeDate] — дня, с которого привычка снова действует
+ * («на паузе до 30 окт» — 30-го она уже снова наверху). null — без срока, пока не нажмут «Продолжить».
+ * Дни паузы считаются как дни не по расписанию: серию не рвут, напоминаний нет. Прошедшие паузы хранятся,
+ * чтобы серии в прошлом считались так же.
+ */
+@Entity(
+    tableName = "habit_pauses",
+    foreignKeys = [
+        // Удалили привычку — удаляются и её паузы
+        ForeignKey(
+            entity = HabitEntity::class,
+            parentColumns = ["id"],
+            childColumns = ["habit_id"],
+            onDelete = ForeignKey.CASCADE
+        )
+    ],
+    indices = [Index("habit_id")]
+)
+data class HabitPauseEntity(
+    @PrimaryKey(autoGenerate = true) val id: Long = 0,
+    @ColumnInfo(name = "habit_id") val habitId: Long,
+    @ColumnInfo(name = "start_date") val startDate: LocalDate,
+    @ColumnInfo(name = "resume_date") val resumeDate: LocalDate?
+) {
+    fun covers(date: LocalDate): Boolean = date >= startDate && (resumeDate == null || date < resumeDate)
+}
+
+/** Пауза, в которую попадает [date]; null — в этот день привычка действует. */
+fun List<HabitPauseEntity>.pauseOn(date: LocalDate): HabitPauseEntity? = firstOrNull { it.covers(date) }

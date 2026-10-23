@@ -3,6 +3,7 @@ package com.snax1k.chekki.data
 import com.snax1k.chekki.data.db.HabitCheckEntity
 import com.snax1k.chekki.data.db.HabitEntity
 import com.snax1k.chekki.data.db.HabitIcon
+import com.snax1k.chekki.data.db.HabitPauseEntity
 import com.snax1k.chekki.data.db.bit
 import org.junit.Assert.assertEquals
 import org.junit.Assert.assertFalse
@@ -33,7 +34,12 @@ class HabitStatsTest {
     private fun done(vararg daysAgo: Long, target: Int = 2) =
         daysAgo.map { HabitCheckEntity(1, today.minusDays(it), count = target, target = target) }
 
-    private fun streaks(habit: HabitEntity, checks: List<HabitCheckEntity>) = habitStreaks(habit, checks, today, zone)
+    private fun streaks(habit: HabitEntity, checks: List<HabitCheckEntity>, pauses: List<HabitPauseEntity> = emptyList()) =
+        habitStreaks(habit, checks, today, zone, pauses)
+
+    /** Пауза с [startDaysAgo] дней назад до [resumeDaysAgo] (null — без срока). */
+    private fun pause(startDaysAgo: Long, resumeDaysAgo: Long?) =
+        HabitPauseEntity(habitId = 1, startDate = today.minusDays(startDaysAgo), resumeDate = resumeDaysAgo?.let(today::minusDays))
 
     @Test
     fun серияИдётДоВчераПокаСегодняНеЗакончено() {
@@ -88,5 +94,28 @@ class HabitStatsTest {
         assertEquals(listOf(true, true, false, false, false, false, false), week.map { it.isScheduled })
         assertTrue(week[1].isComplete)
         assertFalse(week[0].isComplete)
+    }
+
+    @Test
+    fun дниПаузыНеРвутСерию() {
+        // Выполнены 7 и 6 дней назад, потом пауза на 3 дня (5, 4, 3 дня назад), потом выполнены вчера и позавчера
+        val checks = done(1, 2, 6, 7)
+        assertEquals(2, streaks(habit(), checks).current)
+        assertEquals(4, streaks(habit(), checks, listOf(pause(startDaysAgo = 5, resumeDaysAgo = 2))).current)
+    }
+
+    @Test
+    fun выполненныйДеньПаузыПродолжаетСерию() {
+        // Позавчера был на паузе, но привычку всё равно выполнили — серия растёт
+        val checks = done(1, 2, 3)
+        assertEquals(3, streaks(habit(), checks, listOf(pause(startDaysAgo = 2, resumeDaysAgo = 1))).current)
+    }
+
+    @Test
+    fun неделяПоказываетДниПаузыКакДниВнеРасписания() {
+        // На паузе с позавчера без срока; позавчера успели отметить
+        val week = habitWeek(habit(), done(2), today, listOf(pause(startDaysAgo = 2, resumeDaysAgo = null)))
+        assertEquals(listOf(true, true, true, true, true, false, false), week.map { it.isScheduled })
+        assertEquals(listOf(false, false, false, false, true, true, true), week.map { it.isPaused })
     }
 }

@@ -2,6 +2,7 @@ package com.snax1k.chekki.data
 
 import com.snax1k.chekki.data.db.HabitEntity
 import com.snax1k.chekki.data.db.HabitIcon
+import com.snax1k.chekki.data.db.HabitPauseEntity
 import com.snax1k.chekki.data.db.bit
 import org.junit.Assert.assertEquals
 import org.junit.Assert.assertNull
@@ -86,5 +87,30 @@ class HabitRemindersTest {
         assertEquals(listOf(LocalTime.of(9, 0)), distributeReminders(1))
         // 99 раз в день — почти каждые 7 минут, совпадений после округления нет
         assertEquals(99, distributeReminders(99).size)
+    }
+
+    @Test
+    fun паузаПереноситНапоминаниеНаДеньПослеНеё() {
+        // На паузе с сегодня на 10 дней — дальше недели, которую смотрит поиск без пауз
+        val pause = HabitPauseEntity(habitId = 1, startDate = friday, resumeDate = friday.plusDays(10))
+        assertEquals(
+            friday.plusDays(10).atTime(9, 0),
+            nextHabitReminder(habit(), times, friday.atTime(10, 0), todayComplete = false, pauses = listOf(pause))
+        )
+    }
+
+    @Test
+    fun паузаБезСрокаСнимаетНапоминания() {
+        val pause = HabitPauseEntity(habitId = 1, startDate = friday.minusDays(3), resumeDate = null)
+        assertNull(nextHabitReminder(habit(), times, friday.atTime(10, 0), todayComplete = false, pauses = listOf(pause)))
+    }
+
+    @Test
+    fun прошедшаяПаузаНеМешает() {
+        val pause = HabitPauseEntity(habitId = 1, startDate = friday.minusDays(7), resumeDate = friday)
+        assertEquals(
+            friday.atTime(13, 0),
+            nextHabitReminder(habit(), times, friday.atTime(10, 30), todayComplete = false, pauses = listOf(pause))
+        )
     }
 }

@@ -12,8 +12,8 @@ import java.time.LocalTime
 interface HabitDao {
 
     /**
-     * Привычки на день: не в архиве и по расписанию на этот день недели ([dayBit] — бит дня, см. `DayOfWeek.bit`),
-     * в порядке кругов, вместе с числом отметок за этот день.
+     * Привычки на день: не в архиве, не на паузе и по расписанию на этот день недели ([dayBit] — бит дня,
+     * см. `DayOfWeek.bit`), в порядке кругов, вместе с числом отметок за этот день.
      */
     @Query(
         """
@@ -21,6 +21,10 @@ interface HabitDao {
         FROM habits h
         LEFT JOIN habit_checks c ON c.habit_id = h.id AND c.date = :date
         WHERE h.is_archived = 0 AND (h.weekdays & :dayBit) != 0
+            AND NOT EXISTS (
+                SELECT 1 FROM habit_pauses p
+                WHERE p.habit_id = h.id AND p.start_date <= :date AND (p.resume_date IS NULL OR p.resume_date > :date)
+            )
         ORDER BY h.position, h.id
         """
     )
@@ -29,15 +33,24 @@ interface HabitDao {
     @Query("SELECT * FROM habits WHERE id = :id")
     suspend fun getHabit(id: Long): HabitEntity?
 
-    /** Все привычки для экрана «Все привычки»: сначала действующие, потом архив, внутри — по порядку кругов. */
+    /**
+     * Все привычки для экрана «Все привычки»: сначала не в архиве, потом архив, внутри — по порядку кругов.
+     * Пауза — та, в которую попадает [today].
+     */
     @Query(
         """
-        SELECT h.*, (SELECT COUNT(*) FROM habit_reminders r WHERE r.habit_id = h.id) AS reminder_count
+        SELECT h.*, (SELECT COUNT(*) FROM habit_reminders r WHERE r.habit_id = h.id) AS reminder_count,
+            p.id IS NOT NULL AS is_paused, p.resume_date AS pause_resume_date
         FROM habits h
+        LEFT JOIN habit_pauses p ON p.id = (
+            SELECT p2.id FROM habit_pauses p2
+            WHERE p2.habit_id = h.id AND p2.start_date <= :today AND (p2.resume_date IS NULL OR p2.resume_date > :today)
+            LIMIT 1
+        )
         ORDER BY h.is_archived, h.position, h.id
         """
     )
-    fun observeAllHabits(): Flow<List<HabitListItem>>
+    fun observeAllHabits(today: LocalDate): Flow<List<HabitListItem>>
 
     @Query("UPDATE habits SET position = :position WHERE id = :id")
     suspend fun setPosition(id: Long, position: Int)
@@ -91,6 +104,25 @@ interface HabitDao {
     @Insert
     suspend fun insertChecks(checks: List<HabitCheckEntity>)
 
+    /** Паузы привычки по порядку — для серий и ближайшего напоминания. */
+    @Query("SELECT * FROM habit_pauses WHERE habit_id = :habitId ORDER BY start_date")
+    fun observePauses(habitId: Long): Flow<List<HabitPauseEntity>>
+
+    @Query("SELECT * FROM habit_pauses WHERE habit_id = :habitId ORDER BY start_date")
+    suspend fun getPauses(habitId: Long): List<HabitPauseEntity>
+
+    @Insert
+    suspend fun insertPause(pause: HabitPauseEntity): Long
+
+    @Insert
+    suspend fun insertPauses(pauses: List<HabitPauseEntity>)
+
+    @Query("UPDATE habit_pauses SET resume_date = :resumeDate WHERE id = :id")
+    suspend fun setPauseResumeDate(id: Long, resumeDate: LocalDate?)
+
+    @Query("DELETE FROM habit_pauses WHERE id = :id")
+    suspend fun deletePause(id: Long)
+
     @Query("SELECT time FROM habit_reminders WHERE habit_id = :habitId ORDER BY time")
     suspend fun getReminderTimes(habitId: Long): List<LocalTime>
 
@@ -104,7 +136,7 @@ interface HabitDao {
     @Insert
     suspend fun insertReminders(reminders: List<HabitReminderEntity>)
 
-    /** Удаляет привычку; её отметки и напоминания удаляются вместе с ней. */
+    /** Удаляет привычку; её отметки, напоминания и паузы удаляются вместе с ней. */
     @Query("DELETE FROM habits WHERE id = :id")
     suspend fun deleteHabit(id: Long)
 }

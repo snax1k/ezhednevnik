@@ -6,9 +6,11 @@ import com.snax1k.chekki.data.HabitDay
 import com.snax1k.chekki.data.HabitRepository
 import com.snax1k.chekki.data.HabitStreaks
 import com.snax1k.chekki.data.db.HabitEntity
+import com.snax1k.chekki.data.db.HabitPauseEntity
 import com.snax1k.chekki.data.habitDay
 import com.snax1k.chekki.data.habitStreaks
 import com.snax1k.chekki.data.habitWeek
+import com.snax1k.chekki.data.db.pauseOn
 import kotlinx.coroutines.ExperimentalCoroutinesApi
 import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.MutableStateFlow
@@ -29,7 +31,9 @@ data class HabitCardState(
     val selectedDay: HabitDay,
     /** Последние 7 дней, сегодня — последним. */
     val week: List<HabitDay>,
-    val streaks: HabitStreaks
+    val streaks: HabitStreaks,
+    /** Пауза, которая идёт сегодня; null — привычка действует. */
+    val pause: HabitPauseEntity? = null
 )
 
 /**
@@ -53,16 +57,21 @@ class HabitCardViewModel(
             if (id == null) {
                 flowOf(null)
             } else {
-                combine(repository.observeHabit(id), repository.observeChecks(id)) { habit, checks ->
+                combine(
+                    repository.observeHabit(id),
+                    repository.observeChecks(id),
+                    repository.observePauses(id)
+                ) { habit, checks, pauses ->
                     habit?.let {
-                        val week = habitWeek(it, checks, today)
+                        val week = habitWeek(it, checks, today, pauses)
                         val date = selected?.takeIf { day -> week.any { d -> d.date == day && d.isScheduled } } ?: today
                         HabitCardState(
                             habit = it,
                             today = today,
-                            selectedDay = habitDay(it, date, checks.associateBy { check -> check.date }),
+                            selectedDay = habitDay(it, date, checks.associateBy { check -> check.date }, pauses),
                             week = week,
-                            streaks = habitStreaks(it, checks, today)
+                            streaks = habitStreaks(it, checks, today, pauses = pauses),
+                            pause = pauses.pauseOn(today)
                         )
                     }
                 }
@@ -89,6 +98,12 @@ class HabitCardViewModel(
     fun increment() = changeSelected { id, date -> repository.check(id, date) }
 
     fun decrement() = changeSelected { id, date -> repository.uncheck(id, date) }
+
+    /** «Продолжить» в карточке привычки на паузе. */
+    fun resume() {
+        val current = state.value ?: return
+        viewModelScope.launch { repository.resume(current.habit.id, current.today) }
+    }
 
     private fun changeSelected(change: suspend (Long, LocalDate) -> Unit) {
         val current = state.value ?: return

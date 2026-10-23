@@ -249,7 +249,7 @@ class HabitRepositoryTest {
     @Test
     fun всеПривычкиПоПорядкуСЧисломНапоминаний() {
         runBlocking {
-            val all = repository.observeAllHabits().first()
+            val all = repository.observeAllHabits(today).first()
             assertEquals(
                 listOf("Утренняя рутина", "Пить воду", "Английский", "Растяжка", "Витамины", "Бассейн"),
                 all.map { it.habit.title }
@@ -261,7 +261,7 @@ class HabitRepositoryTest {
     @Test
     fun новыйПорядокМеняетРядНаверху() {
         runBlocking {
-            val ids = repository.observeAllHabits().first().map { it.habit.id }
+            val ids = repository.observeAllHabits(today).first().map { it.habit.id }
             // «Растяжку» перетащили в начало
             repository.reorder(listOf(ids[3], ids[0], ids[1], ids[2], ids[4], ids[5]))
             assertEquals(
@@ -283,7 +283,7 @@ class HabitRepositoryTest {
             assertEquals(null, scheduler.triggers[water])
             assertEquals(listOf(water), scheduler.dismissed)
             // В списке «Все привычки» она в конце, отметки на месте
-            assertEquals("Пить воду", repository.observeAllHabits().first().last().habit.title)
+            assertEquals("Пить воду", repository.observeAllHabits(today).first().last().habit.title)
             assertEquals(2, database.habitDao().getCheck(water, today)!!.count)
 
             repository.setArchived(water, archived = false)
@@ -312,6 +312,72 @@ class HabitRepositoryTest {
             assertEquals(listOf("Утренняя рутина", "Пить воду"), habitsToday().take(2).map { it.habit.title })
             assertEquals(2, habitsToday().single { it.habit.id == water }.count)
             assertEquals(6, database.habitDao().getCheck(water, today.minusDays(1))!!.count)
+        }
+    }
+
+    @Test
+    fun паузаУбираетСВерхуИНапоминанияАПродолжитьВозвращает() {
+        runBlocking {
+            val scheduler = RecordingScheduler()
+            val repository = repositoryAt(LocalTime.of(11, 0), scheduler)
+            val water = idOf("Пить воду")
+
+            repository.pause(water, resumeDate = today.plusWeeks(1), today = today)
+            assertTrue(habitsToday().none { it.habit.id == water })
+            // Будильник — на первое напоминание после паузы, уведомление убрано
+            assertEquals(at(today.plusWeeks(1), 10), scheduler.triggers[water])
+            assertEquals(listOf(water), scheduler.dismissed)
+            assertNull(repository.reminderToShow(water, at(today, 13)))
+            val item = repository.observeAllHabits(today).first().single { it.habit.id == water }
+            assertTrue(item.isPaused)
+            assertEquals(today.plusWeeks(1), item.pauseResumeDate)
+
+            // Пауза, начатая сегодня, после «Продолжить» не оставляет следа
+            repository.resume(water, today)
+            assertTrue(habitsToday().any { it.habit.id == water })
+            assertEquals(at(today, 13), scheduler.triggers[water])
+            assertTrue(database.habitDao().getPauses(water).isEmpty())
+        }
+    }
+
+    @Test
+    fun продолжитьОставляетПрошлуюПаузуВИстории() {
+        runBlocking {
+            val water = idOf("Пить воду")
+            // Поставили на паузу без срока три дня назад
+            repository.pause(water, resumeDate = null, today = today.minusDays(3))
+            assertTrue(habitsToday().none { it.habit.id == water })
+            assertNull(repository.observeAllHabits(today).first().single { it.habit.id == water }.pauseResumeDate)
+
+            repository.resume(water, today)
+            val pause = database.habitDao().getPauses(water).single()
+            assertEquals(today.minusDays(3), pause.startDate)
+            assertEquals(today, pause.resumeDate)
+            assertTrue(habitsToday().any { it.habit.id == water })
+        }
+    }
+
+    @Test
+    fun повторнаяПаузаМеняетСрок() {
+        runBlocking {
+            val water = idOf("Пить воду")
+            repository.pause(water, resumeDate = today.plusWeeks(1), today = today)
+            repository.pause(water, resumeDate = null, today = today)
+            assertNull(database.habitDao().getPauses(water).single().resumeDate)
+        }
+    }
+
+    @Test
+    fun удалениеИОтменаВозвращаютПаузу() {
+        runBlocking {
+            val water = idOf("Пить воду")
+            repository.pause(water, resumeDate = null, today = today)
+            val deleted = repository.deleteHabit(water)!!
+            assertTrue(database.habitDao().getPauses(water).isEmpty())
+
+            repository.restoreHabit(deleted)
+            assertEquals(1, database.habitDao().getPauses(water).size)
+            assertTrue(repository.observeAllHabits(today).first().single { it.habit.id == water }.isPaused)
         }
     }
 }

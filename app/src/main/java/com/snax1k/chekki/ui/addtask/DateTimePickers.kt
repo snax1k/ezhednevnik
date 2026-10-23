@@ -4,9 +4,11 @@ import android.content.res.Configuration
 import androidx.annotation.StringRes
 import androidx.compose.foundation.layout.padding
 import androidx.compose.material3.DatePicker
+import androidx.compose.material3.DatePickerDefaults
 import androidx.compose.material3.DatePickerDialog
 import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.MaterialTheme
+import androidx.compose.material3.SelectableDates
 import androidx.compose.material3.Text
 import androidx.compose.material3.TextButton
 import androidx.compose.material3.TimePicker
@@ -32,7 +34,7 @@ import java.util.Locale
 
 /**
  * Календарь: выбор даты, кнопки «Отмена» и «Далее» ([confirmLabel] — если после календаря
- * ничего не открывается, например «Готово» в «Отложить»).
+ * ничего не открывается, например «Готово» в «Отложить»). [firstSelectableDate] — раньше неё дни не выбираются.
  * Месяцы и дни недели по-русски и неделя с понедельника, даже если язык телефона другой.
  */
 @Composable
@@ -40,10 +42,25 @@ fun TaskDatePickerDialog(
     initialDate: LocalDate,
     onDismiss: () -> Unit,
     onNext: (LocalDate) -> Unit,
-    @StringRes confirmLabel: Int = R.string.action_next
+    @StringRes confirmLabel: Int = R.string.action_next,
+    firstSelectableDate: LocalDate? = null
 ) {
     WithRussianLocale {
-        val state = rememberDatePickerState(initialSelectedDateMillis = initialDate.toPickerMillis())
+        val selectableDates = remember(firstSelectableDate) {
+            if (firstSelectableDate == null) {
+                DatePickerDefaults.AllDates
+            } else {
+                object : SelectableDates {
+                    override fun isSelectableDate(utcTimeMillis: Long) = utcTimeMillis.toPickerDate() >= firstSelectableDate
+
+                    override fun isSelectableYear(year: Int) = year >= firstSelectableDate.year
+                }
+            }
+        }
+        val state = rememberDatePickerState(
+            initialSelectedDateMillis = initialDate.toPickerMillis(),
+            selectableDates = selectableDates
+        )
         DatePickerDialog(
             onDismissRequest = onDismiss,
             confirmButton = {

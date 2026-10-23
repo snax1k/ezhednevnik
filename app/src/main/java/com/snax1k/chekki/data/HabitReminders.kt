@@ -1,6 +1,8 @@
 package com.snax1k.chekki.data
 
 import com.snax1k.chekki.data.db.HabitEntity
+import com.snax1k.chekki.data.db.HabitPauseEntity
+import com.snax1k.chekki.data.db.pauseOn
 import java.time.LocalDateTime
 import java.time.LocalTime
 
@@ -9,27 +11,36 @@ val HabitReminderDayStart: LocalTime = LocalTime.of(9, 0)
 val HabitReminderDayEnd: LocalTime = LocalTime.of(21, 0)
 
 /**
- * Ближайшее напоминание привычки после [now]. Пропускаются дни не по расписанию, а сегодняшний день —
- * если цель на сегодня уже набрана ([todayComplete]). null — напоминаний нет или привычка в архиве.
+ * Ближайшее напоминание привычки после [now]. Пропускаются дни не по расписанию и дни паузы, а сегодняшний
+ * день — если цель на сегодня уже набрана ([todayComplete]). null — напоминаний нет, привычка в архиве
+ * или на паузе без срока.
  */
 fun nextHabitReminder(
     habit: HabitEntity,
     times: List<LocalTime>,
     now: LocalDateTime,
-    todayComplete: Boolean
+    todayComplete: Boolean,
+    pauses: List<HabitPauseEntity> = emptyList()
 ): LocalDateTime? {
     if (times.isEmpty() || habit.isArchived) return null
     val sorted = times.sorted()
-    // Через неделю расписание повторяется, восьмой день проверять незачем
-    for (offset in 0L..7L) {
-        val date = now.toLocalDate().plusDays(offset)
-        if (!habit.isScheduledOn(date)) continue
-        if (offset == 0L) {
-            if (todayComplete) continue
-            sorted.firstOrNull { it > now.toLocalTime() }?.let { return date.atTime(it) }
-        } else {
-            return date.atTime(sorted.first())
+    val today = now.toLocalDate()
+    var date = today
+    var daysChecked = 0
+    // Через неделю расписание повторяется: восьмой день вне пауз проверять незачем
+    while (daysChecked < 8) {
+        val pause = pauses.pauseOn(date)
+        if (pause != null) {
+            // Пауза без срока — напоминаний нет, пока не нажмут «Продолжить»
+            date = pause.resumeDate ?: return null
+            continue
         }
+        daysChecked++
+        if (habit.isScheduledOn(date)) {
+            if (date != today) return date.atTime(sorted.first())
+            if (!todayComplete) sorted.firstOrNull { it > now.toLocalTime() }?.let { return date.atTime(it) }
+        }
+        date = date.plusDays(1)
     }
     return null
 }

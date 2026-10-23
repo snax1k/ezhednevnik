@@ -26,6 +26,7 @@ import androidx.compose.foundation.lazy.rememberLazyListState
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.material3.DropdownMenu
 import androidx.compose.material3.DropdownMenuItem
+import androidx.compose.material3.HorizontalDivider
 import androidx.compose.material3.Icon
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Surface
@@ -66,14 +67,17 @@ import com.snax1k.chekki.R
 import com.snax1k.chekki.data.db.HabitEntity
 import com.snax1k.chekki.data.db.HabitIcon
 import com.snax1k.chekki.data.db.HabitListItem
+import com.snax1k.chekki.ui.addtask.TaskDatePickerDialog
 import com.snax1k.chekki.ui.components.SquareIconButton
 import com.snax1k.chekki.ui.icons.ChekkiIcons
 import com.snax1k.chekki.ui.theme.ChekkiTheme
 import java.time.Instant
+import java.time.LocalDate
 
 /**
- * Все привычки: действующие в порядке кругов наверху (перетаскиваются за ручку «≡»), «Новая привычка»
- * и свёрнутый архив. Макета нет, сделан в стиле экранов групп. Нажатие на строку открывает карточку привычки.
+ * Все привычки: действующие в порядке кругов наверху (перетаскиваются за ручку «≡»), «Новая привычка»,
+ * раздел «На паузе» и свёрнутый архив. Макета нет, сделан в стиле экранов групп.
+ * Нажатие на строку открывает карточку привычки.
  */
 @Composable
 fun HabitsScreen(
@@ -83,6 +87,9 @@ fun HabitsScreen(
     onHabitClick: (Long) -> Unit = {},
     onEdit: (Long) -> Unit = {},
     onArchive: (habitId: Long, archived: Boolean) -> Unit = { _, _ -> },
+    /** Пауза с сегодня до дня, когда привычка снова начнёт действовать; null — без срока. */
+    onPause: (habitId: Long, resumeDate: LocalDate?) -> Unit = { _, _ -> },
+    onResume: (Long) -> Unit = {},
     onDelete: (Long) -> Unit = {},
     onReorder: (List<Long>) -> Unit = {},
     onAdd: () -> Unit = {}
@@ -97,6 +104,13 @@ fun HabitsScreen(
     LaunchedEffect(state.active) {
         if (draggedId == null) order = state.active
     }
+    // Строки в местном порядке, но из свежих данных: ушедшая на паузу или в архив привычка не задерживается
+    // здесь ни на кадр (иначе её ключ встретится в списке дважды), а вернувшаяся сразу встаёт в конец
+    val activeById = state.active.associateBy { it.habit.id }
+    val shown = order.mapNotNull { activeById[it.habit.id] } +
+        state.active.filter { item -> order.none { it.habit.id == item.habit.id } }
+    // Обработчик перетаскивания живёт дольше одной отрисовки, ему нужен свежий список
+    val currentShown by rememberUpdatedState(shown)
     var archiveExpanded by rememberSaveable { mutableStateOf(false) }
 
     /** Середина перетаскиваемой строки зашла на соседнюю — меняем их местами. */
@@ -118,10 +132,10 @@ fun HabitsScreen(
     }
 
     fun move(id: Long, by: Int) {
-        val from = order.indexOfFirst { it.habit.id == id }
+        val from = shown.indexOfFirst { it.habit.id == id }
         val to = from + by
-        if (from < 0 || to !in order.indices) return
-        order = order.toMutableList().apply { add(to, removeAt(from)) }
+        if (from < 0 || to !in shown.indices) return
+        order = shown.toMutableList().apply { add(to, removeAt(from)) }
         currentOnReorder(order.map { it.habit.id })
     }
 
@@ -157,7 +171,7 @@ fun HabitsScreen(
                         color = MaterialTheme.colorScheme.onSurface
                     )
                 }
-                if (!state.isLoading && order.isEmpty() && state.archived.isEmpty()) {
+                if (!state.isLoading && shown.isEmpty() && state.paused.isEmpty() && state.archived.isEmpty()) {
                     item(key = "empty") {
                         Text(
                             text = stringResource(R.string.habits_empty),
@@ -170,22 +184,26 @@ fun HabitsScreen(
                         )
                     }
                 }
-                items(order, key = { it.habit.id }) { item ->
+                items(shown, key = { it.habit.id }) { item ->
                     val id = item.habit.id
                     val isDragged = id == draggedId
-                    val index = order.indexOf(item)
+                    val index = shown.indexOf(item)
                     HabitRow(
                         item = item,
+                        today = state.today,
                         isDragged = isDragged,
                         onClick = { onHabitClick(id) },
                         onEdit = { onEdit(id) },
+                        onPause = { resumeDate -> onPause(id, resumeDate) },
+                        onResume = null,
                         onArchiveToggle = { onArchive(id, true) },
                         onDelete = { onDelete(id) },
                         onMoveUp = if (index > 0) ({ move(id, -1) }) else null,
-                        onMoveDown = if (index < order.lastIndex) ({ move(id, 1) }) else null,
+                        onMoveDown = if (index < shown.lastIndex) ({ move(id, 1) }) else null,
                         dragHandle = Modifier.pointerInput(id) {
                             detectDragGestures(
                                 onDragStart = {
+                                    order = currentShown
                                     draggedId = id
                                     dragOffset = 0f
                                     haptics.performHapticFeedback(HapticFeedbackType.GestureThresholdActivate)
@@ -215,12 +233,40 @@ fun HabitsScreen(
                     )
                 }
                 item(key = "add") { AddHabitRow(onAdd) }
+                if (state.paused.isNotEmpty()) {
+                    item(key = "paused") {
+                        SectionHeader(
+                            title = stringResource(R.string.habits_paused),
+                            count = state.paused.size,
+                            modifier = Modifier.animateItem()
+                        )
+                    }
+                    items(state.paused, key = { it.habit.id }) { item ->
+                        val id = item.habit.id
+                        HabitRow(
+                            item = item,
+                            today = state.today,
+                            isDragged = false,
+                            onClick = { onHabitClick(id) },
+                            onEdit = { onEdit(id) },
+                            onPause = null,
+                            onResume = { onResume(id) },
+                            onArchiveToggle = { onArchive(id, true) },
+                            onDelete = { onDelete(id) },
+                            onMoveUp = null,
+                            onMoveDown = null,
+                            dragHandle = null,
+                            modifier = Modifier.animateItem()
+                        )
+                    }
+                }
                 if (state.archived.isNotEmpty()) {
                     item(key = "archive") {
                         ArchiveHeader(
                             count = state.archived.size,
                             expanded = archiveExpanded,
-                            onToggle = { archiveExpanded = !archiveExpanded }
+                            onToggle = { archiveExpanded = !archiveExpanded },
+                            modifier = Modifier.animateItem()
                         )
                     }
                     if (archiveExpanded) {
@@ -228,9 +274,12 @@ fun HabitsScreen(
                             val id = item.habit.id
                             HabitRow(
                                 item = item,
+                                today = state.today,
                                 isDragged = false,
                                 onClick = { onHabitClick(id) },
                                 onEdit = { onEdit(id) },
+                                onPause = null,
+                                onResume = null,
                                 onArchiveToggle = { onArchive(id, false) },
                                 onDelete = { onDelete(id) },
                                 onMoveUp = null,
@@ -247,15 +296,19 @@ fun HabitsScreen(
 }
 
 /**
- * Строка привычки: круг с иконкой, название, «Каждый день · 6 раз в день · 4 напоминания»,
- * ручка «≡» (у действующих) и меню «⋮». Архивная — бледнее.
+ * Строка привычки: круг с иконкой, название, «Каждый день · 6 раз в день · 4 напоминания»
+ * (на паузе — «До 30 окт» или «Без срока»), ручка «≡» (у действующих) и меню «⋮».
+ * У привычки на паузе и в архиве круг бледнее. [onPause] — пункт «На паузу», [onResume] — «Продолжить».
  */
 @Composable
 private fun HabitRow(
     item: HabitListItem,
+    today: LocalDate,
     isDragged: Boolean,
     onClick: () -> Unit,
     onEdit: () -> Unit,
+    onPause: ((LocalDate?) -> Unit)?,
+    onResume: (() -> Unit)?,
     onArchiveToggle: () -> Unit,
     onDelete: () -> Unit,
     onMoveUp: (() -> Unit)?,
@@ -264,12 +317,14 @@ private fun HabitRow(
     modifier: Modifier = Modifier
 ) {
     val habit = item.habit
+    val isPaused = item.isPaused && !habit.isArchived
     val palette = ChekkiTheme.colors.habits
     val colors = palette[habit.colorIndex.mod(palette.size)]
     val scale by animateFloatAsState(if (isDragged) 1.03f else 1f, label = "habitRowScale")
     val moveUpLabel = stringResource(R.string.habit_move_up)
     val moveDownLabel = stringResource(R.string.habit_move_down)
-    var menuOpen by remember { mutableStateOf(false) }
+    var menu by remember { mutableStateOf<RowMenu?>(null) }
+    var datePickerOpen by remember { mutableStateOf(false) }
     Row(
         modifier
             .graphicsLayer {
@@ -293,7 +348,7 @@ private fun HabitRow(
         Box(
             Modifier
                 .size(44.dp)
-                .alpha(if (habit.isArchived) 0.5f else 1f)
+                .alpha(if (habit.isArchived || isPaused) 0.5f else 1f)
                 .clip(CircleShape)
                 .background(colors.fill),
             contentAlignment = Alignment.Center
@@ -313,7 +368,7 @@ private fun HabitRow(
                 overflow = TextOverflow.Ellipsis
             )
             Text(
-                text = habitSummary(habit, item.reminderCount),
+                text = if (isPaused) pauseSummary(item.pauseResumeDate, today) else habitSummary(habit, item.reminderCount),
                 modifier = Modifier.padding(top = 2.dp),
                 style = MaterialTheme.typography.bodySmall,
                 color = MaterialTheme.colorScheme.onSurfaceVariant
@@ -336,7 +391,7 @@ private fun HabitRow(
                 Modifier
                     .size(48.dp)
                     .clip(CircleShape)
-                    .clickable(role = Role.Button, onClick = { menuOpen = true }),
+                    .clickable(role = Role.Button, onClick = { menu = RowMenu.Main }),
                 contentAlignment = Alignment.Center
             ) {
                 Icon(
@@ -347,25 +402,91 @@ private fun HabitRow(
                 )
             }
             DropdownMenu(
-                expanded = menuOpen,
-                onDismissRequest = { menuOpen = false },
+                expanded = menu != null,
+                onDismissRequest = { menu = null },
                 containerColor = MaterialTheme.colorScheme.surfaceContainerHigh
             ) {
-                MenuItem(stringResource(R.string.habit_card_edit)) {
-                    menuOpen = false
-                    onEdit()
-                }
-                MenuItem(stringResource(if (habit.isArchived) R.string.habit_unarchive else R.string.habit_archive)) {
-                    menuOpen = false
-                    onArchiveToggle()
-                }
-                MenuItem(stringResource(R.string.habit_menu_delete), color = ChekkiTheme.colors.priorityHigh) {
-                    menuOpen = false
-                    onDelete()
+                when (menu) {
+                    RowMenu.Main, null -> {
+                        MenuItem(stringResource(R.string.habit_card_edit)) {
+                            menu = null
+                            onEdit()
+                        }
+                        if (onPause != null) {
+                            // Меню не закрывается, а показывает сроки паузы
+                            MenuItem(stringResource(R.string.habit_pause)) { menu = RowMenu.Pause }
+                        }
+                        if (onResume != null) {
+                            MenuItem(stringResource(R.string.habit_resume)) {
+                                menu = null
+                                onResume()
+                            }
+                        }
+                        MenuItem(stringResource(if (habit.isArchived) R.string.habit_unarchive else R.string.habit_archive)) {
+                            menu = null
+                            onArchiveToggle()
+                        }
+                        MenuItem(stringResource(R.string.habit_menu_delete), color = ChekkiTheme.colors.priorityHigh) {
+                            menu = null
+                            onDelete()
+                        }
+                    }
+                    RowMenu.Pause -> PauseMenuItems(
+                        today = today,
+                        onSelect = { resumeDate ->
+                            menu = null
+                            onPause?.invoke(resumeDate)
+                        },
+                        onPickDate = {
+                            menu = null
+                            datePickerOpen = true
+                        }
+                    )
                 }
             }
         }
     }
+    if (datePickerOpen) {
+        TaskDatePickerDialog(
+            initialDate = today.plusWeeks(1),
+            onDismiss = { datePickerOpen = false },
+            onNext = { date ->
+                datePickerOpen = false
+                onPause?.invoke(date)
+            },
+            confirmLabel = R.string.action_done,
+            firstSelectableDate = today.plusDays(1)
+        )
+    }
+}
+
+/** Что показывает меню «⋮» строки: обычные пункты или сроки паузы. */
+private enum class RowMenu { Main, Pause }
+
+/** Сроки паузы: «На неделю» с датой справа, «До даты…» (календарь) и «Без срока». */
+@Composable
+private fun PauseMenuItems(today: LocalDate, onSelect: (LocalDate?) -> Unit, onPickDate: () -> Unit) {
+    val weekLater = today.plusWeeks(1)
+    DropdownMenuItem(
+        text = { Text(stringResource(R.string.habit_pause_week), style = MaterialTheme.typography.bodyLarge) },
+        trailingIcon = {
+            Text(
+                text = stringResource(R.string.habit_pause_until, pauseEndText(weekLater, today)),
+                style = MaterialTheme.typography.bodyMedium,
+                color = MaterialTheme.colorScheme.onSurfaceVariant
+            )
+        },
+        onClick = { onSelect(weekLater) }
+    )
+    DropdownMenuItem(
+        text = { Text(stringResource(R.string.habit_pause_until_date), style = MaterialTheme.typography.bodyLarge) },
+        trailingIcon = {
+            Icon(ChekkiIcons.Calendar, contentDescription = null, Modifier.size(18.dp), tint = MaterialTheme.colorScheme.onSurfaceVariant)
+        },
+        onClick = onPickDate
+    )
+    HorizontalDivider(color = MaterialTheme.colorScheme.outline.copy(alpha = 0.4f))
+    MenuItem(stringResource(R.string.habit_pause_no_end)) { onSelect(null) }
 }
 
 @Composable
@@ -387,6 +508,15 @@ private fun habitSummary(habit: HabitEntity, reminderCount: Int): String {
     return parts.joinToString(" · ")
 }
 
+/** «До 30 окт» или «Без срока» — подпись привычки на паузе. */
+@Composable
+private fun pauseSummary(resumeDate: LocalDate?, today: LocalDate): String =
+    if (resumeDate == null) {
+        stringResource(R.string.habit_pause_no_end)
+    } else {
+        stringResource(R.string.habit_paused_until, pauseEndText(resumeDate, today))
+    }
+
 /** «+ Новая привычка» в конце списка действующих. */
 @Composable
 private fun AddHabitRow(onClick: () -> Unit) {
@@ -406,12 +536,30 @@ private fun AddHabitRow(onClick: () -> Unit) {
     }
 }
 
+/** «На паузе · 2» — заголовок раздела. */
+@Composable
+private fun SectionHeader(title: String, count: Int, modifier: Modifier = Modifier) {
+    Row(
+        modifier
+            .fillMaxWidth()
+            .padding(top = 12.dp)
+            .heightIn(min = 48.dp)
+            .semantics(mergeDescendants = true) { heading() }
+            .padding(horizontal = 4.dp),
+        horizontalArrangement = Arrangement.spacedBy(8.dp),
+        verticalAlignment = Alignment.CenterVertically
+    ) {
+        Text(title, style = MaterialTheme.typography.titleSmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
+        Text(count.toString(), style = MaterialTheme.typography.titleSmall, color = MaterialTheme.colorScheme.outline)
+    }
+}
+
 /** «В архиве · 13» со стрелкой: раздел архива свёрнут, пока его не откроют. */
 @Composable
-private fun ArchiveHeader(count: Int, expanded: Boolean, onToggle: () -> Unit) {
+private fun ArchiveHeader(count: Int, expanded: Boolean, onToggle: () -> Unit, modifier: Modifier = Modifier) {
     val rotation by animateFloatAsState(if (expanded) 90f else 0f, label = "archiveChevron")
     Row(
-        Modifier
+        modifier
             .fillMaxWidth()
             .padding(top = 12.dp)
             .heightIn(min = 48.dp)
@@ -466,7 +614,11 @@ private fun HabitsScreenPreview() {
                     HabitListItem(habit(2, "Пить воду", HabitIcon.Water, 1, 6), 4),
                     HabitListItem(habit(3, "Английский", HabitIcon.Goal, 2, 2), 2)
                 ),
-                archived = listOf(HabitListItem(habit(4, "Коллаген", HabitIcon.Pill, 4, 1, archived = true), 0))
+                paused = listOf(
+                    HabitListItem(habit(5, "Бассейн", HabitIcon.Run, 5, 1), 0, isPaused = true, pauseResumeDate = LocalDate.of(2026, 10, 30))
+                ),
+                archived = listOf(HabitListItem(habit(4, "Коллаген", HabitIcon.Pill, 4, 1, archived = true), 0)),
+                today = LocalDate.of(2026, 10, 23)
             )
         )
     }

@@ -7,8 +7,10 @@ import androidx.compose.ui.res.stringResource
 import com.snax1k.chekki.R
 import com.snax1k.chekki.data.db.HabitIcon
 import com.snax1k.chekki.data.db.bit
+import com.snax1k.chekki.ui.components.formatDayMonthShort
 import com.snax1k.chekki.ui.icons.ChekkiIcons
 import java.time.DayOfWeek
+import java.time.LocalDate
 import java.time.format.TextStyle
 import java.util.Locale
 
@@ -68,6 +70,12 @@ fun daysSummary(weekdays: Int): String = when (HabitDaysPreset.of(weekdays)) {
     null -> DayOfWeek.entries
         .filter { weekdays and it.bit != 0 }
         .joinToString(", ") { shortDayName(it) }
+}
+
+/** «30 окт», в другом году — «5 янв 2027»: до какого дня привычка на паузе. */
+fun pauseEndText(date: LocalDate, today: LocalDate): String {
+    val text = formatDayMonthShort(date)
+    return if (date.year == today.year) text else "$text ${date.year}"
 }
 
 /** «Пн», «Вт», … — всегда по-русски. */
