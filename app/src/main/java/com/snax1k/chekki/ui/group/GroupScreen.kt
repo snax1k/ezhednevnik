@@ -57,7 +57,7 @@ import com.snax1k.chekki.ui.components.formatShortDate
 import com.snax1k.chekki.ui.icons.ChekkiIcons
 import com.snax1k.chekki.ui.main.TaskGroup
 import com.snax1k.chekki.ui.main.sampleTodayTasks
-import com.snax1k.chekki.ui.tasks.TaskRow
+import com.snax1k.chekki.ui.tasks.SwipeableTaskRow
 import com.snax1k.chekki.ui.tasks.TaskUi
 import com.snax1k.chekki.ui.theme.ChekkiTheme
 import com.snax1k.chekki.ui.theme.GroupColor
@@ -75,11 +75,15 @@ fun GroupScreen(
     onBack: () -> Unit = {},
     onToggleDone: (TaskUi) -> Unit = {},
     onTaskClick: (TaskUi) -> Unit = {},
+    onPostpone: (TaskUi, LocalDate) -> Unit = { _, _ -> },
+    onDelete: (TaskUi) -> Unit = {},
     onShowMore: () -> Unit = {},
     onVoiceClick: () -> Unit = {},
     onAddClick: () -> Unit = {}
 ) {
     val navigationBarHeight = WindowInsets.navigationBars.asPaddingValues().calculateBottomPadding()
+    // Строка, открытая свайпом влево: открытой может быть только одна
+    var openTaskId by remember { mutableStateOf<Long?>(null) }
     Surface(modifier = modifier.fillMaxSize(), color = MaterialTheme.colorScheme.background) {
         Box(Modifier.fillMaxSize()) {
             Column(
@@ -108,10 +112,18 @@ fun GroupScreen(
                             }
                         }
                         items(section.tasks, key = { it.id }, contentType = { "task" }) { task ->
-                            TaskRow(
+                            SwipeableTaskRow(
                                 task = task,
+                                today = state.today,
+                                isOpen = openTaskId == task.id,
+                                onOpen = { openTaskId = task.id },
+                                onClose = { if (openTaskId == task.id) openTaskId = null },
                                 onToggleDone = { onToggleDone(task) },
-                                onClick = { onTaskClick(task) }
+                                onClick = { onTaskClick(task) },
+                                onPostpone = { date -> onPostpone(task, date) },
+                                onDelete = { onDelete(task) },
+                                // Удалённая или отложенная задача уходит из списка плавно, остальные сдвигаются
+                                modifier = Modifier.animateItem()
                             )
                         }
                     }

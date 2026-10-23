@@ -2,7 +2,9 @@ package com.snax1k.chekki.ui.group
 
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
+import com.snax1k.chekki.data.DeletedTask
 import com.snax1k.chekki.data.GroupRanges
+import com.snax1k.chekki.data.MovedTask
 import com.snax1k.chekki.data.TaskRepository
 import com.snax1k.chekki.data.db.TaskWithDetails
 import com.snax1k.chekki.ui.main.TaskGroup
@@ -110,6 +112,16 @@ class GroupViewModel(
     fun toggleDone(taskId: Long) {
         toggledIds.update { it + taskId }
         viewModelScope.launch { repository.toggleDone(taskId) }
+    }
+
+    /** Свайп «Удалить»: удаляет задачу и передаёт в [onDeleted] всё, что нужно для отмены. */
+    fun delete(taskId: Long, onDeleted: (DeletedTask) -> Unit) {
+        viewModelScope.launch { repository.deleteTask(taskId)?.let(onDeleted) }
+    }
+
+    /** Свайп «Отложить»: переносит задачу на [date] и передаёт в [onPostponed] прежнюю дату для отмены. */
+    fun postpone(taskId: Long, date: LocalDate, onPostponed: (MovedTask) -> Unit) {
+        viewModelScope.launch { repository.moveTask(taskId, date)?.let(onPostponed) }
     }
 
     fun showMore() {

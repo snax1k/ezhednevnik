@@ -108,7 +108,13 @@ data class ChekkiColors(
     /** Название выполненной задачи. */
     val taskDoneTitle: Color,
     /** Подсказка в пустом поле ввода («Что нужно сделать?»). */
-    val textPlaceholder: Color
+    val textPlaceholder: Color,
+    /** Кнопка «Отложить» под строкой задачи при свайпе влево. Свайп вправо («Выполнить») — цвета [taskDone]. */
+    val swipePostpone: Color,
+    val onSwipePostpone: Color,
+    /** Кнопка «Удалить» под строкой задачи при свайпе влево. */
+    val swipeDelete: Color,
+    val onSwipeDelete: Color
 )
 
 internal val DarkChekkiColors = ChekkiColors(
@@ -169,5 +175,10 @@ internal val DarkChekkiColors = ChekkiColors(
     onTaskDone = Color(0xFF0E1A12),
     taskDoneTitle = Color(0xFF7C828D),
     // Из макета панели новой задачи (вариант А), в Б её нет
-    textPlaceholder = Color(0xFF7C828D)
+    textPlaceholder = Color(0xFF7C828D),
+    // Из макета «Состояния и жесты» (вариант А): те же жёлтый и красный, что у приоритетов
+    swipePostpone = Color(0xFFF5BE6A),
+    onSwipePostpone = Color(0xFF2A1C04),
+    swipeDelete = Color(0xFFFF8A7A),
+    onSwipeDelete = Color(0xFF2B0E0A)
 )

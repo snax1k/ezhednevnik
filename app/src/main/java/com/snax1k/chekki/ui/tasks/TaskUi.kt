@@ -1,5 +1,6 @@
 package com.snax1k.chekki.ui.tasks
 
+import java.time.LocalDate
 import java.time.LocalTime
 
 enum class Priority { High, Medium, Low }
@@ -22,5 +23,7 @@ data class TaskUi(
     val subtasksTotal: Int = 0,
     val repeats: Boolean = false,
     val hasReminder: Boolean = false,
-    val done: Boolean = false
+    val done: Boolean = false,
+    /** Дата задачи; null — без даты. Нужна меню «Отложить», чтобы не предлагать ту же дату. */
+    val date: LocalDate? = null
 )

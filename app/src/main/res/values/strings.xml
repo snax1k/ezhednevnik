@@ -128,6 +128,12 @@
     <string name="task_delete">Удалить задачу</string>
     <string name="task_deleted">Задача удалена</string>
     <string name="action_undo">Отменить</string>
+    <!-- Свайпы по строке задачи и те же действия для TalkBack -->
+    <string name="swipe_complete">Выполнить</string>
+    <string name="swipe_delete">Удалить</string>
+    <string name="action_uncomplete">Снять отметку</string>
+    <!-- Действие TalkBack: «Отложить: завтра» -->
+    <string name="action_postpone_to">Отложить: %1$s</string>
     <string name="task_complete">Выполнено</string>
     <string name="task_return">Вернуть</string>
     <string name="task_pick_date">Выбрать дату…</string>

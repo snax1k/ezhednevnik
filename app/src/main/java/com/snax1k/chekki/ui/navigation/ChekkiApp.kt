@@ -147,6 +147,8 @@ fun ChekkiApp() {
                             onBack = { backStack.removeLastOrNull() },
                             onToggleDone = { task -> viewModel.toggleDone(task.id) },
                             onTaskClick = { task -> backStack.add(TaskRoute(task.id)) },
+                            onPostpone = { task, date -> viewModel.postpone(task.id, date, showUndoPostpone) },
+                            onDelete = { task -> viewModel.delete(task.id, showUndoDelete) },
                             onShowMore = viewModel::showMore,
                             onAddClick = { isAddTaskOpen = true }
                         )
