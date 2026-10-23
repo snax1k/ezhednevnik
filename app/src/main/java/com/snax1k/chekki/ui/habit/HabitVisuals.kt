@@ -1,10 +1,16 @@
 package com.snax1k.chekki.ui.habit
 
 import androidx.annotation.StringRes
+import androidx.compose.runtime.Composable
 import androidx.compose.ui.graphics.vector.ImageVector
+import androidx.compose.ui.res.stringResource
 import com.snax1k.chekki.R
 import com.snax1k.chekki.data.db.HabitIcon
+import com.snax1k.chekki.data.db.bit
 import com.snax1k.chekki.ui.icons.ChekkiIcons
+import java.time.DayOfWeek
+import java.time.format.TextStyle
+import java.util.Locale
 
 /** Картинка иконки привычки. */
 val HabitIcon.vector: ImageVector
@@ -52,3 +58,20 @@ val HabitColorLabels: List<Int> = listOf(
     R.string.habit_color_green,
     R.string.habit_color_mustard
 )
+
+/** «Каждый день», «По будням», «По выходным» или дни через запятую: «Пн, Ср, Пт». */
+@Composable
+fun daysSummary(weekdays: Int): String = when (HabitDaysPreset.of(weekdays)) {
+    HabitDaysPreset.EveryDay -> stringResource(R.string.habit_days_every_day)
+    HabitDaysPreset.Weekdays -> stringResource(R.string.habit_days_weekdays)
+    HabitDaysPreset.Weekend -> stringResource(R.string.habit_days_weekend)
+    null -> DayOfWeek.entries
+        .filter { weekdays and it.bit != 0 }
+        .joinToString(", ") { shortDayName(it) }
+}
+
+/** «Пн», «Вт», … — всегда по-русски. */
+fun shortDayName(day: DayOfWeek): String =
+    day.getDisplayName(TextStyle.SHORT_STANDALONE, RussianLocale).replaceFirstChar { it.titlecase(RussianLocale) }
+
+private val RussianLocale: Locale = Locale.forLanguageTag("ru")

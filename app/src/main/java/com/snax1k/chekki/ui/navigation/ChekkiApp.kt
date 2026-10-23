@@ -46,6 +46,8 @@ import com.snax1k.chekki.ui.habit.HabitCardSheet
 import com.snax1k.chekki.ui.habit.HabitCardViewModel
 import com.snax1k.chekki.ui.habit.HabitEditorViewModel
 import com.snax1k.chekki.ui.habit.HabitSheet
+import com.snax1k.chekki.ui.habit.HabitsScreen
+import com.snax1k.chekki.ui.habit.HabitsViewModel
 import com.snax1k.chekki.ui.main.MainScreen
 import com.snax1k.chekki.ui.main.MainViewModel
 import com.snax1k.chekki.ui.main.TaskGroup
@@ -70,6 +72,10 @@ data class GroupRoute(val group: TaskGroup) : NavKey
 @Serializable
 data class TaskRoute(val taskId: Long) : NavKey
 
+/** Все привычки: порядок, архив. */
+@Serializable
+data object HabitsRoute : NavKey
+
 /** Корень приложения: стек экранов (Navigation 3) и переходы между ними. */
 @Composable
 fun ChekkiApp() {
@@ -88,7 +94,7 @@ fun ChekkiApp() {
         if (habitId == null) habitEditorViewModel.startNew() else habitEditorViewModel.startEdit(habitId)
         habitSheetFor = habitId ?: NEW_HABIT
     }
-    // Карточка привычки по долгому нажатию на круг; null — закрыта
+    // Карточка привычки по долгому нажатию на круг или из «Всех привычек»; null — закрыта
     var habitCardFor by rememberSaveable { mutableStateOf<Long?>(null) }
     val habitCardViewModel = viewModel { HabitCardViewModel(container.habitRepository, container.currentDate) }
     // После выгрузки из памяти открытая панель или карточка вспоминаются, а их ViewModel — нет
@@ -97,6 +103,10 @@ fun ChekkiApp() {
     }
     LaunchedEffect(habitCardFor) {
         habitCardFor?.let(habitCardViewModel::restoreIfNeeded)
+    }
+    val openHabitCard: (Long) -> Unit = { habitId ->
+        habitCardViewModel.open(habitId)
+        habitCardFor = habitId
     }
 
     // Плашка «Задача удалена · Отменить» и «Задача отложена на … · Отменить» внизу, поверх любого экрана
@@ -154,10 +164,7 @@ fun ChekkiApp() {
                     MainScreen(
                         state = state,
                         onTrackerClick = { tracker -> viewModel.checkHabit(tracker.habitId) },
-                        onTrackerLongClick = { tracker ->
-                            habitCardViewModel.open(tracker.habitId)
-                            habitCardFor = tracker.habitId
-                        },
+                        onTrackerLongClick = { tracker -> openHabitCard(tracker.habitId) },
                         onAddHabitClick = { openHabitSheet(null) },
                         onGroupClick = { group -> backStack.add(GroupRoute(group)) },
                         onAddClick = { isAddTaskOpen = true }
@@ -202,6 +209,20 @@ fun ChekkiApp() {
                         }
                     )
                 }
+                entry<HabitsRoute> {
+                    val viewModel = viewModel { HabitsViewModel(container.habitRepository) }
+                    val state by viewModel.uiState.collectAsStateWithLifecycle()
+                    HabitsScreen(
+                        state = state,
+                        onBack = { backStack.removeLastOrNull() },
+                        onHabitClick = openHabitCard,
+                        onEdit = { habitId -> openHabitSheet(habitId) },
+                        onArchive = viewModel::setArchived,
+                        onDelete = { habitId -> viewModel.delete(habitId, showUndoHabitDelete) },
+                        onReorder = viewModel::reorder,
+                        onAdd = { openHabitSheet(null) }
+                    )
+                }
             }
         )
         SnackbarHost(
@@ -224,6 +245,11 @@ fun ChekkiApp() {
             onEdit = { habitId ->
                 habitCardFor = null
                 openHabitSheet(habitId)
+            },
+            // Карточку открыли из «Всех привычек» — просто возвращаемся к списку
+            onShowAll = {
+                habitCardFor = null
+                if (backStack.lastOrNull() != HabitsRoute) backStack.add(HabitsRoute)
             }
         )
     }

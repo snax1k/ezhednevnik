@@ -5,6 +5,7 @@ import com.snax1k.chekki.data.db.ChekkiDatabase
 import com.snax1k.chekki.data.db.HabitCheckEntity
 import com.snax1k.chekki.data.db.HabitEntity
 import com.snax1k.chekki.data.db.HabitIcon
+import com.snax1k.chekki.data.db.HabitListItem
 import com.snax1k.chekki.data.db.HabitReminderEntity
 import com.snax1k.chekki.data.db.HabitWithCount
 import com.snax1k.chekki.data.db.bit
@@ -39,6 +40,27 @@ class HabitRepository(
 
     /** Все отметки привычки по дням. */
     fun observeChecks(habitId: Long): Flow<List<HabitCheckEntity>> = habitDao.observeChecks(habitId)
+
+    /** Все привычки: действующие по порядку кругов, потом архив. */
+    fun observeAllHabits(): Flow<List<HabitListItem>> = habitDao.observeAllHabits()
+
+    /** Новый порядок действующих привычек (перетаскивание на экране «Все привычки»): места по порядку списка. */
+    suspend fun reorder(habitIds: List<Long>) = database.withTransaction {
+        habitIds.forEachIndexed { index, id -> habitDao.setPosition(id, index) }
+    }
+
+    /**
+     * Привычка уходит в архив или возвращается из него. В архиве она не видна наверху и не напоминает,
+     * история отметок остаётся. Вернувшаяся встаёт в конец ряда.
+     */
+    suspend fun setArchived(habitId: Long, archived: Boolean) {
+        database.withTransaction {
+            if (!archived) habitDao.setPosition(habitId, habitDao.nextPosition())
+            habitDao.setArchived(habitId, archived)
+        }
+        if (archived) reminders.dismiss(habitId)
+        reschedule(habitId)
+    }
 
     /** Времена напоминаний привычки по порядку. */
     suspend fun getReminderTimes(habitId: Long): List<LocalTime> = habitDao.getReminderTimes(habitId)

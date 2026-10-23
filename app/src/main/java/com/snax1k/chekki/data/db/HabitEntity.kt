@@ -66,6 +66,12 @@ data class HabitCheckEntity(
     val target: Int
 )
 
+/** Привычка для списка «Все привычки»: сколько у неё напоминаний. */
+data class HabitListItem(
+    @Embedded val habit: HabitEntity,
+    @ColumnInfo(name = "reminder_count") val reminderCount: Int
+)
+
 /** Привычка вместе с отметками за день. */
 data class HabitWithCount(
     @Embedded val habit: HabitEntity,

@@ -10,6 +10,7 @@ import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
+import androidx.compose.foundation.layout.heightIn
 import androidx.compose.foundation.layout.navigationBarsPadding
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
@@ -62,7 +63,6 @@ import com.snax1k.chekki.data.HabitDay
 import com.snax1k.chekki.data.HabitStreaks
 import com.snax1k.chekki.data.db.HabitEntity
 import com.snax1k.chekki.data.db.HabitIcon
-import com.snax1k.chekki.data.db.bit
 import com.snax1k.chekki.ui.addtask.DragHandle
 import com.snax1k.chekki.ui.components.formatShortDate
 import com.snax1k.chekki.ui.icons.ChekkiIcons
@@ -72,17 +72,21 @@ import kotlinx.coroutines.launch
 import java.time.DayOfWeek
 import java.time.Instant
 import java.time.LocalDate
-import java.time.format.TextStyle
-import java.util.Locale
 
 /**
  * Карточка привычки: прогресс за день с «−» и «+», последние 7 дней (прошлый день можно выбрать
- * и исправить) и серии. Макета нет, сделана в стиле панели новой задачи. «Изменить» открывает панель привычки.
+ * и исправить) и серии. Макета нет, сделана в стиле панели новой задачи. «Изменить» открывает панель привычки,
+ * «Все привычки» внизу — экран со списком, порядком и архивом.
  */
 // ModalBottomSheet в Material 3 1.4 всё ещё помечен экспериментальным
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
-fun HabitCardSheet(viewModel: HabitCardViewModel, onDismiss: () -> Unit, onEdit: (Long) -> Unit) {
+fun HabitCardSheet(
+    viewModel: HabitCardViewModel,
+    onDismiss: () -> Unit,
+    onEdit: (Long) -> Unit,
+    onShowAll: () -> Unit
+) {
     val state by viewModel.state.collectAsStateWithLifecycle()
     val sheetState = rememberModalBottomSheetState(skipPartiallyExpanded = true)
     val scope = rememberCoroutineScope()
@@ -104,6 +108,9 @@ fun HabitCardSheet(viewModel: HabitCardViewModel, onDismiss: () -> Unit, onEdit:
                 onEdit = {
                     scope.launch { sheetState.hide() }.invokeOnCompletion { onEdit(current.habit.id) }
                 },
+                onShowAll = {
+                    scope.launch { sheetState.hide() }.invokeOnCompletion { onShowAll() }
+                },
                 onSelectDay = viewModel::selectDay,
                 onIncrement = viewModel::increment,
                 onDecrement = viewModel::decrement
@@ -116,6 +123,7 @@ fun HabitCardSheet(viewModel: HabitCardViewModel, onDismiss: () -> Unit, onEdit:
 private fun HabitCardContent(
     state: HabitCardState,
     onEdit: () -> Unit,
+    onShowAll: () -> Unit,
     onSelectDay: (LocalDate) -> Unit,
     onIncrement: () -> Unit,
     onDecrement: () -> Unit
@@ -149,6 +157,22 @@ private fun HabitCardContent(
             modifier = Modifier.padding(top = 20.dp)
         )
         StreakTiles(state.streaks, Modifier.padding(top = 20.dp))
+        TextButton(
+            onClick = onShowAll,
+            modifier = Modifier
+                .fillMaxWidth()
+                .padding(top = 12.dp)
+                .heightIn(min = 48.dp)
+        ) {
+            Text(stringResource(R.string.habits_all), style = MaterialTheme.typography.titleSmall)
+            Icon(
+                ChekkiIcons.ChevronRight,
+                contentDescription = null,
+                modifier = Modifier
+                    .padding(start = 4.dp)
+                    .size(16.dp)
+            )
+        }
     }
 }
 
@@ -190,17 +214,6 @@ private fun CardHeader(habit: HabitEntity, colors: TrackerColors, onEdit: () -> 
             Text(stringResource(R.string.habit_card_edit), style = MaterialTheme.typography.titleSmall)
         }
     }
-}
-
-/** «Каждый день», «По будням», «По выходным» или дни через запятую: «Пн, Ср, Пт». */
-@Composable
-private fun daysSummary(weekdays: Int): String = when (HabitDaysPreset.of(weekdays)) {
-    HabitDaysPreset.EveryDay -> stringResource(R.string.habit_days_every_day)
-    HabitDaysPreset.Weekdays -> stringResource(R.string.habit_days_weekdays)
-    HabitDaysPreset.Weekend -> stringResource(R.string.habit_days_weekend)
-    null -> DayOfWeek.entries
-        .filter { weekdays and it.bit != 0 }
-        .joinToString(", ") { shortDayName(it) }
 }
 
 /** Крупное кольцо за выбранный день с «−» слева и «+» справа. */
@@ -424,12 +437,7 @@ private fun dayTitle(date: LocalDate, today: LocalDate): String = when (date) {
     else -> formatShortDate(date, today)
 }
 
-private fun shortDayName(day: DayOfWeek): String =
-    day.getDisplayName(TextStyle.SHORT_STANDALONE, RussianLocale).replaceFirstChar { it.titlecase(RussianLocale) }
-
-private val RussianLocale: Locale = Locale.forLanguageTag("ru")
-
-@Preview(widthDp = 412, heightDp = 620)
+@Preview(widthDp = 412, heightDp = 680)
 @Composable
 private fun HabitCardContentPreview() {
     val today = LocalDate.of(2026, 10, 23)
@@ -450,6 +458,7 @@ private fun HabitCardContentPreview() {
             HabitCardContent(
                 state = HabitCardState(habit, today, week.last(), week, HabitStreaks(current = 2, best = 9)),
                 onEdit = {},
+                onShowAll = {},
                 onSelectDay = {},
                 onIncrement = {},
                 onDecrement = {}

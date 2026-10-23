@@ -29,6 +29,22 @@ interface HabitDao {
     @Query("SELECT * FROM habits WHERE id = :id")
     suspend fun getHabit(id: Long): HabitEntity?
 
+    /** Все привычки для экрана «Все привычки»: сначала действующие, потом архив, внутри — по порядку кругов. */
+    @Query(
+        """
+        SELECT h.*, (SELECT COUNT(*) FROM habit_reminders r WHERE r.habit_id = h.id) AS reminder_count
+        FROM habits h
+        ORDER BY h.is_archived, h.position, h.id
+        """
+    )
+    fun observeAllHabits(): Flow<List<HabitListItem>>
+
+    @Query("UPDATE habits SET position = :position WHERE id = :id")
+    suspend fun setPosition(id: Long, position: Int)
+
+    @Query("UPDATE habits SET is_archived = :archived WHERE id = :id")
+    suspend fun setArchived(id: Long, archived: Boolean)
+
     /** Привычка для карточки; null — её удалили. */
     @Query("SELECT * FROM habits WHERE id = :id")
     fun observeHabit(id: Long): Flow<HabitEntity?>

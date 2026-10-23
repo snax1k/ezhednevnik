@@ -247,6 +247,52 @@ class HabitRepositoryTest {
     }
 
     @Test
+    fun всеПривычкиПоПорядкуСЧисломНапоминаний() {
+        runBlocking {
+            val all = repository.observeAllHabits().first()
+            assertEquals(
+                listOf("Утренняя рутина", "Пить воду", "Английский", "Растяжка", "Витамины", "Бассейн"),
+                all.map { it.habit.title }
+            )
+            assertEquals(4, all.single { it.habit.title == "Пить воду" }.reminderCount)
+        }
+    }
+
+    @Test
+    fun новыйПорядокМеняетРядНаверху() {
+        runBlocking {
+            val ids = repository.observeAllHabits().first().map { it.habit.id }
+            // «Растяжку» перетащили в начало
+            repository.reorder(listOf(ids[3], ids[0], ids[1], ids[2], ids[4], ids[5]))
+            assertEquals(
+                listOf("Растяжка", "Утренняя рутина", "Пить воду", "Английский", "Витамины"),
+                habitsToday().map { it.habit.title }
+            )
+        }
+    }
+
+    @Test
+    fun архивУбираетСВерхуИСнимаетБудильникАВозвратСтавитВКонец() {
+        runBlocking {
+            val scheduler = RecordingScheduler()
+            val repository = repositoryAt(LocalTime.of(11, 0), scheduler)
+            val water = idOf("Пить воду")
+
+            repository.setArchived(water, archived = true)
+            assertTrue(habitsToday().none { it.habit.id == water })
+            assertEquals(null, scheduler.triggers[water])
+            assertEquals(listOf(water), scheduler.dismissed)
+            // В списке «Все привычки» она в конце, отметки на месте
+            assertEquals("Пить воду", repository.observeAllHabits().first().last().habit.title)
+            assertEquals(2, database.habitDao().getCheck(water, today)!!.count)
+
+            repository.setArchived(water, archived = false)
+            assertEquals("Пить воду", habitsToday().last().habit.title)
+            assertEquals(at(today, 13), scheduler.triggers[water])
+        }
+    }
+
+    @Test
     fun новаяПривычкаВстаётВКонецРяда() {
         runBlocking {
             repository.addHabit("Медитация", HabitIcon.Heart, colorIndex = 6, dailyTarget = 1, weekdays = HabitEntity.EVERY_DAY)

@@ -185,6 +185,26 @@
     <!-- Действия круга привычки для TalkBack -->
     <string name="habit_check">Отметить</string>
     <string name="habit_open">Изменить привычку</string>
+    <!-- Все привычки -->
+    <string name="habits_title">Привычки</string>
+    <string name="habits_all">Все привычки</string>
+    <string name="habits_empty">Привычек пока нет</string>
+    <string name="habits_archived">В архиве</string>
+    <string name="habit_archive">В архив</string>
+    <string name="habit_unarchive">Вернуть из архива</string>
+    <string name="habit_menu_delete">Удалить</string>
+    <!-- Для TalkBack: «Меню: Пить воду», «Перетащить: Пить воду» -->
+    <string name="habit_menu">Меню: %1$s</string>
+    <string name="habit_drag">Перетащить: %1$s</string>
+    <string name="habit_move_up">Выше</string>
+    <string name="habit_move_down">Ниже</string>
+    <string name="habit_open_card">Открыть карточку</string>
+    <plurals name="habit_reminders_count">
+        <item quantity="one">%d\u00A0напоминание</item>
+        <item quantity="few">%d\u00A0напоминания</item>
+        <item quantity="many">%d\u00A0напоминаний</item>
+        <item quantity="other">%d\u00A0напоминания</item>
+    </plurals>
     <!-- Карточка привычки -->
     <string name="habit_card_edit">Изменить</string>
     <!-- «Каждый день · 6 раз в день» -->
