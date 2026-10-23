@@ -28,6 +28,17 @@ interface HabitDao {
     @Query("SELECT * FROM habits WHERE id = :id")
     suspend fun getHabit(id: Long): HabitEntity?
 
+    /** Привычка для карточки; null — её удалили. */
+    @Query("SELECT * FROM habits WHERE id = :id")
+    fun observeHabit(id: Long): Flow<HabitEntity?>
+
+    /** Все отметки привычки по дням — для истории и серий в карточке. */
+    @Query("SELECT * FROM habit_checks WHERE habit_id = :habitId ORDER BY date")
+    fun observeChecks(habitId: Long): Flow<List<HabitCheckEntity>>
+
+    @Query("DELETE FROM habit_checks WHERE habit_id = :habitId AND date = :date")
+    suspend fun deleteCheck(habitId: Long, date: LocalDate)
+
     @Query("SELECT * FROM habit_checks WHERE habit_id = :habitId AND date = :date")
     suspend fun getCheck(habitId: Long, date: LocalDate): HabitCheckEntity?
 

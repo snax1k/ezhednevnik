@@ -31,14 +31,23 @@ class HabitEditorViewModel(private val repository: HabitRepository) : ViewModel(
         private set
 
     private var isBusy = false
+    private var isStarted = false
+
+    /** Панель снова открыта после выгрузки приложения из памяти, а ViewModel новая: начинаем ту же правку заново. */
+    fun restoreIfNeeded(habitId: Long?) {
+        if (isStarted) return
+        if (habitId == null) startNew() else startEdit(habitId)
+    }
 
     fun startNew() {
+        isStarted = true
         editingId = null
         isLoading = false
         draft = HabitDraft()
     }
 
     fun startEdit(habitId: Long) {
+        isStarted = true
         editingId = habitId
         isLoading = true
         viewModelScope.launch {

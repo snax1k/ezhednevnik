@@ -109,6 +109,42 @@ class HabitRepositoryTest {
     }
 
     @Test
+    fun минусУбираетОтметкуАПоследняяУдаляетДень() {
+        runBlocking {
+            val english = idOf("Английский")
+            assertEquals(0, repository.uncheck(english, today))
+            assertNull(database.habitDao().getCheck(english, today))
+            // Ниже нуля не уходит
+            assertEquals(0, repository.uncheck(english, today))
+        }
+    }
+
+    @Test
+    fun прошлыйДеньОтмечаетсяСоСвоейЦелью() {
+        runBlocking {
+            val water = idOf("Пить воду")
+            val yesterday = today.minusDays(1)
+            repository.updateHabit(water, "Пить воду", HabitIcon.Water, 1, dailyTarget = 8, weekdays = HabitEntity.EVERY_DAY, today = today)
+            // Вчера цель была 6 и выполнена — больше не отмечается
+            assertEquals(6, repository.check(water, yesterday))
+            assertEquals(5, repository.uncheck(water, yesterday))
+            assertEquals(6, database.habitDao().getCheck(water, yesterday)!!.target)
+
+            // Позавчера отметок не было — день получает нынешнюю цель
+            assertEquals(1, repository.check(water, today.minusDays(2)))
+            assertEquals(8, database.habitDao().getCheck(water, today.minusDays(2))!!.target)
+        }
+    }
+
+    @Test
+    fun историяОтметокПоПорядку() {
+        runBlocking {
+            val water = idOf("Пить воду")
+            assertEquals(listOf(today.minusDays(1), today), repository.observeChecks(water).first().map { it.date })
+        }
+    }
+
+    @Test
     fun новаяПривычкаВстаётВКонецРяда() {
         runBlocking {
             repository.addHabit("Медитация", HabitIcon.Heart, colorIndex = 6, dailyTarget = 1, weekdays = HabitEntity.EVERY_DAY)

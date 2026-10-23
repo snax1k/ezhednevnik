@@ -12,6 +12,7 @@ import androidx.compose.material3.SnackbarHost
 import androidx.compose.material3.SnackbarHostState
 import androidx.compose.material3.SnackbarResult
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
@@ -41,6 +42,8 @@ import com.snax1k.chekki.ui.addtask.AddTaskViewModel
 import com.snax1k.chekki.ui.components.AboveFloatingButtons
 import com.snax1k.chekki.ui.group.GroupScreen
 import com.snax1k.chekki.ui.group.GroupViewModel
+import com.snax1k.chekki.ui.habit.HabitCardSheet
+import com.snax1k.chekki.ui.habit.HabitCardViewModel
 import com.snax1k.chekki.ui.habit.HabitEditorViewModel
 import com.snax1k.chekki.ui.habit.HabitSheet
 import com.snax1k.chekki.ui.main.MainScreen
@@ -84,6 +87,16 @@ fun ChekkiApp() {
     val openHabitSheet: (Long?) -> Unit = { habitId ->
         if (habitId == null) habitEditorViewModel.startNew() else habitEditorViewModel.startEdit(habitId)
         habitSheetFor = habitId ?: NEW_HABIT
+    }
+    // Карточка привычки по долгому нажатию на круг; null — закрыта
+    var habitCardFor by rememberSaveable { mutableStateOf<Long?>(null) }
+    val habitCardViewModel = viewModel { HabitCardViewModel(container.habitRepository, container.currentDate) }
+    // После выгрузки из памяти открытая панель или карточка вспоминаются, а их ViewModel — нет
+    LaunchedEffect(habitSheetFor) {
+        habitSheetFor?.let { habitEditorViewModel.restoreIfNeeded(it.takeIf { id -> id != NEW_HABIT }) }
+    }
+    LaunchedEffect(habitCardFor) {
+        habitCardFor?.let(habitCardViewModel::restoreIfNeeded)
     }
 
     // Плашка «Задача удалена · Отменить» и «Задача отложена на … · Отменить» внизу, поверх любого экрана
@@ -141,8 +154,10 @@ fun ChekkiApp() {
                     MainScreen(
                         state = state,
                         onTrackerClick = { tracker -> viewModel.checkHabit(tracker.habitId) },
-                        // Карточки привычки пока нет (шаг 2), долгое нажатие открывает изменение
-                        onTrackerLongClick = { tracker -> openHabitSheet(tracker.habitId) },
+                        onTrackerLongClick = { tracker ->
+                            habitCardViewModel.open(tracker.habitId)
+                            habitCardFor = tracker.habitId
+                        },
                         onAddHabitClick = { openHabitSheet(null) },
                         onGroupClick = { group -> backStack.add(GroupRoute(group)) },
                         onAddClick = { isAddTaskOpen = true }
@@ -201,6 +216,16 @@ fun ChekkiApp() {
 
     if (isAddTaskOpen) {
         AddTaskSheet(viewModel = addTaskViewModel, onDismiss = { isAddTaskOpen = false })
+    }
+    if (habitCardFor != null) {
+        HabitCardSheet(
+            viewModel = habitCardViewModel,
+            onDismiss = { habitCardFor = null },
+            onEdit = { habitId ->
+                habitCardFor = null
+                openHabitSheet(habitId)
+            }
+        )
     }
     if (habitSheetFor != null) {
         HabitSheet(

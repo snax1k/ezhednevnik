@@ -22,6 +22,12 @@ class HabitRepository(private val database: ChekkiDatabase) {
 
     suspend fun getHabit(id: Long): HabitEntity? = habitDao.getHabit(id)
 
+    /** Привычка для карточки; null — её удалили. */
+    fun observeHabit(id: Long): Flow<HabitEntity?> = habitDao.observeHabit(id)
+
+    /** Все отметки привычки по дням. */
+    fun observeChecks(habitId: Long): Flow<List<HabitCheckEntity>> = habitDao.observeChecks(habitId)
+
     /** Новая привычка в конце ряда. Возвращает её id. */
     suspend fun addHabit(
         title: String,
@@ -62,15 +68,25 @@ class HabitRepository(private val database: ChekkiDatabase) {
     }
 
     /**
-     * Ещё одна отметка за [date]. Больше цели не отмечается: возвращает число отметок после нажатия,
-     * а если цель уже достигнута — то же число, что было. null — привычки нет.
+     * Ещё одна отметка за [date] — сегодня или прошлый день. Больше цели не отмечается: возвращает число
+     * отметок после нажатия, а если цель уже достигнута — то же число, что было. null — привычки нет.
+     * У дня, где уже есть отметки, цель своя (какой была тогда), у нового дня — нынешняя цель привычки.
      */
     suspend fun check(habitId: Long, date: LocalDate): Int? = database.withTransaction {
         val habit = habitDao.getHabit(habitId) ?: return@withTransaction null
-        val current = habitDao.getCheck(habitId, date)?.count ?: 0
-        val count = minOf(current + 1, habit.dailyTarget)
-        habitDao.upsertCheck(HabitCheckEntity(habitId, date, count = count, target = habit.dailyTarget))
+        val existing = habitDao.getCheck(habitId, date)
+        val target = existing?.target ?: habit.dailyTarget
+        val count = minOf((existing?.count ?: 0) + 1, target)
+        habitDao.upsertCheck(HabitCheckEntity(habitId, date, count = count, target = target))
         count
+    }
+
+    /** Убирает одну отметку за [date]; последняя убранная удаляет строку дня. Возвращает, сколько осталось. */
+    suspend fun uncheck(habitId: Long, date: LocalDate): Int = database.withTransaction {
+        val existing = habitDao.getCheck(habitId, date) ?: return@withTransaction 0
+        val count = existing.count - 1
+        if (count > 0) habitDao.upsertCheck(existing.copy(count = count)) else habitDao.deleteCheck(habitId, date)
+        maxOf(count, 0)
     }
 
     /** Удаляет привычку вместе с отметками. Возвращает всё, что нужно для [restoreHabit]; null — привычки нет. */
