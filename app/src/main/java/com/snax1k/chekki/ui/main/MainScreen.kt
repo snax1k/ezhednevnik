@@ -49,6 +49,7 @@ import com.snax1k.chekki.ui.components.BottomFade
 import com.snax1k.chekki.ui.components.CardIconBox
 import com.snax1k.chekki.ui.components.CardProgressBar
 import com.snax1k.chekki.ui.components.FloatingButtonsAreaHeight
+import com.snax1k.chekki.ui.components.FloatingButtonsBottomPadding
 import com.snax1k.chekki.ui.components.FloatingTaskButtons
 import com.snax1k.chekki.ui.components.HighlightCard
 import com.snax1k.chekki.ui.components.ProgressCountText
@@ -110,7 +111,7 @@ fun MainScreen(
                 modifier = Modifier
                     .align(Alignment.BottomEnd)
                     .navigationBarsPadding()
-                    .padding(end = 16.dp, bottom = 24.dp)
+                    .padding(end = 16.dp, bottom = FloatingButtonsBottomPadding)
             )
         }
     }

@@ -12,7 +12,6 @@ import androidx.compose.material3.SnackbarHost
 import androidx.compose.material3.SnackbarHostState
 import androidx.compose.material3.SnackbarResult
 import androidx.compose.runtime.Composable
-import androidx.compose.runtime.CompositionLocalProvider
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
@@ -21,9 +20,7 @@ import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
-import androidx.compose.ui.layout.onSizeChanged
 import androidx.compose.ui.platform.LocalContext
-import androidx.compose.ui.platform.LocalDensity
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.unit.dp
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
@@ -40,7 +37,7 @@ import com.snax1k.chekki.data.DeletedTask
 import com.snax1k.chekki.data.MovedTask
 import com.snax1k.chekki.ui.addtask.AddTaskSheet
 import com.snax1k.chekki.ui.addtask.AddTaskViewModel
-import com.snax1k.chekki.ui.components.LocalFloatingButtonsLift
+import com.snax1k.chekki.ui.components.AboveFloatingButtons
 import com.snax1k.chekki.ui.group.GroupScreen
 import com.snax1k.chekki.ui.group.GroupViewModel
 import com.snax1k.chekki.ui.main.MainScreen
@@ -106,86 +103,79 @@ fun ChekkiApp() {
             container.taskRepository.moveTask(moved.taskId, moved.previousDate)
         }
     }
-    val density = LocalDensity.current
-    var snackbarHeight by remember { mutableStateOf(0.dp) }
 
     Box(Modifier.fillMaxSize()) {
-        // Пока видна плашка, плавающие кнопки поднимаются над ней
-        CompositionLocalProvider(
-            LocalFloatingButtonsLift provides if (snackbarHeight > 0.dp) snackbarHeight + 8.dp else 0.dp
-        ) {
-            NavDisplay(
-                backStack = backStack,
-                onBack = { backStack.removeLastOrNull() },
-                // Сохранение состояния экранов и своя ViewModel у каждого экрана в стеке:
-                // когда экран закрывают, его ViewModel удаляется
-                entryDecorators = listOf(
-                    rememberSaveableStateHolderNavEntryDecorator(),
-                    rememberViewModelStoreNavEntryDecorator()
-                ),
-                // Новый экран въезжает справа, назад — уезжает вправо
-                transitionSpec = { slideInHorizontally { it } togetherWith slideOutHorizontally { -it / 4 } },
-                popTransitionSpec = { slideInHorizontally { -it / 4 } togetherWith slideOutHorizontally { it } },
-                predictivePopTransitionSpec = { slideInHorizontally { -it / 4 } togetherWith slideOutHorizontally { it } },
-                entryProvider = entryProvider {
-                    entry<MainRoute> {
-                        val viewModel = viewModel { MainViewModel(container.taskRepository, container.currentDate) }
-                        val state by viewModel.uiState.collectAsStateWithLifecycle()
-                        MainScreen(
-                            state = state,
-                            onGroupClick = { group -> backStack.add(GroupRoute(group)) },
-                            onAddClick = { isAddTaskOpen = true }
-                        )
-                    }
-                    entry<GroupRoute> { route ->
-                        val viewModel = viewModel {
-                            GroupViewModel(route.group, container.taskRepository, container.currentDate)
-                        }
-                        val state by viewModel.uiState.collectAsStateWithLifecycle()
-                        GroupScreen(
-                            state = state,
-                            onBack = { backStack.removeLastOrNull() },
-                            onToggleDone = { task -> viewModel.toggleDone(task.id) },
-                            onTaskClick = { task -> backStack.add(TaskRoute(task.id)) },
-                            onPostpone = { task, date -> viewModel.postpone(task.id, date, showUndoPostpone) },
-                            onDelete = { task -> viewModel.delete(task.id, showUndoDelete) },
-                            onShowMore = viewModel::showMore,
-                            onAddClick = { isAddTaskOpen = true }
-                        )
-                    }
-                    entry<TaskRoute> { route ->
-                        val viewModel = viewModel {
-                            TaskViewModel(
-                                route.taskId,
-                                container.taskRepository,
-                                container.currentDate,
-                                container.reminderAccess
-                            )
-                        }
-                        TaskScreen(
-                            viewModel = viewModel,
-                            onBack = { backStack.removeLastOrNull() },
-                            onDeleted = { deleted ->
-                                backStack.removeLastOrNull()
-                                showUndoDelete(deleted)
-                            },
-                            // Отложенная задача уходит из группы, поэтому карточка закрывается, как при удалении
-                            onPostponed = { moved ->
-                                backStack.removeLastOrNull()
-                                showUndoPostpone(moved)
-                            }
-                        )
-                    }
+        NavDisplay(
+            backStack = backStack,
+            onBack = { backStack.removeLastOrNull() },
+            // Сохранение состояния экранов и своя ViewModel у каждого экрана в стеке:
+            // когда экран закрывают, его ViewModel удаляется
+            entryDecorators = listOf(
+                rememberSaveableStateHolderNavEntryDecorator(),
+                rememberViewModelStoreNavEntryDecorator()
+            ),
+            // Новый экран въезжает справа, назад — уезжает вправо
+            transitionSpec = { slideInHorizontally { it } togetherWith slideOutHorizontally { -it / 4 } },
+            popTransitionSpec = { slideInHorizontally { -it / 4 } togetherWith slideOutHorizontally { it } },
+            predictivePopTransitionSpec = { slideInHorizontally { -it / 4 } togetherWith slideOutHorizontally { it } },
+            entryProvider = entryProvider {
+                entry<MainRoute> {
+                    val viewModel = viewModel { MainViewModel(container.taskRepository, container.currentDate) }
+                    val state by viewModel.uiState.collectAsStateWithLifecycle()
+                    MainScreen(
+                        state = state,
+                        onGroupClick = { group -> backStack.add(GroupRoute(group)) },
+                        onAddClick = { isAddTaskOpen = true }
+                    )
                 }
-            )
-        }
+                entry<GroupRoute> { route ->
+                    val viewModel = viewModel {
+                        GroupViewModel(route.group, container.taskRepository, container.currentDate)
+                    }
+                    val state by viewModel.uiState.collectAsStateWithLifecycle()
+                    GroupScreen(
+                        state = state,
+                        onBack = { backStack.removeLastOrNull() },
+                        onToggleDone = { task -> viewModel.toggleDone(task.id) },
+                        onTaskClick = { task -> backStack.add(TaskRoute(task.id)) },
+                        onPostpone = { task, date -> viewModel.postpone(task.id, date, showUndoPostpone) },
+                        onDelete = { task -> viewModel.delete(task.id, showUndoDelete) },
+                        onShowMore = viewModel::showMore,
+                        onAddClick = { isAddTaskOpen = true }
+                    )
+                }
+                entry<TaskRoute> { route ->
+                    val viewModel = viewModel {
+                        TaskViewModel(
+                            route.taskId,
+                            container.taskRepository,
+                            container.currentDate,
+                            container.reminderAccess
+                        )
+                    }
+                    TaskScreen(
+                        viewModel = viewModel,
+                        onBack = { backStack.removeLastOrNull() },
+                        onDeleted = { deleted ->
+                            backStack.removeLastOrNull()
+                            showUndoDelete(deleted)
+                        },
+                        // Отложенная задача уходит из группы, поэтому карточка закрывается, как при удалении
+                        onPostponed = { moved ->
+                            backStack.removeLastOrNull()
+                            showUndoPostpone(moved)
+                        }
+                    )
+                }
+            }
+        )
         SnackbarHost(
             hostState = snackbarHostState,
+            // Над плавающими кнопками: они не сдвигаются, и после исчезновения плашки под пальцем не окажется «+»
             modifier = Modifier
                 .align(Alignment.BottomCenter)
                 .navigationBarsPadding()
-                .padding(16.dp)
-                .onSizeChanged { snackbarHeight = with(density) { it.height.toDp() } }
+                .padding(start = 16.dp, end = 16.dp, bottom = AboveFloatingButtons)
         )
     }
 
