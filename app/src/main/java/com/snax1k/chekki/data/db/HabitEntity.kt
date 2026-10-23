@@ -9,6 +9,7 @@ import androidx.room.PrimaryKey
 import java.time.DayOfWeek
 import java.time.Instant
 import java.time.LocalDate
+import java.time.LocalTime
 
 /** Привычка: круг наверху главного экрана. */
 @Entity(tableName = "habits")
@@ -94,3 +95,22 @@ enum class HabitIcon(val code: Int) {
         fun fromCode(code: Int): HabitIcon = entries.firstOrNull { it.code == code } ?: Sprout
     }
 }
+
+/** Время напоминания привычки; у привычки их может быть несколько в день. */
+@Entity(
+    tableName = "habit_reminders",
+    primaryKeys = ["habit_id", "time"],
+    foreignKeys = [
+        // Удалили привычку — удаляются и её напоминания
+        ForeignKey(
+            entity = HabitEntity::class,
+            parentColumns = ["id"],
+            childColumns = ["habit_id"],
+            onDelete = ForeignKey.CASCADE
+        )
+    ]
+)
+data class HabitReminderEntity(
+    @ColumnInfo(name = "habit_id") val habitId: Long,
+    val time: LocalTime
+)

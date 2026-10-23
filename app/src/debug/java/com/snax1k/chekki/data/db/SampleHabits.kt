@@ -6,9 +6,10 @@ import androidx.sqlite.db.SupportSQLiteDatabase
 import java.time.DayOfWeek
 import java.time.Instant
 import java.time.LocalDate
+import java.time.LocalTime
 
 /**
- * Тестовые привычки для отладочной сборки, как круги в макете: «Вода 2/6» и другие.
+ * Тестовые привычки для отладочной сборки, как круги в макете: «Вода 2/6» (с напоминаниями) и другие.
  * Пять привычек на каждый день — чтобы ряд наверху прокручивался, и одна только на выходные.
  * В выпускной сборке вместо этого файла пустой из src/release.
  */
@@ -53,6 +54,15 @@ internal object SampleHabits {
         habit("Растяжка", HabitIcon.Stretch, colorIndex = 3, target = 1)
         habit("Витамины", HabitIcon.Pill, colorIndex = 4, target = 1)
         habit("Бассейн", HabitIcon.Run, colorIndex = 5, target = 1, weekdays = DayOfWeek.SATURDAY.bit or DayOfWeek.SUNDAY.bit)
+
+        // Воде — напоминания четыре раза в день: будильник встаёт на ближайшее
+        listOf(LocalTime.of(10, 0), LocalTime.of(13, 0), LocalTime.of(16, 0), LocalTime.of(19, 0)).forEach { time ->
+            db.insert(
+                "habit_reminders",
+                SQLiteDatabase.CONFLICT_ABORT,
+                contentValuesOf("habit_id" to water, "time" to converters.localTimeToMinutes(time))
+            )
+        }
 
         check(water, today, count = 2, target = 6)
         check(english, today, count = 1, target = 2)

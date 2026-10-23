@@ -8,6 +8,7 @@ import org.junit.Assert.assertNull
 import org.junit.Assert.assertTrue
 import org.junit.Test
 import java.time.DayOfWeek
+import java.time.LocalTime
 
 class HabitDraftTest {
 
@@ -32,6 +33,27 @@ class HabitDraftTest {
         val withTuesday = mondayOnly.withDayToggled(DayOfWeek.TUESDAY)
         assertTrue(withTuesday.isOn(DayOfWeek.TUESDAY))
         assertFalse(withTuesday.withDayToggled(DayOfWeek.MONDAY).isOn(DayOfWeek.MONDAY))
+    }
+
+    @Test
+    fun временаПоПорядкуБезПовторов() {
+        val draft = HabitDraft()
+            .withReminderAdded(LocalTime.of(19, 0))
+            .withReminderAdded(LocalTime.of(9, 0))
+            .withReminderAdded(LocalTime.of(19, 0))
+        assertEquals(listOf(LocalTime.of(9, 0), LocalTime.of(19, 0)), draft.reminderTimes)
+        // Изменили 19:00 на 9:00 — совпавшие схлопнулись
+        assertEquals(listOf(LocalTime.of(9, 0)), draft.withReminderChanged(LocalTime.of(19, 0), LocalTime.of(9, 0)).reminderTimes)
+        assertEquals(listOf(LocalTime.of(19, 0)), draft.withReminderRemoved(LocalTime.of(9, 0)).reminderTimes)
+    }
+
+    @Test
+    fun распределениеЗаменяетВремена() {
+        val draft = HabitDraft(dailyTarget = 3, reminderTimes = listOf(LocalTime.of(7, 0)))
+        assertEquals(
+            listOf(LocalTime.of(9, 0), LocalTime.of(15, 0), LocalTime.of(21, 0)),
+            draft.withRemindersDistributed().reminderTimes
+        )
     }
 
     @Test

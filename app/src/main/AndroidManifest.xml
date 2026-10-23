@@ -37,6 +37,11 @@
             android:name=".reminders.ReminderReceiver"
             android:exported="false" />
 
+        <!-- Будильник привычки и кнопка «Отметить» в её уведомлении -->
+        <receiver
+            android:name=".reminders.HabitReminderReceiver"
+            android:exported="false" />
+
         <!-- Ставит будильники заново после перезагрузки, смены времени, обновления приложения -->
         <receiver
             android:name=".reminders.RescheduleReceiver"

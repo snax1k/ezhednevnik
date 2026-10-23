@@ -6,7 +6,9 @@ import com.snax1k.chekki.data.HabitRepository
 import com.snax1k.chekki.data.TaskRepository
 import com.snax1k.chekki.data.currentDateFlow
 import com.snax1k.chekki.data.db.ChekkiDatabase
+import com.snax1k.chekki.reminders.AlarmHabitReminderScheduler
 import com.snax1k.chekki.reminders.AlarmReminderScheduler
+import com.snax1k.chekki.reminders.HabitNotifications
 import com.snax1k.chekki.reminders.ReminderAccess
 import com.snax1k.chekki.reminders.ReminderScheduler
 import com.snax1k.chekki.reminders.TaskNotifications
@@ -23,9 +25,13 @@ class ChekkiApplication : Application() {
     override fun onCreate() {
         super.onCreate()
         TaskNotifications.createChannels(this)
+        HabitNotifications.createChannel(this)
         // Будильники могли пропасть (например, после очистки данных или если система их сбросила) —
         // при каждом запуске ставим их заново, это быстро
-        container.applicationScope.launch { container.taskRepository.rescheduleAllReminders() }
+        container.applicationScope.launch {
+            container.taskRepository.rescheduleAllReminders()
+            container.habitRepository.rescheduleAllReminders()
+        }
     }
 }
 
@@ -40,7 +46,7 @@ class AppContainer(context: Context) {
     val reminderScheduler: ReminderScheduler by lazy { AlarmReminderScheduler(appContext) }
     val reminderAccess: ReminderAccess by lazy { ReminderAccess(appContext) }
     val taskRepository: TaskRepository by lazy { TaskRepository(database, reminderScheduler) }
-    val habitRepository: HabitRepository by lazy { HabitRepository(database) }
+    val habitRepository: HabitRepository by lazy { HabitRepository(database, AlarmHabitReminderScheduler(appContext)) }
 
     /** Сегодняшняя дата, меняется в полночь. */
     val currentDate: Flow<LocalDate> = currentDateFlow()

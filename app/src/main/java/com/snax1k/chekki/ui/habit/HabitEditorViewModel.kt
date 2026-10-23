@@ -8,15 +8,20 @@ import androidx.lifecycle.viewModelScope
 import com.snax1k.chekki.data.DeletedHabit
 import com.snax1k.chekki.data.HabitRepository
 import com.snax1k.chekki.data.db.HabitIcon
+import com.snax1k.chekki.reminders.ReminderAccess
 import kotlinx.coroutines.launch
 import java.time.DayOfWeek
 import java.time.LocalDate
+import java.time.LocalTime
 
 /**
  * Панель привычки: новая или изменение существующей. Живёт, пока открыто приложение;
  * [startNew] и [startEdit] каждый раз начинают заново, поворот экрана черновик не теряет.
  */
-class HabitEditorViewModel(private val repository: HabitRepository) : ViewModel() {
+class HabitEditorViewModel(
+    private val repository: HabitRepository,
+    private val reminderAccess: ReminderAccess
+) : ViewModel() {
 
     // Состояние Compose, а не StateFlow: поле ввода обновляется сразу, и курсор не прыгает при наборе
     var draft by mutableStateOf(HabitDraft())
@@ -51,7 +56,7 @@ class HabitEditorViewModel(private val repository: HabitRepository) : ViewModel(
         editingId = habitId
         isLoading = true
         viewModelScope.launch {
-            repository.getHabit(habitId)?.let { draft = HabitDraft.of(it) }
+            repository.getHabit(habitId)?.let { draft = HabitDraft.of(it, repository.getReminderTimes(habitId)) }
             isLoading = false
         }
     }
@@ -76,6 +81,30 @@ class HabitEditorViewModel(private val repository: HabitRepository) : ViewModel(
         draft = draft.withDayToggled(day)
     }
 
+    fun onReminderAdd(time: LocalTime) {
+        draft = draft.withReminderAdded(time)
+    }
+
+    fun onReminderChange(old: LocalTime, new: LocalTime) {
+        draft = draft.withReminderChanged(old, new)
+    }
+
+    fun onReminderRemove(time: LocalTime) {
+        draft = draft.withReminderRemoved(time)
+    }
+
+    fun onRemindersDistribute() {
+        draft = draft.withRemindersDistributed()
+    }
+
+    /** Нужно ли перед сохранением объяснить про точные будильники — как у задач, один раз на приложение. */
+    fun needsExactAlarmExplanation(): Boolean =
+        draft.reminderTimes.isNotEmpty() && !reminderAccess.exactAlarmExplained && !reminderAccess.canScheduleExactAlarms()
+
+    fun onExactAlarmExplained() {
+        reminderAccess.exactAlarmExplained = true
+    }
+
     /** Сохраняет привычку и вызывает [onSaved]. Повторное нажатие во время сохранения игнорируется. */
     fun save(onSaved: () -> Unit) {
         val current = draft
@@ -90,7 +119,8 @@ class HabitEditorViewModel(private val repository: HabitRepository) : ViewModel(
                         icon = current.icon,
                         colorIndex = current.colorIndex,
                         dailyTarget = current.dailyTarget,
-                        weekdays = current.weekdays
+                        weekdays = current.weekdays,
+                        reminderTimes = current.reminderTimes
                     )
                 } else {
                     repository.updateHabit(
@@ -100,6 +130,7 @@ class HabitEditorViewModel(private val repository: HabitRepository) : ViewModel(
                         colorIndex = current.colorIndex,
                         dailyTarget = current.dailyTarget,
                         weekdays = current.weekdays,
+                        reminderTimes = current.reminderTimes,
                         today = LocalDate.now()
                     )
                 }

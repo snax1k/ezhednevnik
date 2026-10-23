@@ -79,14 +79,14 @@ fun TaskDatePickerDialog(
     }
 }
 
-/** Циферблат на 24 часа: кнопки «Весь день» (без времени) и «Готово». */
+/** Циферблат на 24 часа: кнопки «Весь день» (без времени) и «Готово». [onAllDay] null — вместо «Весь день» «Отмена». */
 // TimePicker в Material 3 1.4 всё ещё помечен экспериментальным
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
 fun TaskTimePickerDialog(
     initialTime: LocalTime,
     onDismiss: () -> Unit,
-    onAllDay: () -> Unit,
+    onAllDay: (() -> Unit)?,
     onDone: (LocalTime) -> Unit
 ) {
     val state = rememberTimePickerState(
@@ -109,7 +109,11 @@ fun TaskTimePickerDialog(
             },
             title = { Text(stringResource(R.string.time_picker_title), style = MaterialTheme.typography.labelLarge) },
             dismissButton = {
-                TextButton(onClick = onAllDay) { Text(stringResource(R.string.task_all_day)) }
+                if (onAllDay != null) {
+                    TextButton(onClick = onAllDay) { Text(stringResource(R.string.task_all_day)) }
+                } else {
+                    TextButton(onClick = onDismiss) { Text(stringResource(R.string.action_cancel)) }
+                }
             },
             containerColor = colorScheme.surfaceContainerHigh
         ) {

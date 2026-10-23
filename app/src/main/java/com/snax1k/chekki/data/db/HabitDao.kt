@@ -6,6 +6,7 @@ import androidx.room.Query
 import androidx.room.Upsert
 import kotlinx.coroutines.flow.Flow
 import java.time.LocalDate
+import java.time.LocalTime
 
 @Dao
 interface HabitDao {
@@ -74,7 +75,20 @@ interface HabitDao {
     @Insert
     suspend fun insertChecks(checks: List<HabitCheckEntity>)
 
-    /** Удаляет привычку; её отметки удаляются вместе с ней. */
+    @Query("SELECT time FROM habit_reminders WHERE habit_id = :habitId ORDER BY time")
+    suspend fun getReminderTimes(habitId: Long): List<LocalTime>
+
+    /** Привычки, у которых есть напоминания: им нужны будильники. */
+    @Query("SELECT DISTINCT habit_id FROM habit_reminders")
+    suspend fun getHabitIdsWithReminders(): List<Long>
+
+    @Query("DELETE FROM habit_reminders WHERE habit_id = :habitId")
+    suspend fun deleteReminders(habitId: Long)
+
+    @Insert
+    suspend fun insertReminders(reminders: List<HabitReminderEntity>)
+
+    /** Удаляет привычку; её отметки и напоминания удаляются вместе с ней. */
     @Query("DELETE FROM habits WHERE id = :id")
     suspend fun deleteHabit(id: Long)
 }

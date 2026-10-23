@@ -8,6 +8,7 @@ import com.snax1k.chekki.data.db.HabitEntity
 import com.snax1k.chekki.data.db.HabitIcon
 import com.snax1k.chekki.data.db.InitialDataCallback
 import com.snax1k.chekki.data.db.bit
+import com.snax1k.chekki.reminders.HabitReminderScheduler
 import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.runBlocking
 import org.junit.After
@@ -17,8 +18,12 @@ import org.junit.Assert.assertTrue
 import org.junit.Before
 import org.junit.Test
 import org.junit.runner.RunWith
+import java.time.Clock
 import java.time.DayOfWeek
+import java.time.Instant
 import java.time.LocalDate
+import java.time.LocalTime
+import java.time.ZoneOffset
 
 /**
  * Привычки на устройстве: база в памяти с тестовыми привычками отладочной сборки.
@@ -141,6 +146,103 @@ class HabitRepositoryTest {
         runBlocking {
             val water = idOf("Пить воду")
             assertEquals(listOf(today.minusDays(1), today), repository.observeChecks(water).first().map { it.date })
+        }
+    }
+
+    /** Записывает, на какое время репозиторий ставил будильник каждой привычки и что убирал. */
+    private class RecordingScheduler : HabitReminderScheduler {
+        val triggers = mutableMapOf<Long, Instant?>()
+        val dismissed = mutableListOf<Long>()
+        val cancelled = mutableListOf<Long>()
+        override fun update(habitId: Long, trigger: Instant?) {
+            triggers[habitId] = trigger
+        }
+        override fun cancel(habitId: Long) {
+            cancelled += habitId
+        }
+        override fun dismiss(habitId: Long) {
+            dismissed += habitId
+        }
+    }
+
+    /** Репозиторий с часами, которые всегда показывают [time] сегодняшнего дня (UTC). */
+    private fun repositoryAt(time: LocalTime, scheduler: HabitReminderScheduler) =
+        HabitRepository(database, scheduler, Clock.fixed(today.atTime(time).toInstant(ZoneOffset.UTC), ZoneOffset.UTC))
+
+    private fun at(date: LocalDate, hour: Int) = date.atTime(hour, 0).toInstant(ZoneOffset.UTC)
+
+    @Test
+    fun будильникНаБлижайшееНапоминание() {
+        runBlocking {
+            val scheduler = RecordingScheduler()
+            val repository = repositoryAt(LocalTime.of(11, 0), scheduler)
+            val water = idOf("Пить воду")
+            repository.rescheduleAllReminders()
+            // У воды напоминания в 10, 13, 16 и 19 — в 11:00 ближайшее 13:00
+            assertEquals(mapOf(water to at(today, 13)), scheduler.triggers)
+        }
+    }
+
+    @Test
+    fun набраннаяЦельПереноситНапоминаниеНаЗавтраИУбираетУведомление() {
+        runBlocking {
+            val scheduler = RecordingScheduler()
+            val repository = repositoryAt(LocalTime.of(11, 0), scheduler)
+            val water = idOf("Пить воду")
+            repeat(4) { repository.check(water, today) }
+            assertEquals(at(today.plusDays(1), 10), scheduler.triggers[water])
+            assertEquals(listOf(water), scheduler.dismissed)
+
+            // Убрали одну отметку — сегодняшние напоминания вернулись
+            repository.uncheck(water, today)
+            assertEquals(at(today, 13), scheduler.triggers[water])
+        }
+    }
+
+    @Test
+    fun сработавшийБудильникПоказываетИСтавитСледующий() {
+        runBlocking {
+            val scheduler = RecordingScheduler()
+            val repository = repositoryAt(LocalTime.of(13, 0), scheduler)
+            val water = idOf("Пить воду")
+            val shown = repository.reminderToShow(water, at(today, 13))!!
+            assertEquals("Пить воду", shown.first.title)
+            assertEquals(2, shown.second)
+            assertEquals(at(today, 16), scheduler.triggers[water])
+
+            // Время убрали из напоминаний, а старый будильник успел сработать — молчим
+            repository.updateHabit(
+                water, "Пить воду", HabitIcon.Water, 1, dailyTarget = 6, weekdays = HabitEntity.EVERY_DAY,
+                reminderTimes = listOf(LocalTime.of(19, 0)), today = today
+            )
+            assertNull(repository.reminderToShow(water, at(today, 16)))
+            assertEquals(at(today, 19), scheduler.triggers[water])
+        }
+    }
+
+    @Test
+    fun уведомлениеНеПриходитПриНабраннойЦели() {
+        runBlocking {
+            val repository = repositoryAt(LocalTime.of(16, 0), RecordingScheduler())
+            val water = idOf("Пить воду")
+            repeat(4) { repository.check(water, today) }
+            assertNull(repository.reminderToShow(water, at(today, 16)))
+        }
+    }
+
+    @Test
+    fun удалениеСнимаетБудильникАОтменаВозвращаетНапоминания() {
+        runBlocking {
+            val scheduler = RecordingScheduler()
+            val repository = repositoryAt(LocalTime.of(11, 0), scheduler)
+            val water = idOf("Пить воду")
+            val deleted = repository.deleteHabit(water)!!
+            assertEquals(listOf(water), scheduler.cancelled)
+            assertTrue(repository.getReminderTimes(water).isEmpty())
+
+            repository.restoreHabit(deleted)
+            assertEquals(4, repository.getReminderTimes(water).size)
+            assertEquals(at(today, 13), scheduler.triggers[water])
         }
     }
 

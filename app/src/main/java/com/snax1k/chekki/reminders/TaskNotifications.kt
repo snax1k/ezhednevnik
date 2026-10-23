@@ -77,8 +77,8 @@ object TaskNotifications {
             ?: dayAndTime
     }
 
-    /** Нажатие открывает приложение так же, как значок на рабочем столе. */
-    private fun openAppIntent(context: Context): PendingIntent? {
+    /** Нажатие открывает приложение так же, как значок на рабочем столе. Общее с уведомлениями привычек. */
+    internal fun openAppIntent(context: Context): PendingIntent? {
         val launchIntent = context.packageManager.getLaunchIntentForPackage(context.packageName) ?: return null
         launchIntent.addFlags(Intent.FLAG_ACTIVITY_RESET_TASK_IF_NEEDED)
         return PendingIntent.getActivity(

@@ -194,7 +194,8 @@ private fun AddTaskContent(
     var subtaskToFocus by remember { mutableStateOf<Long?>(null) }
     val date = draft.dateFor(today)
 
-    Column {
+    // Не выше 85% окна: иначе при добавлении подзадач панель упирается в верх и сама прячется
+    Column(Modifier.heightIn(max = sheetContentMaxHeight())) {
         // Форма прокручивается, если вместе с клавиатурой не помещается; кнопка всегда видна внизу
         Column(
             Modifier

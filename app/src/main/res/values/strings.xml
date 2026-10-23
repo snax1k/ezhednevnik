@@ -56,6 +56,11 @@
     <!-- Уведомления -->
     <string name="notification_channel_reminders">Напоминания о задачах</string>
     <string name="notification_channel_reminders_description">Напоминания в выбранное для задачи время</string>
+    <string name="notification_channel_habits">Напоминания о привычках</string>
+    <string name="notification_channel_habits_description">Напоминания в выбранное для привычки время</string>
+    <!-- Уведомление привычки: «2 из 6 сегодня» -->
+    <string name="habit_notification_progress">%1$d из %2$d сегодня</string>
+    <string name="habit_notification_check">Отметить</string>
     <!-- «Сегодня в 19:00» -->
     <string name="notification_when_time">%1$s в %2$s</string>
     <!-- «Завтра, весь день» -->
@@ -169,6 +174,12 @@
     <string name="habit_days_weekdays">По будням</string>
     <string name="habit_days_weekend">По выходным</string>
     <string name="habit_save">Сохранить</string>
+    <string name="habit_reminders">Напоминания</string>
+    <string name="habit_add_time">Добавить время</string>
+    <string name="habit_distribute">Распределить по дню</string>
+    <!-- Для TalkBack: «Изменить время 09:00», «Убрать время 09:00» -->
+    <string name="habit_change_time">Изменить время %1$s</string>
+    <string name="habit_remove_time">Убрать время %1$s</string>
     <string name="habit_delete">Удалить привычку</string>
     <string name="habit_deleted">Привычка удалена</string>
     <!-- Действия круга привычки для TalkBack -->

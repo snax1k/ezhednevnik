@@ -6,16 +6,17 @@ import androidx.room.Room
 import androidx.room.RoomDatabase
 import androidx.room.TypeConverters
 
-/** База задач и привычек. Версия 2 — добавлены привычки и их отметки. */
+/** База задач и привычек. Версия 2 — привычки и их отметки, версия 3 — напоминания привычек. */
 @Database(
     entities = [
         CategoryEntity::class,
         TaskEntity::class,
         SubtaskEntity::class,
         HabitEntity::class,
-        HabitCheckEntity::class
+        HabitCheckEntity::class,
+        HabitReminderEntity::class
     ],
-    version = 2,
+    version = 3,
     exportSchema = true
 )
 @TypeConverters(Converters::class)

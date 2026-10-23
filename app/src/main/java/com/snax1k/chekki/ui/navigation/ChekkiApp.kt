@@ -83,7 +83,7 @@ fun ChekkiApp() {
     }
     // Панель привычки: какую привычку меняем (NEW_HABIT — новая), null — панель закрыта
     var habitSheetFor by rememberSaveable { mutableStateOf<Long?>(null) }
-    val habitEditorViewModel = viewModel { HabitEditorViewModel(container.habitRepository) }
+    val habitEditorViewModel = viewModel { HabitEditorViewModel(container.habitRepository, container.reminderAccess) }
     val openHabitSheet: (Long?) -> Unit = { habitId ->
         if (habitId == null) habitEditorViewModel.startNew() else habitEditorViewModel.startEdit(habitId)
         habitSheetFor = habitId ?: NEW_HABIT

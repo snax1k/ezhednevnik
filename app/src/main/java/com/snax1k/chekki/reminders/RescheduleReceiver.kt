@@ -8,7 +8,7 @@ import com.snax1k.chekki.ChekkiApplication
 import kotlinx.coroutines.launch
 
 /**
- * Ставит все будильники напоминаний заново. Android стирает их при выключении телефона,
+ * Ставит все будильники напоминаний задач и привычек заново. Android стирает их при выключении телефона,
  * а при смене времени или часового пояса их время нужно пересчитать.
  */
 class RescheduleReceiver : BroadcastReceiver() {
@@ -20,6 +20,7 @@ class RescheduleReceiver : BroadcastReceiver() {
         container.applicationScope.launch {
             try {
                 container.taskRepository.rescheduleAllReminders()
+                container.habitRepository.rescheduleAllReminders()
             } finally {
                 pendingResult.finish()
             }

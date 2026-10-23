@@ -41,6 +41,8 @@ import androidx.compose.ui.graphics.RectangleShape
 import androidx.compose.ui.graphics.SolidColor
 import androidx.compose.ui.graphics.vector.ImageVector
 import androidx.compose.ui.platform.LocalContext
+import androidx.compose.ui.platform.LocalDensity
+import androidx.compose.ui.platform.LocalWindowInfo
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.semantics.Role
 import androidx.compose.ui.semantics.contentDescription
@@ -50,6 +52,7 @@ import androidx.compose.ui.text.input.ImeAction
 import androidx.compose.ui.text.input.KeyboardCapitalization
 import androidx.compose.ui.text.input.TextFieldValue
 import androidx.compose.ui.text.style.TextOverflow
+import androidx.compose.ui.unit.Dp
 import androidx.compose.ui.unit.dp
 import androidx.lifecycle.Lifecycle
 import androidx.lifecycle.compose.LifecycleEventEffect
@@ -508,4 +511,15 @@ internal fun AddSubtaskButton(
             color = MaterialTheme.colorScheme.primary
         )
     }
+}
+
+/**
+ * Наибольшая высота содержимого нижней панели — 85% окна. В Material 3 1.4 панель, которая при изменении
+ * содержимого дорастает до верха экрана, сама уходит вниз, а её невидимое окно остаётся и перехватывает
+ * нажатия. С этим ограничением панель до верха не дорастает, лишнее прокручивается внутри.
+ */
+@Composable
+internal fun sheetContentMaxHeight(): Dp {
+    val windowHeightPx = LocalWindowInfo.current.containerSize.height
+    return with(LocalDensity.current) { windowHeightPx.toDp() } * 0.85f
 }
