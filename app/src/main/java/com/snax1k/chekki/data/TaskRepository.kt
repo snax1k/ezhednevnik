@@ -3,6 +3,7 @@ package com.snax1k.chekki.data
 import androidx.room.withTransaction
 import com.snax1k.chekki.data.db.CategoryEntity
 import com.snax1k.chekki.data.db.CategoryIcon
+import com.snax1k.chekki.data.db.CalendarTaskMark
 import com.snax1k.chekki.data.db.CategorySummary
 import com.snax1k.chekki.data.db.ChekkiDatabase
 import com.snax1k.chekki.data.db.GroupCounts
@@ -13,6 +14,7 @@ import com.snax1k.chekki.data.db.TaskPriority
 import com.snax1k.chekki.data.db.TaskWithDetails
 import com.snax1k.chekki.reminders.ReminderScheduler
 import kotlinx.coroutines.flow.Flow
+import kotlinx.coroutines.flow.combine
 import kotlinx.coroutines.flow.map
 import java.time.Instant
 import java.time.LocalDate
@@ -257,9 +259,21 @@ class TaskRepository(
     /** Сколько всего выполненных задач: по нему экран решает, показывать ли «Показать ещё». */
     fun observeDoneCount(): Flow<Int> = taskDao.observeDoneCount()
 
-    /** Точки календаря за дни с [from] по [to]. */
-    fun observeCalendarMarks(from: LocalDate, to: LocalDate): Flow<Map<LocalDate, DayMarks>> =
-        taskDao.observeCalendarMarks(from, to).map(::calendarMarks)
+    /** Точки календаря за дни с [from] по [to], вместе с будущими повторами (считая от [today]). */
+    fun observeCalendarMarks(from: LocalDate, to: LocalDate, today: LocalDate): Flow<Map<LocalDate, DayMarks>> =
+        combine(taskDao.observeCalendarMarks(from, to), taskDao.observeOpenRepeatingTasks()) { tasks, repeating ->
+            val repeats = repeating.flatMap { details ->
+                repeatDates(details.task.repeat, details.task.date!!, from, to, today)
+                    .map { date -> CalendarTaskMark(date, isDone = false, categoryColorIndex = details.categoryColorIndex) }
+            }
+            calendarMarks(tasks + repeats)
+        }
+
+    /** Будущие повторы на день [date]: задачи, чей повтор придётся на этот день (считая от [today]). */
+    fun observeRepeatsOn(date: LocalDate, today: LocalDate): Flow<List<TaskWithDetails>> =
+        taskDao.observeOpenRepeatingTasks().map { repeating ->
+            repeating.filter { details -> date in repeatDates(details.task.repeat, details.task.date!!, date, date, today) }
+        }
 
     /** Число невыполненных задач по группам главного экрана для дня [today]. */
     fun observeGroupCounts(today: LocalDate): Flow<GroupCounts> {

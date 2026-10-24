@@ -1,6 +1,7 @@
 package com.snax1k.chekki.data
 
 import com.snax1k.chekki.data.db.CalendarTaskMark
+import com.snax1k.chekki.data.db.RepeatRule
 import java.time.DayOfWeek
 import java.time.LocalDate
 import java.time.YearMonth
@@ -26,6 +27,26 @@ fun calendarMarks(tasks: List<CalendarTaskMark>): Map<LocalDate, DayMarks> =
             allDone = open.isEmpty()
         )
     }
+
+/**
+ * Будущие повторы задачи с датой [date] по правилу [rule] в пределах [from]..[to]: та же цепочка, что получится,
+ * если выполнять задачу в срок, — каждая следующая дата считается от предыдущей и не раньше [today]
+ * (как у копии, которую создаёт выполнение). Сама [date] в ответ не входит. В базу повторы не пишутся.
+ */
+fun repeatDates(rule: RepeatRule, date: LocalDate, from: LocalDate, to: LocalDate, today: LocalDate): List<LocalDate> {
+    val dates = mutableListOf<LocalDate>()
+    var current = date
+    // Ежедневная задача за три месяца — около сотни дат; предел на случай ошибки в правиле
+    repeat(MAX_REPEAT_STEPS) {
+        val next = rule.nextOccurrence(after = current, notBefore = today) ?: return dates
+        if (next > to) return dates
+        if (next >= from) dates += next
+        current = next
+    }
+    return dates
+}
+
+private const val MAX_REPEAT_STEPS = 1000
 
 /**
  * Дни сетки месяца: всегда шесть недель по семь дней, с понедельника, чтобы высота сетки не прыгала

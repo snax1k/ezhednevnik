@@ -195,6 +195,10 @@
     <!-- Для TalkBack у числа в сетке: «24 октября, есть задачи» -->
     <string name="calendar_day_has_tasks">есть задачи</string>
     <string name="calendar_day_all_done">всё выполнено</string>
+    <!-- Будущий повтор в списке дня: задачи ещё нет, она появится, когда выполнят предыдущую -->
+    <string name="calendar_repeat_label">· повтор</string>
+    <string name="calendar_repeat_description">Повтор: %1$s</string>
+    <string name="calendar_open_task">Открыть задачу</string>
     <plurals name="calendar_tasks">
         <item quantity="one">%d задача</item>
         <item quantity="few">%d задачи</item>

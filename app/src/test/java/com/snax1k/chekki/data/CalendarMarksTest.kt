@@ -1,6 +1,8 @@
 package com.snax1k.chekki.data
 
 import com.snax1k.chekki.data.db.CalendarTaskMark
+import com.snax1k.chekki.data.db.RepeatRule
+import com.snax1k.chekki.data.db.RepeatUnit
 import org.junit.Assert.assertEquals
 import org.junit.Assert.assertFalse
 import org.junit.Assert.assertTrue
@@ -59,5 +61,40 @@ class CalendarMarksTest {
     fun месяцСПонедельникаНачинаетсяСПервогоЧисла() {
         // 1 июня 2026 — понедельник
         assertEquals(LocalDate.of(2026, 6, 1), monthGrid(YearMonth.of(2026, 6)).first())
+    }
+
+    private val monday = LocalDate.of(2026, 10, 26)
+
+    @Test
+    fun еженедельныйПовторВПределахПериода() {
+        val weekly = RepeatRule(RepeatUnit.Week, every = 1, weekdays = 0)
+        assertEquals(
+            listOf(monday.plusWeeks(1), monday.plusWeeks(2), monday.plusWeeks(3)),
+            repeatDates(weekly, monday, from = monday, to = monday.plusWeeks(3), today = monday.minusDays(2))
+        )
+    }
+
+    @Test
+    fun повторыДоНачалаПериодаНеВходят() {
+        val daily = RepeatRule(RepeatUnit.Day, every = 1, weekdays = 0)
+        val from = monday.plusDays(10)
+        val dates = repeatDates(daily, monday, from = from, to = from.plusDays(2), today = monday)
+        assertEquals(listOf(from, from.plusDays(1), from.plusDays(2)), dates)
+    }
+
+    @Test
+    fun просроченнаяЗадачаПовторяетсяНеРаньшеСегодня() {
+        // Ежедневная задача с понедельника не выполнена, сегодня четверг: следующий повтор — сегодня, а не вторник
+        val daily = RepeatRule(RepeatUnit.Day, every = 1, weekdays = 0)
+        val thursday = monday.plusDays(3)
+        assertEquals(
+            listOf(thursday, thursday.plusDays(1)),
+            repeatDates(daily, monday, from = monday, to = thursday.plusDays(1), today = thursday)
+        )
+    }
+
+    @Test
+    fun безПовтораДатНет() {
+        assertEquals(emptyList<LocalDate>(), repeatDates(RepeatRule.None, monday, monday, monday.plusYears(1), monday))
     }
 }

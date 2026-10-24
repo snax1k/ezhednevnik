@@ -147,6 +147,25 @@ interface TaskDao {
     fun observeCalendarMarks(from: LocalDate, to: LocalDate): Flow<List<CalendarTaskMark>>
 
     /**
+     * Невыполненные повторяющиеся задачи с датой — от них календарь считает будущие повторы.
+     * Выполненные не нужны: при выполнении рядом уже создана невыполненная копия.
+     */
+    @Query(
+        """
+        SELECT t.*,
+            c.name AS category_name,
+            c.color_index AS category_color_index,
+            (SELECT COUNT(*) FROM subtasks s WHERE s.task_id = t.id AND s.is_done = 1) AS subtasks_done,
+            (SELECT COUNT(*) FROM subtasks s WHERE s.task_id = t.id) AS subtasks_total
+        FROM tasks t
+        LEFT JOIN categories c ON c.id = t.category_id
+        WHERE t.is_done = 0 AND t.repeat_unit != 0 AND t.date IS NOT NULL
+        ORDER BY t.time IS NULL, t.time, t.created_at, t.id
+        """
+    )
+    fun observeOpenRepeatingTasks(): Flow<List<TaskWithDetails>>
+
+    /**
      * Счётчики групп одним запросом. Границы считает [com.snax1k.chekki.data.GroupRanges];
      * если начало диапазона позже конца, BETWEEN ничего не находит и группа получает 0.
      */

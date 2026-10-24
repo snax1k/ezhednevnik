@@ -13,6 +13,7 @@ import androidx.compose.foundation.layout.asPaddingValues
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
+import androidx.compose.foundation.layout.heightIn
 import androidx.compose.foundation.layout.navigationBars
 import androidx.compose.foundation.layout.navigationBarsPadding
 import androidx.compose.foundation.layout.padding
@@ -39,6 +40,7 @@ import androidx.compose.runtime.setValue
 import androidx.compose.runtime.snapshotFlow
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.draw.alpha
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.draw.rotate
 import androidx.compose.ui.graphics.Color
@@ -55,6 +57,7 @@ import androidx.compose.ui.text.SpanStyle
 import androidx.compose.ui.text.buildAnnotatedString
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextAlign
+import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.text.withStyle
 import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.unit.dp
@@ -68,6 +71,7 @@ import com.snax1k.chekki.ui.components.FloatingButtonsBottomPadding
 import com.snax1k.chekki.ui.components.FloatingTaskButtons
 import com.snax1k.chekki.ui.components.SquareIconButton
 import com.snax1k.chekki.ui.components.formatDayMonth
+import com.snax1k.chekki.ui.components.formatTime
 import com.snax1k.chekki.ui.habit.shortDayName
 import com.snax1k.chekki.ui.icons.ChekkiIcons
 import com.snax1k.chekki.ui.main.sampleTodayTasks
@@ -163,7 +167,12 @@ fun CalendarScreen(
                     verticalArrangement = Arrangement.spacedBy(8.dp)
                 ) {
                     item(key = "day-header") {
-                        DayHeader(state.selectedDate, state.today, state.dayTasks.size, countVisible = !state.isLoading)
+                        DayHeader(
+                            state.selectedDate,
+                            state.today,
+                            state.dayTasks.size + state.dayRepeats.size,
+                            countVisible = !state.isLoading
+                        )
                     }
                     items(state.dayTasks, key = { it.id }, contentType = { "task" }) { task ->
                         SwipeableTaskRow(
@@ -179,7 +188,11 @@ fun CalendarScreen(
                             modifier = Modifier.animateItem()
                         )
                     }
-                    if (!state.isLoading && state.dayTasks.isEmpty()) {
+                    // Будущие повторы — после настоящих задач дня, бледными строками
+                    items(state.dayRepeats, key = { "repeat-${it.id}" }, contentType = { "repeat" }) { task ->
+                        RepeatRow(task, onClick = { onTaskClick(task) }, modifier = Modifier.animateItem())
+                    }
+                    if (!state.isLoading && state.dayTasks.isEmpty() && state.dayRepeats.isEmpty()) {
                         item(key = "empty") {
                             Text(
                                 text = stringResource(R.string.calendar_empty),
@@ -413,6 +426,60 @@ private fun Dot(color: Color) {
             .clip(CircleShape)
             .background(color)
     )
+}
+
+/**
+ * Будущий повтор: бледная строка со значком повтора вместо кружка — отметить его нельзя, задачи
+ * в базе ещё нет. Нажатие открывает карточку задачи, от которой посчитан повтор.
+ */
+@Composable
+private fun RepeatRow(task: TaskUi, onClick: () -> Unit, modifier: Modifier = Modifier) {
+    val description = stringResource(R.string.calendar_repeat_description, task.title)
+    Row(
+        modifier
+            .fillMaxWidth()
+            .heightIn(min = 64.dp)
+            .clip(MaterialTheme.shapes.medium)
+            .border(1.dp, MaterialTheme.colorScheme.outlineVariant, MaterialTheme.shapes.medium)
+            .clickable(onClickLabel = stringResource(R.string.calendar_open_task), role = Role.Button, onClick = onClick)
+            .clearAndSetSemantics { contentDescription = description }
+            .alpha(0.6f)
+            .padding(end = 16.dp),
+        verticalAlignment = Alignment.CenterVertically
+    ) {
+        Box(Modifier.size(56.dp), contentAlignment = Alignment.Center) {
+            Icon(ChekkiIcons.Repeat, contentDescription = null, Modifier.size(20.dp), tint = MaterialTheme.colorScheme.onSurfaceVariant)
+        }
+        Column(Modifier.weight(1f).padding(vertical = 10.dp)) {
+            Text(
+                text = task.title,
+                style = MaterialTheme.typography.titleMedium,
+                color = MaterialTheme.colorScheme.onSurface,
+                maxLines = 2,
+                overflow = TextOverflow.Ellipsis
+            )
+            Row(
+                Modifier.padding(top = 2.dp),
+                horizontalArrangement = Arrangement.spacedBy(6.dp),
+                verticalAlignment = Alignment.CenterVertically
+            ) {
+                Text(
+                    text = task.time?.let { formatTime(it) } ?: stringResource(R.string.task_all_day),
+                    style = MaterialTheme.typography.bodySmall,
+                    color = MaterialTheme.colorScheme.onSurfaceVariant
+                )
+                task.category?.let { category ->
+                    Dot(categoryColor(category.colorIndex))
+                    Text(category.name, style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
+                }
+                Text(
+                    text = stringResource(R.string.calendar_repeat_label),
+                    style = MaterialTheme.typography.bodySmall,
+                    color = MaterialTheme.colorScheme.onSurfaceVariant
+                )
+            }
+        }
+    }
 }
 
 /** «Сегодня, 24 октября» / «Вторник, 27 октября» и справа «3 задачи». */

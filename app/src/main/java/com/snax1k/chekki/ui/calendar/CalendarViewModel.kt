@@ -31,6 +31,11 @@ data class CalendarUiState(
     val marks: Map<LocalDate, DayMarks>,
     /** Задачи выбранного дня вместе с выполненными: по времени, «на весь день» в конце. */
     val dayTasks: List<TaskUi>,
+    /**
+     * Будущие повторы на выбранный день: задачи, чей повтор придётся на него. Это не настоящие задачи —
+     * в базе их ещё нет; id у них — id задачи, от которой посчитан повтор.
+     */
+    val dayRepeats: List<TaskUi> = emptyList(),
     val isLoading: Boolean = false
 )
 
@@ -55,15 +60,22 @@ class CalendarViewModel(
             val shown = chosenMonth ?: YearMonth.from(today)
             val date = chosenDate ?: today
             combine(
-                repository.observeCalendarMarks(monthGrid(shown.minusMonths(1)).first(), monthGrid(shown.plusMonths(1)).last()),
-                repository.observeTasksOn(date)
-            ) { marks, tasks ->
+                repository.observeCalendarMarks(
+                    monthGrid(shown.minusMonths(1)).first(),
+                    monthGrid(shown.plusMonths(1)).last(),
+                    today
+                ),
+                repository.observeTasksOn(date),
+                repository.observeRepeatsOn(date, today)
+            ) { marks, tasks, repeats ->
                 CalendarUiState(
                     today = today,
                     month = shown,
                     selectedDate = date,
                     marks = marks,
-                    dayTasks = tasks.map { it.toTaskUi() }
+                    dayTasks = tasks.map { it.toTaskUi() },
+                    // У повтора своя дата — дата дня, а не исходной задачи
+                    dayRepeats = repeats.map { it.toTaskUi().copy(date = date) }
                 )
             }
         }

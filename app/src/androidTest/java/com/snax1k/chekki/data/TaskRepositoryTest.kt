@@ -691,7 +691,7 @@ class TaskRepositoryTest {
     @Test
     fun точкиКалендаряЗаПериод() {
         runBlocking {
-            val marks = repository.observeCalendarMarks(today.minusDays(7), today.plusDays(7)).first()
+            val marks = repository.observeCalendarMarks(today.minusDays(7), today.plusDays(7), today).first()
             // Сегодня есть и выполненные, и невыполненные задачи — точки по категориям невыполненных
             val todayMarks = marks.getValue(today)
             assertFalse(todayMarks.allDone)
@@ -701,7 +701,26 @@ class TaskRepositoryTest {
 
             // Отметили все сегодняшние задачи — день стал «всё выполнено»
             repository.observeTasksOn(today).first().filter { !it.task.isDone }.forEach { repository.toggleDone(it.task.id, today) }
-            assertTrue(repository.observeCalendarMarks(today, today).first().getValue(today).allDone)
+            assertTrue(repository.observeCalendarMarks(today, today, today).first().getValue(today).allDone)
+        }
+    }
+
+    @Test
+    fun будущиеПовторыВТочкахИВСпискеДня() {
+        runBlocking {
+            val weekly = RepeatRule(RepeatUnit.Week, every = 1, weekdays = 0)
+            val inThreeDays = today.plusDays(3)
+            val id = repository.addTask("Планёрка", "", inThreeDays, LocalTime.of(10, 0), 1, TaskPriority.None, repeat = weekly)
+            val nextWeek = inThreeDays.plusWeeks(1)
+
+            // Повтор через неделю виден в точках и в списке того дня, хотя задачи в базе ещё нет
+            val marks = repository.observeCalendarMarks(nextWeek, nextWeek, today).first()
+            assertTrue(marks.getValue(nextWeek).openColors.contains(0))
+            // В тестовых данных есть и ежедневные задачи, их повторы на этот день тоже придут
+            assertTrue(id in repository.observeRepeatsOn(nextWeek, today).first().map { it.task.id })
+            assertTrue(repository.observeTasksOn(nextWeek).first().none { it.task.title == "Планёрка" })
+            // На саму дату задачи повтора нет — там настоящая задача
+            assertTrue(repository.observeRepeatsOn(inThreeDays, today).first().none { it.task.id == id })
         }
     }
 }
