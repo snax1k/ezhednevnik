@@ -7,6 +7,8 @@ import com.snax1k.chekki.data.RecentSearches
 import com.snax1k.chekki.data.TaskRepository
 import com.snax1k.chekki.data.currentDateFlow
 import com.snax1k.chekki.data.db.ChekkiDatabase
+import com.snax1k.chekki.data.oldapp.ImportHistory
+import com.snax1k.chekki.data.oldapp.OldAppImporter
 import com.snax1k.chekki.reminders.AlarmHabitReminderScheduler
 import com.snax1k.chekki.reminders.AlarmReminderScheduler
 import com.snax1k.chekki.reminders.HabitNotifications
@@ -48,6 +50,10 @@ class AppContainer(context: Context) {
     val reminderAccess: ReminderAccess by lazy { ReminderAccess(appContext) }
     val taskRepository: TaskRepository by lazy { TaskRepository(database, reminderScheduler) }
     val habitRepository: HabitRepository by lazy { HabitRepository(database, AlarmHabitReminderScheduler(appContext)) }
+
+    /** Перенос из старого ежедневника и копии, которые уже переносились. */
+    val oldAppImporter: OldAppImporter by lazy { OldAppImporter(database, taskRepository, habitRepository) }
+    val importHistory: ImportHistory by lazy { ImportHistory(appContext) }
 
     /** Последние запросы поиска. */
     val recentSearches: RecentSearches by lazy { RecentSearches(appContext) }

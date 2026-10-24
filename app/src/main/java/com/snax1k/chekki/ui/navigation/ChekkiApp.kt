@@ -60,7 +60,10 @@ import com.snax1k.chekki.ui.habit.HabitSheet
 import com.snax1k.chekki.ui.habit.HabitsScreen
 import com.snax1k.chekki.ui.habit.HabitsViewModel
 import com.snax1k.chekki.ui.main.MainScreen
+import com.snax1k.chekki.ui.main.MainMenuSheet
 import com.snax1k.chekki.ui.main.MainViewModel
+import com.snax1k.chekki.ui.oldapp.ImportScreen
+import com.snax1k.chekki.ui.oldapp.ImportViewModel
 import com.snax1k.chekki.ui.main.QuickEntry
 import com.snax1k.chekki.ui.main.TaskGroup
 import com.snax1k.chekki.ui.task.TaskScreen
@@ -87,6 +90,10 @@ data class TaskRoute(val taskId: Long) : NavKey
 /** Все привычки: порядок, архив. */
 @Serializable
 data object HabitsRoute : NavKey
+
+/** Перенос из старого ежедневника. */
+@Serializable
+data object ImportRoute : NavKey
 
 /** Поиск задач с фильтрами. */
 @Serializable
@@ -122,6 +129,8 @@ fun ChekkiApp() {
         if (habitId == null) habitEditorViewModel.startNew() else habitEditorViewModel.startEdit(habitId)
         habitSheetFor = habitId ?: NEW_HABIT
     }
+    // Меню ☰ главного экрана
+    var isMenuOpen by rememberSaveable { mutableStateOf(false) }
     // Панель категории: какую категорию меняем (NEW_CATEGORY — новая), null — панель закрыта
     var categorySheetFor by rememberSaveable { mutableStateOf<Long?>(null) }
     val categoryEditorViewModel = viewModel { CategoryEditorViewModel(container.taskRepository) }
@@ -208,6 +217,7 @@ fun ChekkiApp() {
                         onTrackerClick = { tracker -> viewModel.checkHabit(tracker.habitId) },
                         onTrackerLongClick = { tracker -> openHabitCard(tracker.habitId) },
                         onAddHabitClick = { openHabitSheet(null) },
+                        onMenuClick = { isMenuOpen = true },
                         onQuickEntryClick = { entry ->
                             when (entry) {
                                 QuickEntry.Categories -> backStack.add(CategoriesRoute)
@@ -256,6 +266,24 @@ fun ChekkiApp() {
                             backStack.removeLastOrNull()
                             showUndoPostpone(moved)
                         }
+                    )
+                }
+                entry<ImportRoute> {
+                    val viewModel = viewModel {
+                        ImportViewModel(
+                            importer = container.oldAppImporter,
+                            history = container.importHistory,
+                            openStream = { uri -> context.contentResolver.openInputStream(uri) },
+                            workDir = context.cacheDir
+                        )
+                    }
+                    val step by viewModel.step.collectAsStateWithLifecycle()
+                    ImportScreen(
+                        step = step,
+                        onBack = { backStack.removeLastOrNull() },
+                        onFilePicked = viewModel::onFilePicked,
+                        onImport = viewModel::import,
+                        onReset = viewModel::reset
                     )
                 }
                 entry<SearchRoute> {
@@ -384,6 +412,13 @@ fun ChekkiApp() {
                 habitCardFor = null
                 if (backStack.lastOrNull() != HabitsRoute) backStack.add(HabitsRoute)
             }
+        )
+    }
+    if (isMenuOpen) {
+        MainMenuSheet(
+            onDismiss = { isMenuOpen = false },
+            onHabits = { backStack.add(HabitsRoute) },
+            onImport = { backStack.add(ImportRoute) }
         )
     }
     if (categorySheetFor != null) {
