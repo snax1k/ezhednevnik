@@ -18,9 +18,9 @@ android {
         applicationId = "com.snax1k.chekki"
         minSdk = 26
         targetSdk = 37
-        versionCode = 1
+        versionCode = 2
         // 0.1 — первая рабочая версия на телефоне, ещё не выпуск
-        versionName = "0.1"
+        versionName = "0.2"
 
         testInstrumentationRunner = "androidx.test.runner.AndroidJUnitRunner"
     }

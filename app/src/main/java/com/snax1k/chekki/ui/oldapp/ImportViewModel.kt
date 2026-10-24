@@ -36,7 +36,8 @@ sealed interface ImportStep {
 
     data class Done(val report: ImportReport) : ImportStep
 
-    data class Failed(@param:StringRes val message: Int) : ImportStep
+    /** [details] — тип ошибки, причина и где случилась: чтобы разобраться по снимку экрана, без журнала телефона. */
+    data class Failed(@param:StringRes val message: Int, val details: String? = null) : ImportStep
 }
 
 /**
@@ -69,13 +70,14 @@ class ImportViewModel(
                 hash = backup.hash
                 ImportStep.Preview(newPlan.report, history.importedOn(backup.hash))
             } catch (e: OldBackupReader.NotABackupException) {
-                ImportStep.Failed(R.string.import_error_not_backup)
+                ImportStep.Failed(R.string.import_error_not_backup, describe(e))
             } catch (e: SQLiteException) {
                 Log.w(TAG, "Не читается Planner.db", e)
-                ImportStep.Failed(R.string.import_error_not_backup)
-            } catch (e: Exception) {
+                ImportStep.Failed(R.string.import_error_not_backup, describe(e))
+            } catch (e: Throwable) {
+                // Throwable, а не Exception: нехватка памяти на большой копии тоже должна дойти до экрана
                 Log.w(TAG, "Копия не прочиталась", e)
-                ImportStep.Failed(R.string.import_error_read)
+                ImportStep.Failed(R.string.import_error_read, describe(e))
             }
         }
     }
@@ -90,9 +92,9 @@ class ImportViewModel(
                 history.remember(hash, LocalDate.now())
                 plan = null
                 ImportStep.Done(current.report)
-            } catch (e: Exception) {
+            } catch (e: Throwable) {
                 Log.w(TAG, "Перенос не записался", e)
-                ImportStep.Failed(R.string.import_error_write)
+                ImportStep.Failed(R.string.import_error_write, describe(e))
             }
         }
     }
@@ -106,5 +108,25 @@ class ImportViewModel(
 
     private companion object {
         const val TAG = "Import"
+
+        /**
+         * Ошибка для экрана: тип и сообщение с причинами и первые строки, где она случилась. В выпускной сборке
+         * имена наших классов сжаты R8, но номера строк остаются — их расшифровывает файл соответствия
+         * (`app/build/outputs/mapping/release/mapping.txt` той же сборки).
+         */
+        fun describe(error: Throwable): String = buildString {
+            var current: Throwable? = error
+            var depth = 0
+            while (current != null && depth < 3) {
+                if (depth > 0) append("\nПричина: ")
+                append(current.javaClass.name).append(": ").append(current.message)
+                current = current.cause
+                depth++
+            }
+            // Метка сборки «r8-map-id-…» длинная и на снимке экрана не нужна: файл соответствия хранится по версии
+            error.stackTrace.take(6).forEach { append("\n  at ").append(it.toString().replace(MapIdPattern, "")) }
+        }
+
+        private val MapIdPattern = Regex("r8-map-id-[0-9a-f]+")
     }
 }

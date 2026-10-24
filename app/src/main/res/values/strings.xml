@@ -219,6 +219,7 @@
     <string name="import_error_not_backup">Это не похоже на резервную копию старого ежедневника. Выберите файл .plnb.</string>
     <string name="import_error_read">Копия не прочиталась. Попробуйте выбрать файл ещё раз.</string>
     <string name="import_error_write">Перенос не удался, ничего не изменилось. Попробуйте ещё раз.</string>
+    <string name="import_error_details">Подробности для разработчика — сфотографируйте экран:</string>
 
     <!-- Поиск -->
     <string name="search_placeholder">Поиск задач</string>
