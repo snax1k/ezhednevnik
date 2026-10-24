@@ -34,13 +34,18 @@ import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.semantics.Role
 import androidx.compose.ui.semantics.contentDescription
 import androidx.compose.ui.semantics.semantics
+import androidx.compose.ui.text.AnnotatedString
+import androidx.compose.ui.text.SpanStyle
+import androidx.compose.ui.text.buildAnnotatedString
 import androidx.compose.ui.text.style.TextDecoration
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import com.snax1k.chekki.R
+import com.snax1k.chekki.ui.components.formatShortDate
 import com.snax1k.chekki.ui.components.formatTime
 import com.snax1k.chekki.ui.icons.ChekkiIcons
 import com.snax1k.chekki.ui.theme.ChekkiTheme
+import java.time.LocalDate
 
 /**
  * Задача в списке: отметка, название, строка свойств и флажок приоритета.
@@ -75,11 +80,22 @@ fun TaskRow(task: TaskUi, onToggleDone: () -> Unit, modifier: Modifier = Modifie
                 .padding(start = 4.dp, top = 14.dp)
         ) {
             Text(
-                text = task.title,
+                text = highlightedTitle(task),
                 style = MaterialTheme.typography.bodyLarge,
                 color = titleColor,
                 textDecoration = if (task.done) TextDecoration.LineThrough else null
             )
+            if (task.matchSnippet != null) {
+                // Поиск нашёл слово не в названии, а в заметке или подзадаче
+                Text(
+                    text = task.matchSnippet,
+                    modifier = Modifier.padding(top = 2.dp),
+                    style = MaterialTheme.typography.bodySmall,
+                    color = MaterialTheme.colorScheme.onSurfaceVariant,
+                    maxLines = 1,
+                    overflow = TextOverflow.Ellipsis
+                )
+            }
             TaskDetails(task, Modifier.padding(top = 3.dp))
         }
         if (task.priority != null && priorityColor != null && !task.done) {
@@ -144,7 +160,19 @@ internal fun TaskCheckbox(done: Boolean, title: String, priorityColor: Color?, o
     }
 }
 
-/** Строка свойств: время, категория, подзадачи, повтор, напоминание. */
+/** Название; найденное поиском слово — на подложке акцентного цвета, как в макете «Поиск». */
+@Composable
+private fun highlightedTitle(task: TaskUi): AnnotatedString {
+    val range = task.titleHighlight?.takeIf { it.first >= 0 && it.last < task.title.length }
+        ?: return AnnotatedString(task.title)
+    val background = MaterialTheme.colorScheme.primary.copy(alpha = 0.24f)
+    return buildAnnotatedString {
+        append(task.title)
+        addStyle(SpanStyle(background = background), range.first, range.last + 1)
+    }
+}
+
+/** Строка свойств: дата (в поиске), время, категория, подзадачи, повтор, напоминание. */
 @Composable
 private fun TaskDetails(task: TaskUi, modifier: Modifier = Modifier) {
     val categoryColors = ChekkiTheme.colors.categories
@@ -153,10 +181,15 @@ private fun TaskDetails(task: TaskUi, modifier: Modifier = Modifier) {
         horizontalArrangement = Arrangement.spacedBy(10.dp),
         verticalAlignment = Alignment.CenterVertically
     ) {
+        val timeText = task.time?.let { formatTime(it) } ?: stringResource(R.string.task_all_day)
         DetailWithIcon(
             icon = ChekkiIcons.Clock,
             iconDescription = null,
-            text = task.time?.let { formatTime(it) } ?: stringResource(R.string.task_all_day)
+            text = if (task.showDate && task.date != null) {
+                stringResource(R.string.task_date_time, formatShortDate(task.date, LocalDate.now()), timeText)
+            } else {
+                timeText
+            }
         )
         if (task.category != null) {
             Row(

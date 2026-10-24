@@ -186,6 +186,25 @@
     <!-- Действия круга привычки для TalkBack -->
     <string name="habit_check">Отметить</string>
     <string name="habit_open">Изменить привычку</string>
+    <!-- Поиск -->
+    <string name="search_placeholder">Поиск задач</string>
+    <string name="search_clear">Очистить</string>
+    <string name="search_hint">Ищите по названию, заметке и подзадачам.\nМожно выбрать фильтр и без текста.</string>
+    <string name="search_nothing">Ничего не нашлось.\nПопробуйте убрать часть фильтров.</string>
+    <string name="search_filter_open">Невыполненные</string>
+    <string name="search_filter_category">Категория</string>
+    <string name="search_filter_any_category">Любая категория</string>
+    <string name="search_filter_reminder">С напоминанием</string>
+    <string name="search_filter_high">Высокий приоритет</string>
+    <plurals name="search_found">
+        <item quantity="one">Найдена %d задача</item>
+        <item quantity="few">Найдено %d задачи</item>
+        <item quantity="many">Найдено %d задач</item>
+        <item quantity="other">Найдено %d задачи</item>
+    </plurals>
+    <!-- Дата и время в строке задачи в поиске: «30 окт · 14:00» -->
+    <string name="task_date_time">%1$s · %2$s</string>
+
     <!-- Календарь -->
     <string name="calendar_previous_month">Предыдущий месяц</string>
     <string name="calendar_next_month">Следующий месяц</string>

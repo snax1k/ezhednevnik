@@ -43,6 +43,8 @@ import com.snax1k.chekki.ui.addtask.AddTaskViewModel
 import com.snax1k.chekki.ui.calendar.CalendarScreen
 import com.snax1k.chekki.ui.calendar.CalendarViewModel
 import com.snax1k.chekki.ui.category.CategoriesScreen
+import com.snax1k.chekki.ui.search.SearchScreen
+import com.snax1k.chekki.ui.search.SearchViewModel
 import com.snax1k.chekki.ui.category.CategoriesViewModel
 import com.snax1k.chekki.ui.category.CategoryEditorViewModel
 import com.snax1k.chekki.ui.category.CategorySheet
@@ -85,6 +87,10 @@ data class TaskRoute(val taskId: Long) : NavKey
 /** Все привычки: порядок, архив. */
 @Serializable
 data object HabitsRoute : NavKey
+
+/** Поиск задач с фильтрами. */
+@Serializable
+data object SearchRoute : NavKey
 
 /** Календарь: сетка месяца и задачи выбранного дня. */
 @Serializable
@@ -206,8 +212,7 @@ fun ChekkiApp() {
                             when (entry) {
                                 QuickEntry.Categories -> backStack.add(CategoriesRoute)
                                 QuickEntry.Calendar -> backStack.add(CalendarRoute)
-                                // Поиск пока не сделан
-                                QuickEntry.Search -> Unit
+                                QuickEntry.Search -> backStack.add(SearchRoute)
                             }
                         },
                         onGroupClick = { group -> backStack.add(GroupRoute(group)) },
@@ -251,6 +256,22 @@ fun ChekkiApp() {
                             backStack.removeLastOrNull()
                             showUndoPostpone(moved)
                         }
+                    )
+                }
+                entry<SearchRoute> {
+                    val viewModel = viewModel { SearchViewModel(container.taskRepository, container.currentDate) }
+                    val state by viewModel.uiState.collectAsStateWithLifecycle()
+                    SearchScreen(
+                        state = state,
+                        query = viewModel.query,
+                        onQueryChange = viewModel::onQueryChange,
+                        onFiltersChange = viewModel::onFiltersChange,
+                        onBack = { backStack.removeLastOrNull() },
+                        onToggleDone = { task -> viewModel.toggleDone(task.id) },
+                        onTaskClick = { task -> backStack.add(TaskRoute(task.id)) },
+                        onPostpone = { task, date -> viewModel.postpone(task.id, date, showUndoPostpone) },
+                        onDelete = { task -> viewModel.delete(task.id, showUndoDelete) },
+                        onShowMore = viewModel::showMore
                     )
                 }
                 entry<CalendarRoute> {

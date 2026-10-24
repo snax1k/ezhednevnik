@@ -5,6 +5,7 @@ import com.snax1k.chekki.data.db.CategoryEntity
 import com.snax1k.chekki.data.db.CategoryIcon
 import com.snax1k.chekki.data.db.CalendarTaskMark
 import com.snax1k.chekki.data.db.CategorySummary
+import com.snax1k.chekki.data.db.SearchableTask
 import com.snax1k.chekki.data.db.ChekkiDatabase
 import com.snax1k.chekki.data.db.GroupCounts
 import com.snax1k.chekki.data.db.RepeatRule
@@ -258,6 +259,9 @@ class TaskRepository(
 
     /** Сколько всего выполненных задач: по нему экран решает, показывать ли «Показать ещё». */
     fun observeDoneCount(): Flow<Int> = taskDao.observeDoneCount()
+
+    /** Все задачи с названиями подзадач — для поиска. */
+    fun observeSearchableTasks(): Flow<List<SearchableTask>> = taskDao.observeSearchableTasks()
 
     /** Точки календаря за дни с [from] по [to], вместе с будущими повторами (считая от [today]). */
     fun observeCalendarMarks(from: LocalDate, to: LocalDate, today: LocalDate): Flow<Map<LocalDate, DayMarks>> =

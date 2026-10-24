@@ -25,5 +25,11 @@ data class TaskUi(
     val hasReminder: Boolean = false,
     val done: Boolean = false,
     /** Дата задачи; null — без даты. Нужна меню «Отложить», чтобы не предлагать ту же дату. */
-    val date: LocalDate? = null
+    val date: LocalDate? = null,
+    /** Показывать дату в строке свойств («30 окт · 14:00») — в поиске, где задачи разных дней идут вместе. */
+    val showDate: Boolean = false,
+    /** Что подсветить в названии — найденное слово поиска. */
+    val titleHighlight: IntRange? = null,
+    /** Строка под названием: где нашлось, если не в названии (кусок заметки или подзадача). */
+    val matchSnippet: String? = null
 )

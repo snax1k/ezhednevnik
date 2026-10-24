@@ -723,4 +723,17 @@ class TaskRepositoryTest {
             assertTrue(repository.observeRepeatsOn(inThreeDays, today).first().none { it.task.id == id })
         }
     }
+
+    @Test
+    fun задачиДляПоискаСПодзадачами() {
+        runBlocking {
+            val all = repository.observeSearchableTasks().first()
+            val shopping = all.single { it.task.title == "Купить продукты" }
+            assertEquals(5, shopping.subtasks.size)
+            assertEquals("Дом", shopping.categoryName)
+            // Задача без подзадач — пустой список, а не одна пустая строка
+            val withoutSubtasks = all.first { it.subtasksTotal == 0 }
+            assertTrue(withoutSubtasks.subtasks.isEmpty())
+        }
+    }
 }

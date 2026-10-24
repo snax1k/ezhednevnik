@@ -19,6 +19,19 @@ data class TaskWithDetails(
     @ColumnInfo(name = "subtasks_total") val subtasksTotal: Int
 )
 
+/** Задача для поиска: как в списках, плюс названия подзадач через перевод строки. */
+data class SearchableTask(
+    @Embedded val task: TaskEntity,
+    @ColumnInfo(name = "category_name") val categoryName: String?,
+    @ColumnInfo(name = "category_color_index") val categoryColorIndex: Int?,
+    @ColumnInfo(name = "subtasks_done") val subtasksDone: Int,
+    @ColumnInfo(name = "subtasks_total") val subtasksTotal: Int,
+    @ColumnInfo(name = "subtask_titles") val subtaskTitles: String?
+) {
+    val details: TaskWithDetails get() = TaskWithDetails(task, categoryName, categoryColorIndex, subtasksDone, subtasksTotal)
+    val subtasks: List<String> get() = subtaskTitles?.split('\n').orEmpty()
+}
+
 /** Задача для точек в календаре: день, выполнена ли и цвет её категории. */
 data class CalendarTaskMark(
     val date: LocalDate,
@@ -133,6 +146,24 @@ interface TaskDao {
 
     @Query("SELECT COUNT(*) FROM tasks WHERE is_done = 1")
     fun observeDoneCount(): Flow<Int>
+
+    /**
+     * Все задачи для поиска с названиями подзадач. Совпадения ищет приложение: LIKE в SQLite
+     * не различает регистр только у латиницы. После переноса это около 8,6 тыс. строк — немного.
+     */
+    @Query(
+        """
+        SELECT t.*,
+            c.name AS category_name,
+            c.color_index AS category_color_index,
+            (SELECT COUNT(*) FROM subtasks s WHERE s.task_id = t.id AND s.is_done = 1) AS subtasks_done,
+            (SELECT COUNT(*) FROM subtasks s WHERE s.task_id = t.id) AS subtasks_total,
+            (SELECT GROUP_CONCAT(s.title, char(10)) FROM subtasks s WHERE s.task_id = t.id) AS subtask_titles
+        FROM tasks t
+        LEFT JOIN categories c ON c.id = t.category_id
+        """
+    )
+    fun observeSearchableTasks(): Flow<List<SearchableTask>>
 
     /** Задачи с [from] по [to] для точек в календаре, по дням и по времени — чтобы цвета шли в порядке задач. */
     @Query(
