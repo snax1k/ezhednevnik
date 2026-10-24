@@ -114,7 +114,9 @@ data class ChekkiColors(
     val onSwipePostpone: Color,
     /** Кнопка «Удалить» под строкой задачи при свайпе влево. */
     val swipeDelete: Color,
-    val onSwipeDelete: Color
+    val onSwipeDelete: Color,
+    /** Числа субботы и воскресенья в календаре (из макета «Календарь»). */
+    val calendarWeekend: Color
 )
 
 internal val DarkChekkiColors = ChekkiColors(
@@ -189,5 +191,6 @@ internal val DarkChekkiColors = ChekkiColors(
     swipePostpone = Color(0xFFF5BE6A),
     onSwipePostpone = Color(0xFF2A1C04),
     swipeDelete = Color(0xFFFF8A7A),
-    onSwipeDelete = Color(0xFF2B0E0A)
+    onSwipeDelete = Color(0xFF2B0E0A),
+    calendarWeekend = Color(0xFFE2B3AC)
 )

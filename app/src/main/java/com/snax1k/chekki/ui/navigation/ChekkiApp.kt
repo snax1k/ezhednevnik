@@ -40,6 +40,8 @@ import com.snax1k.chekki.data.DeletedTask
 import com.snax1k.chekki.data.MovedTask
 import com.snax1k.chekki.ui.addtask.AddTaskSheet
 import com.snax1k.chekki.ui.addtask.AddTaskViewModel
+import com.snax1k.chekki.ui.calendar.CalendarScreen
+import com.snax1k.chekki.ui.calendar.CalendarViewModel
 import com.snax1k.chekki.ui.category.CategoriesScreen
 import com.snax1k.chekki.ui.category.CategoriesViewModel
 import com.snax1k.chekki.ui.category.CategoryEditorViewModel
@@ -83,6 +85,10 @@ data class TaskRoute(val taskId: Long) : NavKey
 /** Все привычки: порядок, архив. */
 @Serializable
 data object HabitsRoute : NavKey
+
+/** Календарь: сетка месяца и задачи выбранного дня. */
+@Serializable
+data object CalendarRoute : NavKey
 
 /** Плитки категорий. */
 @Serializable
@@ -197,8 +203,12 @@ fun ChekkiApp() {
                         onTrackerLongClick = { tracker -> openHabitCard(tracker.habitId) },
                         onAddHabitClick = { openHabitSheet(null) },
                         onQuickEntryClick = { entry ->
-                            // Календарь и поиск пока не сделаны
-                            if (entry == QuickEntry.Categories) backStack.add(CategoriesRoute)
+                            when (entry) {
+                                QuickEntry.Categories -> backStack.add(CategoriesRoute)
+                                QuickEntry.Calendar -> backStack.add(CalendarRoute)
+                                // Поиск пока не сделан
+                                QuickEntry.Search -> Unit
+                            }
                         },
                         onGroupClick = { group -> backStack.add(GroupRoute(group)) },
                         onAddClick = { isAddTaskOpen = true }
@@ -240,6 +250,26 @@ fun ChekkiApp() {
                         onPostponed = { moved ->
                             backStack.removeLastOrNull()
                             showUndoPostpone(moved)
+                        }
+                    )
+                }
+                entry<CalendarRoute> {
+                    val viewModel = viewModel { CalendarViewModel(container.taskRepository, container.currentDate) }
+                    val state by viewModel.uiState.collectAsStateWithLifecycle()
+                    CalendarScreen(
+                        state = state,
+                        onBack = { backStack.removeLastOrNull() },
+                        onShowMonth = viewModel::showMonth,
+                        onSelectDate = viewModel::selectDate,
+                        onToday = viewModel::goToday,
+                        onToggleDone = { task -> viewModel.toggleDone(task.id) },
+                        onTaskClick = { task -> backStack.add(TaskRoute(task.id)) },
+                        onPostpone = { task, date -> viewModel.postpone(task.id, date, showUndoPostpone) },
+                        onDelete = { task -> viewModel.delete(task.id, showUndoDelete) },
+                        onAddClick = {
+                            // Новая задача сразу на выбранный день
+                            addTaskViewModel.onDatePick(state.selectedDate)
+                            isAddTaskOpen = true
                         }
                     )
                 }

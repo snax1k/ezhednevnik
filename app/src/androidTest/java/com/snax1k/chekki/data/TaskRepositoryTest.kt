@@ -687,4 +687,21 @@ class TaskRepositoryTest {
             assertTrue(repository.observeCategorySummaries(today, archived = true).first().isEmpty())
         }
     }
+
+    @Test
+    fun точкиКалендаряЗаПериод() {
+        runBlocking {
+            val marks = repository.observeCalendarMarks(today.minusDays(7), today.plusDays(7)).first()
+            // Сегодня есть и выполненные, и невыполненные задачи — точки по категориям невыполненных
+            val todayMarks = marks.getValue(today)
+            assertFalse(todayMarks.allDone)
+            assertTrue(todayMarks.openColors.size in 1..3)
+            // Задачи без даты в календарь не попадают, а дни вне периода — тоже
+            assertTrue(marks.keys.all { it in today.minusDays(7)..today.plusDays(7) })
+
+            // Отметили все сегодняшние задачи — день стал «всё выполнено»
+            repository.observeTasksOn(today).first().filter { !it.task.isDone }.forEach { repository.toggleDone(it.task.id, today) }
+            assertTrue(repository.observeCalendarMarks(today, today).first().getValue(today).allDone)
+        }
+    }
 }

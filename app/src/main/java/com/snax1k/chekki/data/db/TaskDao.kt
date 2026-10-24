@@ -19,6 +19,13 @@ data class TaskWithDetails(
     @ColumnInfo(name = "subtasks_total") val subtasksTotal: Int
 )
 
+/** Задача для точек в календаре: день, выполнена ли и цвет её категории. */
+data class CalendarTaskMark(
+    val date: LocalDate,
+    @ColumnInfo(name = "is_done") val isDone: Boolean,
+    @ColumnInfo(name = "category_color_index") val categoryColorIndex: Int?
+)
+
 /** Число невыполненных задач в группах главного экрана. */
 data class GroupCounts(
     @ColumnInfo(name = "no_date") val noDate: Int,
@@ -126,6 +133,18 @@ interface TaskDao {
 
     @Query("SELECT COUNT(*) FROM tasks WHERE is_done = 1")
     fun observeDoneCount(): Flow<Int>
+
+    /** Задачи с [from] по [to] для точек в календаре, по дням и по времени — чтобы цвета шли в порядке задач. */
+    @Query(
+        """
+        SELECT t.date, t.is_done, c.color_index AS category_color_index
+        FROM tasks t
+        LEFT JOIN categories c ON c.id = t.category_id
+        WHERE t.date BETWEEN :from AND :to
+        ORDER BY t.date, t.time IS NULL, t.time, t.created_at, t.id
+        """
+    )
+    fun observeCalendarMarks(from: LocalDate, to: LocalDate): Flow<List<CalendarTaskMark>>
 
     /**
      * Счётчики групп одним запросом. Границы считает [com.snax1k.chekki.data.GroupRanges];

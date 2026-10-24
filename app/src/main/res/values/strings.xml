@@ -186,6 +186,22 @@
     <!-- Действия круга привычки для TalkBack -->
     <string name="habit_check">Отметить</string>
     <string name="habit_open">Изменить привычку</string>
+    <!-- Календарь -->
+    <string name="calendar_previous_month">Предыдущий месяц</string>
+    <string name="calendar_next_month">Следующий месяц</string>
+    <!-- Заголовок задач дня: «Сегодня, 24 октября», «Вторник, 27 октября» -->
+    <string name="calendar_day_title">%1$s, %2$s</string>
+    <string name="calendar_empty">На этот день задач нет.\nНажмите «+», чтобы запланировать.</string>
+    <!-- Для TalkBack у числа в сетке: «24 октября, есть задачи» -->
+    <string name="calendar_day_has_tasks">есть задачи</string>
+    <string name="calendar_day_all_done">всё выполнено</string>
+    <plurals name="calendar_tasks">
+        <item quantity="one">%d задача</item>
+        <item quantity="few">%d задачи</item>
+        <item quantity="many">%d задач</item>
+        <item quantity="other">%d задачи</item>
+    </plurals>
+
     <!-- Категории -->
     <string name="categories_title">Категории</string>
     <!-- Под плиткой категории: выполнено из задач на сегодня -->

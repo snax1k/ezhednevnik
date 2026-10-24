@@ -13,6 +13,7 @@ import com.snax1k.chekki.data.db.TaskPriority
 import com.snax1k.chekki.data.db.TaskWithDetails
 import com.snax1k.chekki.reminders.ReminderScheduler
 import kotlinx.coroutines.flow.Flow
+import kotlinx.coroutines.flow.map
 import java.time.Instant
 import java.time.LocalDate
 import java.time.LocalTime
@@ -255,6 +256,10 @@ class TaskRepository(
 
     /** Сколько всего выполненных задач: по нему экран решает, показывать ли «Показать ещё». */
     fun observeDoneCount(): Flow<Int> = taskDao.observeDoneCount()
+
+    /** Точки календаря за дни с [from] по [to]. */
+    fun observeCalendarMarks(from: LocalDate, to: LocalDate): Flow<Map<LocalDate, DayMarks>> =
+        taskDao.observeCalendarMarks(from, to).map(::calendarMarks)
 
     /** Число невыполненных задач по группам главного экрана для дня [today]. */
     fun observeGroupCounts(today: LocalDate): Flow<GroupCounts> {
