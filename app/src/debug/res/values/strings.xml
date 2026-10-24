@@ -1,0 +1,5 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <!-- Отладочная сборка стоит на телефоне рядом с настоящей: название, чтобы их не перепутать -->
+    <string name="app_name">Чекки (отладка)</string>
+</resources>

@@ -18,3 +18,6 @@ local.properties
 # Настройки Android Studio, привязанные к этому компьютеру и эмулятору
 /.idea/deploymentTargetSelector.xml
 /.idea/deviceHardwareInput.xml
+# Ключи подписи никогда не кладутся в репозиторий
+*.jks
+*.keystore

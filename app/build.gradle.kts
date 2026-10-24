@@ -19,16 +19,39 @@ android {
         minSdk = 26
         targetSdk = 37
         versionCode = 1
-        versionName = "1.0"
+        // 0.1 — первая рабочая версия на телефоне, ещё не выпуск
+        versionName = "0.1"
 
         testInstrumentationRunner = "androidx.test.runner.AndroidJUnitRunner"
     }
 
+    // Ключ подписи хранится вне проекта, путь и пароли — в личном ~/.gradle/gradle.properties:
+    // CHEKKI_STORE_FILE, CHEKKI_STORE_PASSWORD, CHEKKI_KEY_ALIAS, CHEKKI_KEY_PASSWORD.
+    // Без них выпускная сборка собирается неподписанной.
+    val releaseStoreFile = providers.gradleProperty("CHEKKI_STORE_FILE").orNull
+    signingConfigs {
+        if (releaseStoreFile != null) {
+            create("release") {
+                storeFile = file(releaseStoreFile)
+                storePassword = providers.gradleProperty("CHEKKI_STORE_PASSWORD").orNull
+                keyAlias = providers.gradleProperty("CHEKKI_KEY_ALIAS").orNull
+                keyPassword = providers.gradleProperty("CHEKKI_KEY_PASSWORD").orNull
+            }
+        }
+    }
+
     buildTypes {
+        debug {
+            // Отладочная сборка ставится рядом с настоящей и не трогает её данные
+            applicationIdSuffix = ".debug"
+            versionNameSuffix = "-debug"
+        }
         release {
+            signingConfig = signingConfigs.findByName("release")
+            // R8 сжимает и оптимизирует всё приложение. packageScope из шаблона убран: это экспериментальный режим
+            // постепенного включения, без флага android.r8.gradual.support он ломал запуск (IllegalAccessError в kotlin.collections)
             optimization {
                 enable = true
-                packageScope = setOf("androidx.**", "kotlin.**", "kotlinx.**")
             }
         }
     }
