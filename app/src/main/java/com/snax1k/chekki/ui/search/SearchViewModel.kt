@@ -6,8 +6,10 @@ import androidx.compose.runtime.setValue
 import androidx.compose.runtime.snapshotFlow
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
+import com.snax1k.chekki.data.DateFilter
 import com.snax1k.chekki.data.DeletedTask
 import com.snax1k.chekki.data.MovedTask
+import com.snax1k.chekki.data.RecentSearches
 import com.snax1k.chekki.data.TaskRepository
 import com.snax1k.chekki.data.db.SearchableTask
 import com.snax1k.chekki.data.db.TaskPriority
@@ -27,6 +29,7 @@ import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.combine
 import kotlinx.coroutines.flow.debounce
 import kotlinx.coroutines.flow.distinctUntilChanged
+import kotlinx.coroutines.flow.flowOf
 import kotlinx.coroutines.flow.flowOn
 import kotlinx.coroutines.flow.map
 import kotlinx.coroutines.flow.stateIn
@@ -46,10 +49,11 @@ data class SearchFilters(
     val openOnly: Boolean = true,
     val category: CategoryFilter = CategoryFilter.Any,
     val withReminder: Boolean = false,
-    val highPriority: Boolean = false
+    val highPriority: Boolean = false,
+    val date: DateFilter = DateFilter.Any
 ) {
     /** Сужает ли что-то список кроме «Невыполненных»: тогда результаты видны и без текста запроса. */
-    val narrows: Boolean get() = category != CategoryFilter.Any || withReminder || highPriority
+    val narrows: Boolean get() = category != CategoryFilter.Any || withReminder || highPriority || date != DateFilter.Any
 }
 
 /** Найденные задачи одной группы под цветным подзаголовком. */
@@ -65,8 +69,10 @@ data class SearchUiState(
     val canShowMore: Boolean,
     /** Категории для меню фильтра (без архивных). */
     val categories: List<CategoryOption>,
-    /** Запрос пуст и ничего не сужает: результатов нет, только подсказка. */
+    /** Запрос пуст и ничего не сужает: результатов нет, только подсказка и последние запросы. */
     val isIdle: Boolean,
+    /** Последние запросы, новые сверху. */
+    val recent: List<String> = emptyList(),
     val isLoading: Boolean = false
 )
 
@@ -78,7 +84,8 @@ data class SearchUiState(
 @OptIn(FlowPreview::class)
 class SearchViewModel(
     private val repository: TaskRepository,
-    currentDate: Flow<LocalDate>
+    currentDate: Flow<LocalDate>,
+    private val recentSearches: RecentSearches? = null
 ) : ViewModel() {
 
     // Состояние Compose, а не StateFlow: поле ввода обновляется сразу, и курсор не прыгает при наборе
@@ -101,8 +108,11 @@ class SearchViewModel(
         combine(debouncedQuery, filters, toggledIds, limit, ::SearchParams),
         repository.observeSearchableTasks(),
         currentDate,
-        categories
-    ) { params, tasks, today, categoryOptions -> search(params, tasks, today, categoryOptions) }
+        categories,
+        recentSearches?.items ?: flowOf(emptyList())
+    ) { params, tasks, today, categoryOptions, recent ->
+        search(params, tasks, today, categoryOptions).copy(recent = recent)
+    }
         // Тысячи задач после переноса — считаем не в главном потоке
         .flowOn(Dispatchers.Default)
         .stateIn(
@@ -144,6 +154,7 @@ class SearchViewModel(
             if (filters.openOnly && task.isDone && task.id !in params.keepIds) return@mapNotNull null
             if (filters.withReminder && task.reminderMinutesBefore == null) return@mapNotNull null
             if (filters.highPriority && task.priority != TaskPriority.High) return@mapNotNull null
+            if (!filters.date.accepts(task.date, task.isDone, today)) return@mapNotNull null
             when (val category = filters.category) {
                 CategoryFilter.Any -> Unit
                 CategoryFilter.None -> if (task.categoryId != null) return@mapNotNull null
@@ -187,6 +198,25 @@ class SearchViewModel(
     fun onFiltersChange(newFilters: SearchFilters) {
         filters.value = newFilters
         limit.value = PAGE_SIZE
+    }
+
+    /** Запомнить запрос в последних: по «Найти» на клавиатуре и при открытии найденной задачи. */
+    fun rememberQuery() {
+        recentSearches?.add(query)
+    }
+
+    /** Нажали на последний запрос — ищем его снова. */
+    fun pickRecent(recent: String) {
+        onQueryChange(recent)
+        recentSearches?.add(recent)
+    }
+
+    fun removeRecent(recent: String) {
+        recentSearches?.remove(recent)
+    }
+
+    fun clearRecent() {
+        recentSearches?.clear()
     }
 
     fun showMore() {

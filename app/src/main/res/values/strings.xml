@@ -196,6 +196,17 @@
     <string name="search_filter_any_category">Любая категория</string>
     <string name="search_filter_reminder">С напоминанием</string>
     <string name="search_filter_high">Высокий приоритет</string>
+    <string name="search_date_any">Любая дата</string>
+    <string name="search_date_week">На этой неделе</string>
+    <string name="search_date_period">Выбрать период…</string>
+    <string name="period_picker_title">Выберите период</string>
+    <!-- Заголовок окна периода: «24 окт – 31 окт» -->
+    <string name="period_picker_headline">%1$s – %2$s</string>
+    <string name="period_picker_start">начало</string>
+    <string name="period_picker_end">конец</string>
+    <string name="search_recent">Недавние</string>
+    <string name="search_recent_clear">Очистить</string>
+    <string name="search_recent_remove">Убрать из недавних: %1$s</string>
     <plurals name="search_found">
         <item quantity="one">Найдена %d задача</item>
         <item quantity="few">Найдено %d задачи</item>

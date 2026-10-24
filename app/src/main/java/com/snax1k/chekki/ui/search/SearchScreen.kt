@@ -33,6 +33,7 @@ import androidx.compose.material3.Icon
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Surface
 import androidx.compose.material3.Text
+import androidx.compose.material3.TextButton
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
@@ -58,12 +59,15 @@ import androidx.compose.ui.semantics.heading
 import androidx.compose.ui.semantics.semantics
 import androidx.compose.ui.text.input.ImeAction
 import androidx.compose.ui.text.style.TextAlign
+import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.unit.dp
 import com.snax1k.chekki.R
+import com.snax1k.chekki.data.DateFilter
 import com.snax1k.chekki.ui.addtask.CategoryMark
 import com.snax1k.chekki.ui.addtask.CategoryOption
-import com.snax1k.chekki.ui.components.SquareIconButton
+import com.snax1k.chekki.ui.addtask.PeriodPickerDialog
+import com.snax1k.chekki.ui.components.formatDateRange
 import com.snax1k.chekki.ui.icons.ChekkiIcons
 import com.snax1k.chekki.ui.main.TaskGroup
 import com.snax1k.chekki.ui.main.sampleTodayTasks
@@ -83,6 +87,11 @@ fun SearchScreen(
     modifier: Modifier = Modifier,
     onQueryChange: (String) -> Unit = {},
     onFiltersChange: (SearchFilters) -> Unit = {},
+    /** «Найти» на клавиатуре: запрос запоминается в последних. */
+    onSearch: () -> Unit = {},
+    onRecentClick: (String) -> Unit = {},
+    onRecentRemove: (String) -> Unit = {},
+    onRecentClear: () -> Unit = {},
     onBack: () -> Unit = {},
     onToggleDone: (TaskUi) -> Unit = {},
     onTaskClick: (TaskUi) -> Unit = {},
@@ -116,13 +125,19 @@ fun SearchScreen(
             verticalArrangement = Arrangement.spacedBy(8.dp)
         ) {
             item(key = "field") {
-                SearchField(query, onQueryChange, onBack, Modifier.focusRequester(focusRequester))
+                SearchField(query, onQueryChange, onSearch, onBack, Modifier.focusRequester(focusRequester))
             }
             item(key = "filters") {
-                FilterChips(state.filters, state.categories, onFiltersChange, Modifier.padding(top = 8.dp))
+                FilterChips(state.filters, state.categories, state.today, onFiltersChange, Modifier.padding(top = 8.dp))
             }
             when {
                 state.isLoading -> Unit
+                state.isIdle && state.recent.isNotEmpty() -> {
+                    item(key = "recent-header") { RecentHeader(onRecentClear) }
+                    items(state.recent, key = { "recent-$it" }) { recent ->
+                        RecentRow(recent, onClick = { onRecentClick(recent) }, onRemove = { onRecentRemove(recent) })
+                    }
+                }
                 state.isIdle -> item(key = "hint") { CenterText(stringResource(R.string.search_hint)) }
                 state.total == 0 -> item(key = "empty") { CenterText(stringResource(R.string.search_nothing)) }
                 else -> {
@@ -188,7 +203,13 @@ fun SearchScreen(
 
 /** Поле поиска в «пилюле» 56 dp: «Назад», текст, крестик (виден, когда есть текст). */
 @Composable
-private fun SearchField(query: String, onQueryChange: (String) -> Unit, onBack: () -> Unit, modifier: Modifier = Modifier) {
+private fun SearchField(
+    query: String,
+    onQueryChange: (String) -> Unit,
+    onSearch: () -> Unit,
+    onBack: () -> Unit,
+    modifier: Modifier = Modifier
+) {
     val focusManager = LocalFocusManager.current
     val label = stringResource(R.string.search_placeholder)
     Row(
@@ -215,7 +236,10 @@ private fun SearchField(query: String, onQueryChange: (String) -> Unit, onBack: 
                 textStyle = MaterialTheme.typography.bodyLarge.copy(color = MaterialTheme.colorScheme.onSurface),
                 cursorBrush = SolidColor(MaterialTheme.colorScheme.primary),
                 keyboardOptions = KeyboardOptions(imeAction = ImeAction.Search),
-                keyboardActions = KeyboardActions(onSearch = { focusManager.clearFocus() })
+                keyboardActions = KeyboardActions(onSearch = {
+                    onSearch()
+                    focusManager.clearFocus()
+                })
             )
         }
         if (query.isNotEmpty()) {
@@ -240,11 +264,12 @@ private fun RoundIconButton(icon: ImageVector, description: String, onClick: () 
     }
 }
 
-/** Плашки-фильтры: «Невыполненные», «Категория ▾», «С напоминанием», «Высокий приоритет». */
+/** Плашки-фильтры: «Невыполненные», «Категория ▾», «Любая дата ▾», «С напоминанием», «Высокий приоритет». */
 @Composable
 private fun FilterChips(
     filters: SearchFilters,
     categories: List<CategoryOption>,
+    today: LocalDate,
     onChange: (SearchFilters) -> Unit,
     modifier: Modifier = Modifier
 ) {
@@ -257,6 +282,7 @@ private fun FilterChips(
             onChange(filters.copy(openOnly = !filters.openOnly))
         }
         CategoryChip(filters.category, categories) { onChange(filters.copy(category = it)) }
+        DateChip(filters.date, today) { onChange(filters.copy(date = it)) }
         FilterChip(stringResource(R.string.search_filter_reminder), filters.withReminder) {
             onChange(filters.copy(withReminder = !filters.withReminder))
         }
@@ -357,6 +383,132 @@ private fun CategoryChip(selected: CategoryFilter, categories: List<CategoryOpti
                 }
             }
         }
+    }
+}
+
+/** «Любая дата ▾» — меню готовых вариантов и «Выбрать период…» (календарь с первым и последним днём). */
+@Composable
+private fun DateChip(selected: DateFilter, today: LocalDate, onSelect: (DateFilter) -> Unit) {
+    var expanded by remember { mutableStateOf(false) }
+    var pickingPeriod by remember { mutableStateOf(false) }
+    Box {
+        FilterChip(
+            label = dateFilterLabel(selected),
+            selected = selected != DateFilter.Any,
+            trailing = {
+                Icon(
+                    ChekkiIcons.ChevronRight,
+                    contentDescription = null,
+                    modifier = Modifier
+                        .size(16.dp)
+                        .rotate(90f),
+                    tint = MaterialTheme.colorScheme.onSurfaceVariant
+                )
+            },
+            onClick = { expanded = true }
+        )
+        DropdownMenu(
+            expanded = expanded,
+            onDismissRequest = { expanded = false },
+            containerColor = MaterialTheme.colorScheme.surfaceContainerHigh
+        ) {
+            listOf(
+                DateFilter.Any,
+                DateFilter.Overdue,
+                DateFilter.Today,
+                DateFilter.ThisWeek,
+                DateFilter.ThisMonth,
+                DateFilter.NoDate
+            ).forEach { option ->
+                CategoryMenuItem(dateFilterLabel(option), selected == option) {
+                    expanded = false
+                    onSelect(option)
+                }
+            }
+            HorizontalDivider(color = MaterialTheme.colorScheme.outline.copy(alpha = 0.4f))
+            CategoryMenuItem(
+                name = stringResource(R.string.search_date_period),
+                isSelected = selected is DateFilter.Period,
+                leading = {
+                    Icon(ChekkiIcons.Calendar, contentDescription = null, Modifier.size(18.dp), tint = MaterialTheme.colorScheme.onSurfaceVariant)
+                }
+            ) {
+                expanded = false
+                pickingPeriod = true
+            }
+        }
+    }
+    if (pickingPeriod) {
+        val current = selected as? DateFilter.Period
+        PeriodPickerDialog(
+            initialFrom = current?.from ?: today,
+            initialTo = current?.to,
+            onDismiss = { pickingPeriod = false },
+            onDone = { from, to ->
+                pickingPeriod = false
+                onSelect(DateFilter.Period(from, to))
+            }
+        )
+    }
+}
+
+@Composable
+private fun dateFilterLabel(filter: DateFilter): String = when (filter) {
+    DateFilter.Any -> stringResource(R.string.search_date_any)
+    DateFilter.Overdue -> stringResource(R.string.group_overdue)
+    DateFilter.Today -> stringResource(R.string.group_today)
+    DateFilter.ThisWeek -> stringResource(R.string.search_date_week)
+    DateFilter.ThisMonth -> stringResource(R.string.group_this_month)
+    DateFilter.NoDate -> stringResource(R.string.group_no_date)
+    is DateFilter.Period -> formatDateRange(filter.from..filter.to)
+}
+
+/** «Недавние» и «Очистить» над последними запросами. */
+@Composable
+private fun RecentHeader(onClear: () -> Unit) {
+    Row(
+        Modifier
+            .fillMaxWidth()
+            .padding(start = 4.dp, top = 12.dp),
+        verticalAlignment = Alignment.CenterVertically
+    ) {
+        Text(
+            text = stringResource(R.string.search_recent),
+            modifier = Modifier
+                .weight(1f)
+                .semantics { heading() },
+            style = MaterialTheme.typography.titleSmall,
+            color = MaterialTheme.colorScheme.onSurfaceVariant
+        )
+        TextButton(onClick = onClear) {
+            Text(stringResource(R.string.search_recent_clear), style = MaterialTheme.typography.titleSmall)
+        }
+    }
+}
+
+/** Последний запрос: нажатие ищет его снова, крестик убирает из списка. */
+@Composable
+private fun RecentRow(query: String, onClick: () -> Unit, onRemove: () -> Unit) {
+    Row(
+        Modifier
+            .fillMaxWidth()
+            .height(52.dp)
+            .clip(MaterialTheme.shapes.medium)
+            .clickable(role = Role.Button, onClick = onClick)
+            .padding(start = 12.dp),
+        horizontalArrangement = Arrangement.spacedBy(14.dp),
+        verticalAlignment = Alignment.CenterVertically
+    ) {
+        Icon(ChekkiIcons.Clock, contentDescription = null, Modifier.size(20.dp), tint = MaterialTheme.colorScheme.onSurfaceVariant)
+        Text(
+            text = query,
+            modifier = Modifier.weight(1f),
+            style = MaterialTheme.typography.bodyLarge,
+            color = MaterialTheme.colorScheme.onSurface,
+            maxLines = 1,
+            overflow = TextOverflow.Ellipsis
+        )
+        RoundIconButton(ChekkiIcons.Close, stringResource(R.string.search_recent_remove, query), onRemove)
     }
 }
 

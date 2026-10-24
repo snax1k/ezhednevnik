@@ -6,6 +6,7 @@ import androidx.compose.foundation.layout.padding
 import androidx.compose.material3.DatePicker
 import androidx.compose.material3.DatePickerDefaults
 import androidx.compose.material3.DatePickerDialog
+import androidx.compose.material3.DateRangePicker
 import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.SelectableDates
@@ -15,6 +16,7 @@ import androidx.compose.material3.TimePicker
 import androidx.compose.material3.TimePickerDefaults
 import androidx.compose.material3.TimePickerDialog
 import androidx.compose.material3.rememberDatePickerState
+import androidx.compose.material3.rememberDateRangePickerState
 import androidx.compose.material3.rememberTimePickerState
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.CompositionLocalProvider
@@ -25,6 +27,7 @@ import androidx.compose.ui.platform.LocalConfiguration
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.unit.dp
 import com.snax1k.chekki.R
+import com.snax1k.chekki.ui.components.formatDayMonthShort
 import java.time.Instant
 import java.time.LocalDate
 import java.time.LocalTime
@@ -148,6 +151,70 @@ fun TaskTimePickerDialog(
 
 /** Ближайший целый час: время по умолчанию в циферблате. */
 fun nextFullHour(): LocalTime = LocalTime.now().truncatedTo(ChronoUnit.HOURS).plusHours(1)
+
+/**
+ * Выбор периода (фильтр поиска «Выбрать период…»): календарь с прокруткой месяцев, первый и последний день,
+ * кнопки «Отмена» и «Готово». Как и [TaskDatePickerDialog], всегда по-русски и с понедельника.
+ */
+@Composable
+fun PeriodPickerDialog(
+    initialFrom: LocalDate?,
+    initialTo: LocalDate?,
+    onDismiss: () -> Unit,
+    onDone: (from: LocalDate, to: LocalDate) -> Unit
+) {
+    WithRussianLocale {
+        val state = rememberDateRangePickerState(
+            initialSelectedStartDateMillis = initialFrom?.toPickerMillis(),
+            initialSelectedEndDateMillis = initialTo?.toPickerMillis()
+        )
+        DatePickerDialog(
+            onDismissRequest = onDismiss,
+            confirmButton = {
+                // Выбран один день — это период из одного дня
+                val from = state.selectedStartDateMillis
+                TextButton(
+                    onClick = { from?.let { onDone(it.toPickerDate(), (state.selectedEndDateMillis ?: it).toPickerDate()) } },
+                    enabled = from != null
+                ) {
+                    Text(stringResource(R.string.action_done))
+                }
+            },
+            dismissButton = {
+                TextButton(onClick = onDismiss) { Text(stringResource(R.string.action_cancel)) }
+            }
+        ) {
+            WithRussianLocale {
+                DateRangePicker(
+                    state = state,
+                    modifier = Modifier.weight(1f),
+                    title = {
+                        Text(
+                            text = stringResource(R.string.period_picker_title),
+                            modifier = Modifier.padding(start = 24.dp, end = 12.dp, top = 16.dp),
+                            style = MaterialTheme.typography.labelLarge
+                        )
+                    },
+                    // Свой заголовок «24 окт – 31 окт»: стандартный пишет «Start date – End date» на языке телефона
+                    headline = {
+                        val from = state.selectedStartDateMillis?.toPickerDate()
+                        val to = state.selectedEndDateMillis?.toPickerDate()
+                        Text(
+                            text = stringResource(
+                                R.string.period_picker_headline,
+                                from?.let(::formatDayMonthShort) ?: stringResource(R.string.period_picker_start),
+                                to?.let(::formatDayMonthShort) ?: stringResource(R.string.period_picker_end)
+                            ),
+                            modifier = Modifier.padding(start = 24.dp, end = 12.dp, bottom = 12.dp),
+                            style = MaterialTheme.typography.headlineSmall
+                        )
+                    },
+                    showModeToggle = false
+                )
+            }
+        }
+    }
+}
 
 @Composable
 private fun WithRussianLocale(content: @Composable () -> Unit) {

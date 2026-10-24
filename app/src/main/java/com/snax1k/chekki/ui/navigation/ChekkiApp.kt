@@ -259,16 +259,25 @@ fun ChekkiApp() {
                     )
                 }
                 entry<SearchRoute> {
-                    val viewModel = viewModel { SearchViewModel(container.taskRepository, container.currentDate) }
+                    val viewModel = viewModel {
+                        SearchViewModel(container.taskRepository, container.currentDate, container.recentSearches)
+                    }
                     val state by viewModel.uiState.collectAsStateWithLifecycle()
                     SearchScreen(
                         state = state,
                         query = viewModel.query,
                         onQueryChange = viewModel::onQueryChange,
                         onFiltersChange = viewModel::onFiltersChange,
+                        onSearch = viewModel::rememberQuery,
+                        onRecentClick = viewModel::pickRecent,
+                        onRecentRemove = viewModel::removeRecent,
+                        onRecentClear = viewModel::clearRecent,
                         onBack = { backStack.removeLastOrNull() },
                         onToggleDone = { task -> viewModel.toggleDone(task.id) },
-                        onTaskClick = { task -> backStack.add(TaskRoute(task.id)) },
+                        onTaskClick = { task ->
+                            viewModel.rememberQuery()
+                            backStack.add(TaskRoute(task.id))
+                        },
                         onPostpone = { task, date -> viewModel.postpone(task.id, date, showUndoPostpone) },
                         onDelete = { task -> viewModel.delete(task.id, showUndoDelete) },
                         onShowMore = viewModel::showMore
