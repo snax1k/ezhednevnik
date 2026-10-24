@@ -1,6 +1,14 @@
 <?xml version="1.0" encoding="utf-8"?>
+<!--
+  Иконка приложения: маскот с галочкой (исходник 1254×1254 — art/app-icon.png, нарезан по плотностям в mipmap-*/ic_launcher_foreground.png).
+  Передний слой уже залит фоном и уменьшен так, чтобы маскот целиком помещался в безопасную зону 66 dp из 108 dp:
+  лаунчеры обрезают края кругом, «капсулой» или квадратом со скруглением. Фон — тот же тёмно-синий.
+  Для тематических значков Android 13+ — белая галочка, как в уведомлениях.
+-->
 <adaptive-icon xmlns:android="http://schemas.android.com/apk/res/android">
-    <background android:drawable="@drawable/ic_launcher_background" />
-    <foreground android:drawable="@drawable/ic_launcher_foreground" />
-    <monochrome android:drawable="@drawable/ic_launcher_foreground" />
+    <background android:drawable="@color/ic_launcher_background" />
+    <foreground android:drawable="@mipmap/ic_launcher_foreground" />
+    <monochrome>
+        <inset android:drawable="@drawable/ic_notification" android:inset="27%" />
+    </monochrome>
 </adaptive-icon>
