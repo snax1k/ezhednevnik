@@ -6,8 +6,13 @@ import androidx.room.Room
 import androidx.room.RoomDatabase
 import androidx.room.TypeConverters
 
-/** База задач и привычек. Версия 2 — привычки и их отметки, версия 3 — напоминания привычек, версия 4 — паузы привычек,
- * версия 5 — иконка и архив у категорий. */
+/**
+ * База задач и привычек. Версия 2 — привычки и их отметки, версия 3 — напоминания привычек, версия 4 — паузы привычек,
+ * версия 5 — иконка и архив у категорий.
+ *
+ * С версии 5 (25.10.2026) база не пересоздаётся: в ней настоящие данные, в том числе перенесённые из старого
+ * приложения. Каждое изменение схемы — новая версия и миграция в [Migrations], проверенная тестом `MigrationTest`.
+ */
 @Database(
     entities = [
         CategoryEntity::class,
@@ -18,7 +23,7 @@ import androidx.room.TypeConverters
         HabitReminderEntity::class,
         HabitPauseEntity::class
     ],
-    version = 5,
+    version = ChekkiDatabase.VERSION,
     exportSchema = true
 )
 @TypeConverters(Converters::class)
@@ -30,12 +35,19 @@ abstract class ChekkiDatabase : RoomDatabase() {
     abstract fun habitDao(): HabitDao
 
     companion object {
+        /** Текущая версия схемы. Подняли — добавьте миграцию в [Migrations]. */
+        const val VERSION = 5
+
+        /** С этой версии данные только переносятся миграциями. */
+        const val FIRST_KEPT_VERSION = 5
+
         fun create(context: Context): ChekkiDatabase =
             Room.databaseBuilder(context, ChekkiDatabase::class.java, "chekki.db")
                 .addCallback(InitialDataCallback())
-                // Пока приложение не выпущено, при изменении схемы база пересоздаётся.
-                // Перед первым релизом это нужно убрать и писать миграции.
-                .fallbackToDestructiveMigration(dropAllTables = true)
+                .addMigrations(*Migrations.ALL)
+                // Версии до 5 были только у тестовых сборок с тестовыми данными: такую базу можно пересоздать.
+                // Для версий с 5-й пересоздания нет: без миграции приложение упадёт, но данные не сотрёт.
+                .fallbackToDestructiveMigrationFrom(dropAllTables = true, *(1 until FIRST_KEPT_VERSION).toList().toIntArray())
                 .build()
     }
 }
