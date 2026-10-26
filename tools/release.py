@@ -38,11 +38,18 @@ REPO = "snax1k/ezhednevnik"
 EXPECTED_CERT_SHA256 = "6a1647c6d41aca508f49d0cf94f075ba59b7cd2ba93bbecaf3e304ab5175248a"
 DEBUG_PORT = 8765
 
+# Gradle и apksigner нужна Java: если JAVA_HOME не задан, берём ту, что поставляется с Android Studio
+ENV = os.environ.copy()
+_STUDIO_JDK = Path(r"C:\Program Files\Android\Android Studio\jbr")
+if "JAVA_HOME" not in ENV and _STUDIO_JDK.exists():
+    ENV["JAVA_HOME"] = str(_STUDIO_JDK)
+    ENV["PATH"] = str(_STUDIO_JDK / "bin") + os.pathsep + ENV.get("PATH", "")
+
 
 def run(*args, capture=False, cwd=ROOT):
     print("›", " ".join(str(a) for a in args), flush=True)
     result = subprocess.run([str(a) for a in args], cwd=cwd, check=True, text=True,
-                            capture_output=capture, encoding="utf-8")
+                            capture_output=capture, encoding="utf-8", env=ENV)
     return result.stdout if capture else None
 
 
@@ -52,13 +59,9 @@ def fail(message):
 
 
 def gradle(*tasks):
-    env = os.environ.copy()
-    studio_jdk = Path(r"C:\Program Files\Android\Android Studio\jbr")
-    if "JAVA_HOME" not in env and studio_jdk.exists():
-        env["JAVA_HOME"] = str(studio_jdk)
     wrapper = ROOT / ("gradlew.bat" if os.name == "nt" else "gradlew")
     print("› gradlew", " ".join(tasks), flush=True)
-    subprocess.run([str(wrapper), *tasks, "-q"], cwd=ROOT, check=True, env=env)
+    subprocess.run([str(wrapper), *tasks, "-q"], cwd=ROOT, check=True, env=ENV)
 
 
 def version():
