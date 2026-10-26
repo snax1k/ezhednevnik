@@ -257,14 +257,14 @@ class SearchViewModel(
 
         /**
          * Порядок внутри группы, как на экранах групп: выполненные — свежие сверху; без даты — по приоритету,
-         * затем новые сверху; остальные — по дате, внутри дня по приоритету и времени.
+         * затем новые сверху; остальные — по приоритету, затем по дате и времени.
          */
         fun orderIn(group: TaskGroup): Comparator<Pair<SearchableTask, Any>> = when (group) {
             TaskGroup.Done -> compareByDescending { it.first.task.completedAt }
             TaskGroup.NoDate -> compareByDescending<Pair<SearchableTask, Any>> { it.first.task.priority.code }
                 .thenByDescending { it.first.task.createdAt }
-            else -> compareBy<Pair<SearchableTask, Any>> { it.first.task.date }
-                .thenByDescending { it.first.task.priority.code }
+            else -> compareByDescending<Pair<SearchableTask, Any>> { it.first.task.priority.code }
+                .thenBy { it.first.task.date }
                 .thenBy { it.first.task.time == null }
                 .thenBy { it.first.task.time }
                 .thenBy { it.first.task.createdAt }

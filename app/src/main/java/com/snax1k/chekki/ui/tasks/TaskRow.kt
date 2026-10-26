@@ -184,7 +184,7 @@ private fun highlightedTitle(task: TaskUi): AnnotatedString {
     }
 }
 
-/** Строка свойств: дата (в поиске), время, категория, подзадачи, повтор, напоминание. */
+/** Строка свойств: дата (в поиске и разделах приоритета; у задачи без даты — «Без даты»), время, категория, подзадачи, повтор, напоминание. */
 @Composable
 private fun TaskDetails(task: TaskUi, modifier: Modifier = Modifier) {
     val categoryColors = ChekkiTheme.colors.categories
@@ -197,10 +197,10 @@ private fun TaskDetails(task: TaskUi, modifier: Modifier = Modifier) {
         DetailWithIcon(
             icon = ChekkiIcons.Clock,
             iconDescription = null,
-            text = if (task.showDate && task.date != null) {
-                stringResource(R.string.task_date_time, formatShortDate(task.date, LocalDate.now()), timeText)
-            } else {
-                timeText
+            text = when {
+                !task.showDate -> timeText
+                task.date != null -> stringResource(R.string.task_date_time, formatShortDate(task.date, LocalDate.now()), timeText)
+                else -> stringResource(R.string.group_no_date)
             }
         )
         if (task.category != null) {
@@ -261,13 +261,13 @@ private fun DetailText(text: String) {
 }
 
 @Composable
-private fun priorityColor(priority: Priority): Color = when (priority) {
+internal fun priorityColor(priority: Priority): Color = when (priority) {
     Priority.High -> ChekkiTheme.colors.priorityHigh
     Priority.Medium -> ChekkiTheme.colors.priorityMedium
     Priority.Low -> ChekkiTheme.colors.priorityLow
 }
 
-private fun priorityLabel(priority: Priority): Int = when (priority) {
+internal fun priorityLabel(priority: Priority): Int = when (priority) {
     Priority.High -> R.string.priority_high
     Priority.Medium -> R.string.priority_medium
     Priority.Low -> R.string.priority_low

@@ -7,7 +7,7 @@ import com.snax1k.chekki.data.MovedTask
 import com.snax1k.chekki.data.TaskRepository
 import com.snax1k.chekki.data.db.CategoryEntity
 import com.snax1k.chekki.ui.group.TaskSection
-import com.snax1k.chekki.ui.group.sectionsWithNoDateLast
+import com.snax1k.chekki.ui.group.sectionsByPriorityOrDay
 import com.snax1k.chekki.ui.tasks.TaskUi
 import com.snax1k.chekki.ui.tasks.toTaskUi
 import kotlinx.coroutines.ExperimentalCoroutinesApi
@@ -30,7 +30,7 @@ data class CategoryTasksUiState(
     /** null у «Без категории», а также пока база не ответила или если категорию удалили. */
     val category: CategoryEntity?,
     val today: LocalDate,
-    /** Задачи по дням: просроченные, сегодня, дальше, в конце — «Без даты». */
+    /** Задачи по разделам приоритета или, если приоритетов нет, по дням: просроченные, сегодня, дальше, в конце — «Без даты». */
     val sections: List<TaskSection>,
     val isLoading: Boolean = false
 ) {
@@ -61,7 +61,7 @@ class CategoryTasksViewModel(
                     categoryId = categoryId,
                     category = entity,
                     today = today,
-                    sections = sectionsWithNoDateLast(tasks.map { it.task.date to it.toTaskUi() })
+                    sections = sectionsByPriorityOrDay(tasks.map { it.task.date to it.toTaskUi() }, noDateLast = true)
                 )
             }
         }

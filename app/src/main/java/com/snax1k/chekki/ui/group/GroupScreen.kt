@@ -18,9 +18,11 @@ import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.navigationBars
 import androidx.compose.foundation.layout.navigationBarsPadding
 import androidx.compose.foundation.layout.padding
+import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.statusBarsPadding
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
+import androidx.compose.material3.Icon
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Surface
 import androidx.compose.material3.Text
@@ -59,8 +61,11 @@ import com.snax1k.chekki.ui.components.formatShortDate
 import com.snax1k.chekki.ui.icons.ChekkiIcons
 import com.snax1k.chekki.ui.main.TaskGroup
 import com.snax1k.chekki.ui.main.sampleTodayTasks
+import com.snax1k.chekki.ui.tasks.Priority
 import com.snax1k.chekki.ui.tasks.SwipeableTaskRow
 import com.snax1k.chekki.ui.tasks.TaskUi
+import com.snax1k.chekki.ui.tasks.priorityColor
+import com.snax1k.chekki.ui.tasks.priorityLabel
 import com.snax1k.chekki.ui.theme.ChekkiTheme
 import com.snax1k.chekki.ui.theme.GroupColor
 import com.snax1k.chekki.ui.theme.cssLinearGradient
@@ -151,7 +156,11 @@ fun TaskListScreen(
                         header(Modifier.padding(bottom = 6.dp))
                     }
                     for (section in sections) {
-                        if (section.day != null) {
+                        if (section.isPriority) {
+                            item(key = "priority-${section.priority}", contentType = "day") {
+                                PriorityHeader(section.priority)
+                            }
+                        } else if (section.day != null) {
                             item(key = "day-${section.day}", contentType = "day") {
                                 DayHeader(dayTitle(section.day, today))
                             }
@@ -237,6 +246,32 @@ private fun DayHeader(text: String) {
         style = MaterialTheme.typography.titleSmall,
         color = MaterialTheme.colorScheme.onSurfaceVariant
     )
+}
+
+/**
+ * Подзаголовок раздела приоритета: флажок и «Высокий приоритет» цветом приоритета,
+ * у задач без приоритета — «Без приоритета» без флажка.
+ */
+@Composable
+private fun PriorityHeader(priority: Priority?) {
+    val color = priority?.let { priorityColor(it) } ?: MaterialTheme.colorScheme.onSurfaceVariant
+    Row(
+        Modifier
+            .fillMaxWidth()
+            .padding(start = 4.dp, top = 10.dp)
+            .semantics(mergeDescendants = true) { heading() },
+        horizontalArrangement = Arrangement.spacedBy(6.dp),
+        verticalAlignment = Alignment.CenterVertically
+    ) {
+        if (priority != null) {
+            Icon(ChekkiIcons.PriorityFlag, contentDescription = null, Modifier.size(16.dp), tint = color)
+        }
+        Text(
+            text = stringResource(priority?.let { priorityLabel(it) } ?: R.string.priority_section_none),
+            style = MaterialTheme.typography.titleSmall,
+            color = color
+        )
+    }
 }
 
 @Composable

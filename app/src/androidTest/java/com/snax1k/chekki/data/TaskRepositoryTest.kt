@@ -90,10 +90,11 @@ class TaskRepositoryTest {
     }
 
     @Test
-    fun просроченныеСамыеСтарыеСверху() {
+    fun просроченныеПоПриоритетуПотомСамыеСтарыеСверху() {
         runBlocking {
+            // «Оплатить интернет» — с высоким приоритетом, поэтому выше более старой задачи
             assertEquals(
-                listOf("Вернуть книгу в библиотеку", "Оплатить интернет"),
+                listOf("Оплатить интернет", "Вернуть книгу в библиотеку"),
                 repository.observeOverdueTitles(today, limit = 2).first()
             )
         }
@@ -129,11 +130,12 @@ class TaskRepositoryTest {
     fun просроченныеИПотомБерутсяОткрытымиДиапазонами() {
         runBlocking {
             assertEquals(
-                listOf("Вернуть книгу в библиотеку", "Оплатить интернет", "Записаться к врачу"),
+                listOf("Оплатить интернет", "Вернуть книгу в библиотеку", "Записаться к врачу"),
                 repository.observeOpenTasksBetween(LocalDate.MIN..today.minusDays(1)).first().map { it.task.title }
             )
             assertEquals(
-                listOf("Поменять масло в машине", "Сдать показания счётчиков", "Забронировать отель на отпуск", "Продлить страховку"),
+                // «Продлить страховку» — с приоритетом, поэтому первой, хотя позже остальных
+                listOf("Продлить страховку", "Поменять масло в машине", "Сдать показания счётчиков", "Забронировать отель на отпуск"),
                 repository.observeOpenTasksBetween(GroupRanges.of(today).laterFrom..LocalDate.MAX).first().map { it.task.title }
             )
         }
@@ -605,7 +607,7 @@ class TaskRepositoryTest {
     }
 
     @Test
-    fun внутриДняСначалаВысокийПриоритетПотомПоВремени() {
+    fun сначалаВысокийПриоритетПотомПоДатеИВремени() {
         runBlocking {
             // Далёкий день, чтобы не задеть другие задачи базы
             val day = today.plusYears(5)
@@ -621,8 +623,9 @@ class TaskRepositoryTest {
             )
 
             assertEquals(expected, repository.observeTasksOn(day).first().map { it.task.title })
+            // На несколько дней приоритет важнее даты: высокий завтрашний выше среднего сегодняшнего
             assertEquals(
-                expected + "Завтра высокий",
+                expected.take(3) + "Завтра высокий" + expected.drop(3),
                 repository.observeOpenTasksBetween(day..day.plusDays(1)).first().map { it.task.title }
             )
         }

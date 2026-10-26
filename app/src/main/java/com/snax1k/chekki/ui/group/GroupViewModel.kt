@@ -79,7 +79,7 @@ class GroupViewModel(
             GroupUiState(group, today, sections = if (list.isEmpty()) emptyList() else listOf(section))
         }
         fun byTaskDate(tasks: Flow<List<TaskWithDetails>>) = tasks.map { list ->
-            GroupUiState(group, today, sections = sectionsByDay(list.map { it.task.date to it.toTaskUi() }))
+            GroupUiState(group, today, sections = sectionsByPriorityOrDay(list.map { it.task.date to it.toTaskUi() }))
         }
         return when (group) {
             TaskGroup.Today -> oneSection(repository.observeTasksOn(today))

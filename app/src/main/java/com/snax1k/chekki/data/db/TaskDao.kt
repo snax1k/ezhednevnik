@@ -69,7 +69,8 @@ interface TaskDao {
     fun observeTasksOn(date: LocalDate): Flow<List<TaskWithDetails>>
 
     /**
-     * Невыполненные задачи с [from] по [to] включительно: по дате, внутри дня по приоритету и времени, «на весь день» в конце.
+     * Невыполненные задачи с [from] по [to] включительно: по приоритету (высокий сверху), внутри — по дате и времени,
+     * «на весь день» в конце дня.
      * Задачи из [keepIds] попадают в список, даже если выполнены: так отмеченная на экране задача не пропадает сразу.
      */
     @Query(
@@ -82,14 +83,14 @@ interface TaskDao {
         FROM tasks t
         LEFT JOIN categories c ON c.id = t.category_id
         WHERE t.date BETWEEN :from AND :to AND (t.is_done = 0 OR t.id IN (:keepIds))
-        ORDER BY t.date, t.priority DESC, t.time IS NULL, t.time, t.created_at, t.id
+        ORDER BY t.priority DESC, t.date, t.time IS NULL, t.time, t.created_at, t.id
         """
     )
     fun observeOpenTasksBetween(from: LocalDate, to: LocalDate, keepIds: List<Long>): Flow<List<TaskWithDetails>>
 
     /**
-     * Невыполненные задачи категории ([categoryId] null — задачи без категории): по дате, внутри дня по приоритету и времени,
-     * задачи без даты в конце, новые сверху. [keepIds] — как в [observeOpenTasksBetween].
+     * Невыполненные задачи категории ([categoryId] null — задачи без категории): по приоритету, внутри — по дате
+     * и времени, задачи без даты в конце, новые сверху. [keepIds] — как в [observeOpenTasksBetween].
      */
     @Query(
         """
@@ -101,7 +102,7 @@ interface TaskDao {
         FROM tasks t
         LEFT JOIN categories c ON c.id = t.category_id
         WHERE t.category_id IS :categoryId AND (t.is_done = 0 OR t.id IN (:keepIds))
-        ORDER BY t.date IS NULL, t.date, t.priority DESC, t.time IS NULL, t.time,
+        ORDER BY t.priority DESC, t.date IS NULL, t.date, t.time IS NULL, t.time,
             CASE WHEN t.date IS NULL THEN -t.created_at ELSE t.created_at END, t.id
         """
     )
@@ -223,12 +224,12 @@ interface TaskDao {
         laterFrom: LocalDate
     ): Flow<GroupCounts>
 
-    /** Названия первых просроченных задач, самые старые сверху. */
+    /** Названия первых просроченных задач в порядке экрана «Просроченные»: по приоритету, внутри — старые сверху. */
     @Query(
         """
         SELECT title FROM tasks
         WHERE is_done = 0 AND date < :today
-        ORDER BY date, priority DESC, time IS NULL, time, created_at
+        ORDER BY priority DESC, date, time IS NULL, time, created_at
         LIMIT :limit
         """
     )
