@@ -201,6 +201,9 @@ def serve_debug(args):
 
 
 def main():
+    # Консоль Windows по умолчанию не в UTF-8, а в «Что нового» бывают значки вроде ☰
+    for stream in (sys.stdout, sys.stderr):
+        stream.reconfigure(encoding="utf-8", errors="replace")
     parser = argparse.ArgumentParser(description="Выпуск Ежедневника")
     sub = parser.add_subparsers(dest="command", required=True)
     p = sub.add_parser("publish", help="собрать и опубликовать выпуск на GitHub")
