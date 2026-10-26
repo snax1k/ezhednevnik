@@ -103,6 +103,7 @@ import com.snax1k.chekki.ui.icons.ChekkiIcons
 import com.snax1k.chekki.ui.main.TaskGroup
 import com.snax1k.chekki.ui.tasks.PostponeMenu
 import com.snax1k.chekki.ui.tasks.TaskCheckbox
+import com.snax1k.chekki.ui.tasks.checkboxColor
 import com.snax1k.chekki.ui.theme.ChekkiTheme
 import com.snax1k.chekki.ui.theme.GroupColor
 import java.time.LocalDate
@@ -326,14 +327,16 @@ private fun ColumnScope.TaskBody(
             .verticalScroll(rememberScrollState())
             .padding(horizontal = 16.dp)
     ) {
+        val category = categories.firstOrNull { it.id == draft.categoryId }
         TaskChips(
             group = taskGroupOf(date, isDone, today),
-            category = categories.firstOrNull { it.id == draft.categoryId }
+            category = category
         )
         TitleRow(
             title = draft.title,
             isDone = isDone,
             priority = draft.priority,
+            categoryColorIndex = category?.colorIndex,
             onToggleDone = onToggleDone,
             onTitleChange = onTitleChange,
             onTitleEditEnd = onTitleEditEnd,
@@ -450,6 +453,7 @@ private fun TitleRow(
     title: String,
     isDone: Boolean,
     priority: TaskPriority,
+    categoryColorIndex: Int?,
     onToggleDone: () -> Unit,
     onTitleChange: (String) -> Unit,
     onTitleEditEnd: () -> Unit,
@@ -460,7 +464,10 @@ private fun TitleRow(
         TaskCheckbox(
             done = isDone,
             title = title,
-            priorityColor = if (priority == TaskPriority.None) null else priorityColor(priority),
+            ringColor = checkboxColor(
+                priorityColor = if (priority == TaskPriority.None) null else priorityColor(priority),
+                categoryColorIndex = categoryColorIndex
+            ),
             onToggleDone = onToggleDone
         )
         PlainTextField(

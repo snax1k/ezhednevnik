@@ -52,7 +52,7 @@ data class GroupCounts(
 @Dao
 interface TaskDao {
 
-    /** Задачи на дату, включая выполненные: сначала со временем по порядку, потом «на весь день». */
+    /** Задачи на дату, включая выполненные: по приоритету (высокий сверху), внутри — по времени, «на весь день» в конце. */
     @Query(
         """
         SELECT t.*,
@@ -63,13 +63,13 @@ interface TaskDao {
         FROM tasks t
         LEFT JOIN categories c ON c.id = t.category_id
         WHERE t.date = :date
-        ORDER BY t.time IS NULL, t.time, t.created_at, t.id
+        ORDER BY t.priority DESC, t.time IS NULL, t.time, t.created_at, t.id
         """
     )
     fun observeTasksOn(date: LocalDate): Flow<List<TaskWithDetails>>
 
     /**
-     * Невыполненные задачи с [from] по [to] включительно: по дате, внутри дня по времени, «на весь день» в конце.
+     * Невыполненные задачи с [from] по [to] включительно: по дате, внутри дня по приоритету и времени, «на весь день» в конце.
      * Задачи из [keepIds] попадают в список, даже если выполнены: так отмеченная на экране задача не пропадает сразу.
      */
     @Query(
@@ -82,13 +82,13 @@ interface TaskDao {
         FROM tasks t
         LEFT JOIN categories c ON c.id = t.category_id
         WHERE t.date BETWEEN :from AND :to AND (t.is_done = 0 OR t.id IN (:keepIds))
-        ORDER BY t.date, t.time IS NULL, t.time, t.created_at, t.id
+        ORDER BY t.date, t.priority DESC, t.time IS NULL, t.time, t.created_at, t.id
         """
     )
     fun observeOpenTasksBetween(from: LocalDate, to: LocalDate, keepIds: List<Long>): Flow<List<TaskWithDetails>>
 
     /**
-     * Невыполненные задачи категории ([categoryId] null — задачи без категории): по дате, внутри дня по времени,
+     * Невыполненные задачи категории ([categoryId] null — задачи без категории): по дате, внутри дня по приоритету и времени,
      * задачи без даты в конце, новые сверху. [keepIds] — как в [observeOpenTasksBetween].
      */
     @Query(
@@ -101,13 +101,13 @@ interface TaskDao {
         FROM tasks t
         LEFT JOIN categories c ON c.id = t.category_id
         WHERE t.category_id IS :categoryId AND (t.is_done = 0 OR t.id IN (:keepIds))
-        ORDER BY t.date IS NULL, t.date, t.time IS NULL, t.time,
+        ORDER BY t.date IS NULL, t.date, t.priority DESC, t.time IS NULL, t.time,
             CASE WHEN t.date IS NULL THEN -t.created_at ELSE t.created_at END, t.id
         """
     )
     fun observeOpenTasksOfCategory(categoryId: Long?, keepIds: List<Long>): Flow<List<TaskWithDetails>>
 
-    /** Невыполненные задачи без даты, новые сверху. [keepIds] — как в [observeOpenTasksBetween]. */
+    /** Невыполненные задачи без даты: по приоритету, внутри — новые сверху. [keepIds] — как в [observeOpenTasksBetween]. */
     @Query(
         """
         SELECT t.*,
@@ -118,7 +118,7 @@ interface TaskDao {
         FROM tasks t
         LEFT JOIN categories c ON c.id = t.category_id
         WHERE t.date IS NULL AND (t.is_done = 0 OR t.id IN (:keepIds))
-        ORDER BY t.created_at DESC, t.id DESC
+        ORDER BY t.priority DESC, t.created_at DESC, t.id DESC
         """
     )
     fun observeOpenTasksWithoutDate(keepIds: List<Long>): Flow<List<TaskWithDetails>>
@@ -165,14 +165,14 @@ interface TaskDao {
     )
     fun observeSearchableTasks(): Flow<List<SearchableTask>>
 
-    /** Задачи с [from] по [to] для точек в календаре, по дням и по времени — чтобы цвета шли в порядке задач. */
+    /** Задачи с [from] по [to] для точек в календаре в порядке списка дня (приоритет, время) — чтобы цвета шли в порядке задач. */
     @Query(
         """
         SELECT t.date, t.is_done, c.color_index AS category_color_index
         FROM tasks t
         LEFT JOIN categories c ON c.id = t.category_id
         WHERE t.date BETWEEN :from AND :to
-        ORDER BY t.date, t.time IS NULL, t.time, t.created_at, t.id
+        ORDER BY t.date, t.priority DESC, t.time IS NULL, t.time, t.created_at, t.id
         """
     )
     fun observeCalendarMarks(from: LocalDate, to: LocalDate): Flow<List<CalendarTaskMark>>
@@ -191,7 +191,7 @@ interface TaskDao {
         FROM tasks t
         LEFT JOIN categories c ON c.id = t.category_id
         WHERE t.is_done = 0 AND t.repeat_unit != 0 AND t.date IS NOT NULL
-        ORDER BY t.time IS NULL, t.time, t.created_at, t.id
+        ORDER BY t.priority DESC, t.time IS NULL, t.time, t.created_at, t.id
         """
     )
     fun observeOpenRepeatingTasks(): Flow<List<TaskWithDetails>>
@@ -228,7 +228,7 @@ interface TaskDao {
         """
         SELECT title FROM tasks
         WHERE is_done = 0 AND date < :today
-        ORDER BY date, time IS NULL, time, created_at
+        ORDER BY date, priority DESC, time IS NULL, time, created_at
         LIMIT :limit
         """
     )

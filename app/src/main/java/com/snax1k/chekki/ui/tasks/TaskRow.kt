@@ -54,6 +54,7 @@ import java.time.LocalDate
 @Composable
 fun TaskRow(task: TaskUi, onToggleDone: () -> Unit, modifier: Modifier = Modifier, onClick: (() -> Unit)? = null) {
     val priorityColor = task.priority?.let { priorityColor(it) }
+    val checkColor = checkboxColor(priorityColor, task.category?.colorIndex)
     val titleColor by animateColorAsState(
         if (task.done) ChekkiTheme.colors.taskDoneTitle else MaterialTheme.colorScheme.onSurface,
         label = "taskTitleColor"
@@ -72,7 +73,7 @@ fun TaskRow(task: TaskUi, onToggleDone: () -> Unit, modifier: Modifier = Modifie
             .padding(start = 4.dp, end = 14.dp, top = 8.dp, bottom = 8.dp),
         verticalAlignment = Alignment.Top
     ) {
-        TaskCheckbox(task.done, task.title, priorityColor, onToggleDone)
+        TaskCheckbox(task.done, task.title, checkColor, onToggleDone)
         // Отступ сверху ставит первую строку названия по центру отметки (48 / 2 − 20 / 2)
         Column(
             Modifier
@@ -112,12 +113,23 @@ fun TaskRow(task: TaskUi, onToggleDone: () -> Unit, modifier: Modifier = Modifie
 }
 
 /**
- * Отметка выполнения: кольцо цвета приоритета ([priorityColor] null — без приоритета),
+ * Цвет кольца отметки: цвет приоритета, у задачи без приоритета — цвет её категории,
+ * без того и другого — светло-серый (как точка задачи без категории в календаре).
+ */
+@Composable
+internal fun checkboxColor(priorityColor: Color?, categoryColorIndex: Int?): Color {
+    val categoryColors = ChekkiTheme.colors.categories
+    return priorityColor
+        ?: categoryColorIndex?.let { categoryColors[it.mod(categoryColors.size)] }
+        ?: MaterialTheme.colorScheme.onSurfaceVariant
+}
+
+/**
+ * Отметка выполнения: кольцо цвета [ringColor] (см. [checkboxColor]) с лёгкой заливкой,
  * после нажатия — заливка с галочкой. Зона нажатия 48 dp.
  */
 @Composable
-internal fun TaskCheckbox(done: Boolean, title: String, priorityColor: Color?, onToggleDone: () -> Unit) {
-    val ringColor = priorityColor ?: MaterialTheme.colorScheme.outline
+internal fun TaskCheckbox(done: Boolean, title: String, ringColor: Color, onToggleDone: () -> Unit) {
     val description = stringResource(
         if (done) R.string.task_mark_undone else R.string.task_mark_done,
         title
@@ -135,7 +147,7 @@ internal fun TaskCheckbox(done: Boolean, title: String, priorityColor: Color?, o
                 Modifier
                     .size(22.dp)
                     .clip(CircleShape)
-                    .background(if (priorityColor != null) priorityColor.copy(alpha = 0.10f) else Color.Transparent)
+                    .background(ringColor.copy(alpha = 0.10f))
                     .border(2.dp, ringColor, CircleShape)
             )
         }

@@ -59,13 +59,14 @@ class TaskRepositoryTest {
     }
 
     @Test
-    fun задачиНаСегодняИдутПоВремениАВесьДеньВКонце() {
+    fun задачиНаСегодняИдутПоПриоритетуПотомПоВремениАВесьДеньВКонце() {
         runBlocking {
             val tasks = repository.observeTasksOn(today).first()
             assertEquals(
                 listOf(
-                    "Утренняя пробежка", "Созвон с командой", "Отправить отчёт за квартал", "Купить продукты",
-                    "Позвонить маме", "Прочитать 30 страниц", "Оплатить коммуналку", "Полить цветы"
+                    // Высокий, средний, низкий, без приоритета; внутри — по времени, «на весь день» в конце
+                    "Созвон с командой", "Оплатить коммуналку", "Отправить отчёт за квартал", "Прочитать 30 страниц",
+                    "Утренняя пробежка", "Купить продукты", "Позвонить маме", "Полить цветы"
                 ),
                 tasks.map { it.task.title }
             )
@@ -249,7 +250,7 @@ class TaskRepositoryTest {
                 priority = TaskPriority.None
             )
 
-            val added = repository.observeTasksOn(today).first().last()
+            val added = repository.observeTasksOn(today).first().first { it.task.title == "Купить подарок" }
             assertEquals("Купить подарок", added.task.title)
             assertEquals("Что-нибудь к чаю", added.task.note)
             assertEquals(null, added.task.time)
@@ -271,9 +272,9 @@ class TaskRepositoryTest {
                 priority = TaskPriority.None
             )
             val titles = repository.observeTasksOn(today).first().map { it.task.title }
-            // Между созвоном в 10:30 и отчётом в 14:00
-            assertEquals(titles.indexOf("Созвон с командой") + 1, titles.indexOf("Обед с Олей"))
-            assertEquals(titles.indexOf("Обед с Олей") + 1, titles.indexOf("Отправить отчёт за квартал"))
+            // Среди задач без приоритета — между пробежкой в 07:30 и продуктами в 18:00
+            assertEquals(titles.indexOf("Утренняя пробежка") + 1, titles.indexOf("Обед с Олей"))
+            assertEquals(titles.indexOf("Обед с Олей") + 1, titles.indexOf("Купить продукты"))
         }
     }
 
@@ -600,6 +601,47 @@ class TaskRepositoryTest {
 
             val titles = repository.observeOpenTasksOfCategory(trips).first().map { it.task.title }
             assertEquals(listOf("Виза", "Билеты", "Отель", "Новая без даты", "Старая без даты"), titles)
+        }
+    }
+
+    @Test
+    fun внутриДняСначалаВысокийПриоритетПотомПоВремени() {
+        runBlocking {
+            // Далёкий день, чтобы не задеть другие задачи базы
+            val day = today.plusYears(5)
+            repository.addTask("Без приоритета утром", "", day, LocalTime.of(8, 0), null, TaskPriority.None)
+            repository.addTask("Низкий", "", day, LocalTime.of(9, 0), null, TaskPriority.Low)
+            repository.addTask("Высокий вечером", "", day, LocalTime.of(20, 0), null, TaskPriority.High)
+            repository.addTask("Высокий на весь день", "", day, null, null, TaskPriority.High)
+            repository.addTask("Средний", "", day, LocalTime.of(12, 0), null, TaskPriority.Medium)
+            repository.addTask("Высокий утром", "", day, LocalTime.of(7, 0), null, TaskPriority.High)
+            repository.addTask("Завтра высокий", "", day.plusDays(1), LocalTime.of(7, 0), null, TaskPriority.High)
+            val expected = listOf(
+                "Высокий утром", "Высокий вечером", "Высокий на весь день", "Средний", "Низкий", "Без приоритета утром"
+            )
+
+            assertEquals(expected, repository.observeTasksOn(day).first().map { it.task.title })
+            assertEquals(
+                expected + "Завтра высокий",
+                repository.observeOpenTasksBetween(day..day.plusDays(1)).first().map { it.task.title }
+            )
+        }
+    }
+
+    @Test
+    fun безДатыСначалаПоПриоритетуПотомНовыеСверху() {
+        runBlocking {
+            val trips = insertTripsCategory()
+            val start = Instant.parse("2026-10-20T10:00:00Z")
+            repository.addTask("Старая высокая", "", null, null, trips, TaskPriority.High, now = start)
+            repository.addTask("Новая обычная", "", null, null, trips, TaskPriority.None, now = start.plusSeconds(60))
+            repository.addTask("Новая высокая", "", null, null, trips, TaskPriority.High, now = start.plusSeconds(120))
+            repository.addTask("Средняя", "", null, null, trips, TaskPriority.Medium, now = start.plusSeconds(30))
+
+            val titles = repository.observeOpenTasksWithoutDate().first()
+                .filter { it.task.categoryId == trips }
+                .map { it.task.title }
+            assertEquals(listOf("Новая высокая", "Старая высокая", "Средняя", "Новая обычная"), titles)
         }
     }
 
