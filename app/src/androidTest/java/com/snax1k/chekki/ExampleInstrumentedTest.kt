@@ -19,6 +19,7 @@ class ExampleInstrumentedTest {
     fun useAppContext() {
         // Context of the app under test.
         val appContext = InstrumentationRegistry.getInstrumentation().targetContext
-        assertEquals("com.snax1k.chekki", appContext.packageName)
+        // Тесты идут на отладочной сборке: у неё пакет с суффиксом .debug
+        assertEquals("com.snax1k.chekki.debug", appContext.packageName)
     }
 }

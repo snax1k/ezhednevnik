@@ -61,6 +61,8 @@ import com.snax1k.chekki.ui.habit.HabitsScreen
 import com.snax1k.chekki.ui.habit.HabitsViewModel
 import com.snax1k.chekki.ui.main.MainScreen
 import com.snax1k.chekki.ui.main.MainMenuSheet
+import com.snax1k.chekki.ui.main.UpdateMenuState
+import com.snax1k.chekki.ui.update.UpdateBanner
 import com.snax1k.chekki.ui.main.MainViewModel
 import com.snax1k.chekki.ui.oldapp.ImportScreen
 import com.snax1k.chekki.ui.oldapp.ImportViewModel
@@ -212,6 +214,7 @@ fun ChekkiApp() {
                         MainViewModel(container.taskRepository, container.habitRepository, container.currentDate)
                     }
                     val state by viewModel.uiState.collectAsStateWithLifecycle()
+                    val updateState by container.updateManager.state.collectAsStateWithLifecycle()
                     MainScreen(
                         state = state,
                         onTrackerClick = { tracker -> viewModel.checkHabit(tracker.habitId) },
@@ -226,7 +229,18 @@ fun ChekkiApp() {
                             }
                         },
                         onGroupClick = { group -> backStack.add(GroupRoute(group)) },
-                        onAddClick = { isAddTaskOpen = true }
+                        onAddClick = { isAddTaskOpen = true },
+                        banner = {
+                            UpdateBanner(
+                                state = updateState,
+                                onUpdate = container.updateManager::start,
+                                onLater = container.updateManager::dismiss,
+                                onOpenPermission = {
+                                    context.startActivity(container.updateManager.installPermissionIntent())
+                                },
+                                onDismissUpdated = container.updateManager::dismissUpdated
+                            )
+                        }
                     )
                 }
                 entry<GroupRoute> { route ->
@@ -415,10 +429,19 @@ fun ChekkiApp() {
         )
     }
     if (isMenuOpen) {
+        val updateManager = container.updateManager
+        val latestUpdate by updateManager.latest.collectAsStateWithLifecycle()
+        val manualCheck by updateManager.manualCheck.collectAsStateWithLifecycle()
         MainMenuSheet(
-            onDismiss = { isMenuOpen = false },
+            onDismiss = {
+                isMenuOpen = false
+                updateManager.clearManualCheck()
+            },
             onHabits = { backStack.add(HabitsRoute) },
-            onImport = { backStack.add(ImportRoute) }
+            onImport = { backStack.add(ImportRoute) },
+            update = UpdateMenuState(updateManager.installedVersionName, manualCheck, latestUpdate?.versionName),
+            onCheckUpdates = updateManager::checkNow,
+            onShowUpdate = updateManager::showLatest
         )
     }
     if (categorySheetFor != null) {

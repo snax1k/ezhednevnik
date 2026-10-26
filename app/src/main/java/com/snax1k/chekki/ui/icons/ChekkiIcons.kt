@@ -164,6 +164,8 @@ object ChekkiIcons {
     val Edit: ImageVector by lazy { outlineIcon("Edit", "M4 20h4L19 9l-4-4L4 16zM14 6l4 4") }
     // Коробка «Архив» из макета «Категории»
     val Archive: ImageVector by lazy { outlineIcon("Archive", "M4 5h16v4H4zM5.5 9v10h13V9M10 13h4") }
+    // Обновление приложения: стрелка вниз в лоток, нарисована в том же стиле
+    val Update: ImageVector by lazy { outlineIcon("Update", "M12 4v11M7 10l5 5 5-5M5 20h14") }
 
     // Категории: первые шесть из макета «Категории», остальные нарисованы в том же стиле
     val Work: ImageVector by lazy {

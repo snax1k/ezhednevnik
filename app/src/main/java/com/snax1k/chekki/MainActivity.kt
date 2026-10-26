@@ -22,4 +22,16 @@ class MainActivity : ComponentActivity() {
             }
         }
     }
+
+    override fun onStart() {
+        super.onStart()
+        // Проверка обновления — только при открытом приложении, не чаще раза в 6 часов
+        (application as ChekkiApplication).container.updateManager.onAppStart()
+    }
+
+    override fun onResume() {
+        super.onResume()
+        // Вернулись из настроек, где разрешили установку обновлений, — продолжаем
+        (application as ChekkiApplication).container.updateManager.onResume()
+    }
 }

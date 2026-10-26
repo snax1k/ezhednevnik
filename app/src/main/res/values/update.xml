@@ -1,0 +1,5 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <!-- Справка о последнем выпуске на GitHub: ссылка всегда ведёт на последний выпуск -->
+    <string name="update_url" translatable="false">https://github.com/snax1k/ezhednevnik/releases/latest/download/update.json</string>
+</resources>

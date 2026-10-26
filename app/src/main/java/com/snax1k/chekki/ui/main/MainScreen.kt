@@ -83,7 +83,9 @@ fun MainScreen(
     onQuickEntryClick: (QuickEntry) -> Unit = {},
     onGroupClick: (TaskGroup) -> Unit = {},
     onVoiceClick: () -> Unit = {},
-    onAddClick: () -> Unit = {}
+    onAddClick: () -> Unit = {},
+    /** Плашка над быстрыми входами — обновление приложения. */
+    banner: @Composable () -> Unit = {}
 ) {
     Surface(modifier = modifier.fillMaxSize(), color = MaterialTheme.colorScheme.background) {
         Box(Modifier.fillMaxSize()) {
@@ -98,6 +100,7 @@ fun MainScreen(
             ) {
                 MainHeader(state.trackers, onMenuClick, onStatisticsClick, onTrackerClick, onTrackerLongClick, onAddHabitClick)
                 DateAndTitle(state.date)
+                banner()
                 QuickEntries(onQuickEntryClick)
                 // Пока база не ответила, группы прозрачные, потом плавно появляются
                 val groupsAlpha by animateFloatAsState(

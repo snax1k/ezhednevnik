@@ -1,0 +1,6 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <!-- Отладочная сборка проверяет обновления на компьютере: порт 8765 пробрасывается командой adb reverse
+         (10.0.2.2 не подошёл — соединение с эмулятора не устанавливалось). Всё делает tools/release.py serve-debug -->
+    <string name="update_url" translatable="false">http://localhost:8765/update.json</string>
+</resources>

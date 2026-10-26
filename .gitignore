@@ -23,3 +23,6 @@ local.properties
 *.keystore
 # Файлы соответствия R8 по версиям: для расшифровки ошибок с телефона, в репозиторий не нужны
 /release-mappings
+
+# Сборки выпусков (tools/release.py): APK и update.json уходят на GitHub, в репозиторий не кладутся
+/dist

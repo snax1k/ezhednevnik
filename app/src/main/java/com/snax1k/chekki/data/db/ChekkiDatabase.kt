@@ -41,8 +41,17 @@ abstract class ChekkiDatabase : RoomDatabase() {
         /** С этой версии данные только переносятся миграциями. */
         const val FIRST_KEPT_VERSION = 5
 
-        fun create(context: Context): ChekkiDatabase =
-            Room.databaseBuilder(context, ChekkiDatabase::class.java, "chekki.db")
+        /** Имя файла базы. */
+        const val NAME = "chekki.db"
+
+        fun create(context: Context): ChekkiDatabase {
+            // Новая версия приложения впервые открывает базу старой схемы — сначала копия, потом миграция
+            DatabaseBackups.backupBeforeMigration(context)
+            return build(context)
+        }
+
+        private fun build(context: Context): ChekkiDatabase =
+            Room.databaseBuilder(context, ChekkiDatabase::class.java, NAME)
                 .addCallback(InitialDataCallback())
                 .addMigrations(*Migrations.ALL)
                 // Версии до 5 были только у тестовых сборок с тестовыми данными: такую базу можно пересоздать.

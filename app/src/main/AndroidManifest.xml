@@ -8,6 +8,11 @@
     <uses-permission android:name="android.permission.SCHEDULE_EXACT_ALARM" />
     <!-- После перезагрузки будильники нужно поставить заново -->
     <uses-permission android:name="android.permission.RECEIVE_BOOT_COMPLETED" />
+    <!-- Обновление из выпусков на GitHub: справка о версии и APK -->
+    <uses-permission android:name="android.permission.INTERNET" />
+    <!-- Установка скачанного обновления: Android один раз спрашивает «Разрешить из этого источника».
+         Google Play такое разрешение для ежедневника не пропустит — при публикации в магазине обновление из приложения убрать -->
+    <uses-permission android:name="android.permission.REQUEST_INSTALL_PACKAGES" />
 
     <application
         android:name=".ChekkiApplication"
@@ -40,6 +45,11 @@
         <!-- Будильник привычки и кнопка «Отметить» в её уведомлении -->
         <receiver
             android:name=".reminders.HabitReminderReceiver"
+            android:exported="false" />
+
+        <!-- Итог установки обновления: окно подтверждения и ошибки -->
+        <receiver
+            android:name=".update.UpdateInstallReceiver"
             android:exported="false" />
 
         <!-- Ставит будильники заново после перезагрузки, смены времени, обновления приложения -->

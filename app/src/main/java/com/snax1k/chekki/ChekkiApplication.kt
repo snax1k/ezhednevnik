@@ -15,6 +15,7 @@ import com.snax1k.chekki.reminders.HabitNotifications
 import com.snax1k.chekki.reminders.ReminderAccess
 import com.snax1k.chekki.reminders.ReminderScheduler
 import com.snax1k.chekki.reminders.TaskNotifications
+import com.snax1k.chekki.update.UpdateManager
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.SupervisorJob
@@ -57,6 +58,9 @@ class AppContainer(context: Context) {
 
     /** Последние запросы поиска. */
     val recentSearches: RecentSearches by lazy { RecentSearches(appContext) }
+
+    /** Обновление приложения из выпусков на GitHub. */
+    val updateManager: UpdateManager by lazy { UpdateManager(appContext, applicationScope) { database } }
 
     /** Сегодняшняя дата, меняется в полночь. */
     val currentDate: Flow<LocalDate> = currentDateFlow()

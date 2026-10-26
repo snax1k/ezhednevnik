@@ -190,6 +190,35 @@
     <!-- Меню ☰ -->
     <string name="menu_habits">Привычки</string>
     <string name="menu_import">Перенести из старого приложения</string>
+    <string name="menu_update">Обновления</string>
+    <string name="menu_update_version">Версия %1$s · проверить обновления</string>
+    <string name="menu_update_checking">Проверяю обновления…</string>
+    <string name="menu_update_up_to_date">Версия %1$s — последняя</string>
+    <string name="menu_update_failed">Не удалось проверить: нет связи</string>
+    <string name="menu_update_available">Доступна версия %1$s · показать</string>
+    <!-- Обновление приложения -->
+    <string name="update_available_title">Доступна версия %1$s</string>
+    <string name="update_later">Позже</string>
+    <string name="update_now">Обновить</string>
+    <string name="update_downloading_title">Загружаю версию %1$s</string>
+    <string name="update_downloading_progress">%1$d%%</string>
+    <string name="update_permission_title">Разрешите установку обновлений</string>
+    <string name="update_permission_text">Android спросит один раз: включите «Разрешить из этого источника» и вернитесь в приложение.</string>
+    <string name="update_permission_open">Открыть настройки</string>
+    <string name="update_installing_title">Подтвердите обновление</string>
+    <string name="update_installing_text">В окне Android нажмите «Обновить». Задачи и привычки сохранятся.</string>
+    <string name="update_ready_title">Версия %1$s скачана</string>
+    <string name="update_ready_text">Установка не завершена. Нажмите «Установить», когда будете готовы.</string>
+    <string name="update_install">Установить</string>
+    <string name="update_failed_title">Не удалось обновить до %1$s</string>
+    <string name="update_error_network">Нет связи с GitHub. Проверьте интернет и попробуйте ещё раз.</string>
+    <string name="update_error_corrupted">Файл скачался с ошибкой. Попробуйте ещё раз.</string>
+    <string name="update_error_wrong_app">Файл не похож на обновление этого приложения, установка отменена.</string>
+    <string name="update_error_install">Android не установил обновление. Приложение и данные остались как были.</string>
+    <string name="update_retry">Повторить</string>
+    <string name="update_updated_title">Обновлено до версии %1$s</string>
+    <string name="update_updated_text">Все задачи и привычки на месте.</string>
+    <string name="update_ok">Понятно</string>
 
     <!-- Перенос из старого ежедневника -->
     <string name="import_title">Перенос из старого ежедневника</string>
