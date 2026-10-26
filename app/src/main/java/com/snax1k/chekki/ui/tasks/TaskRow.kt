@@ -54,7 +54,7 @@ import java.time.LocalDate
 @Composable
 fun TaskRow(task: TaskUi, onToggleDone: () -> Unit, modifier: Modifier = Modifier, onClick: (() -> Unit)? = null) {
     val priorityColor = task.priority?.let { priorityColor(it) }
-    val checkColor = checkboxColor(priorityColor, task.category?.colorIndex)
+    val checkColor = checkboxColor(task.category?.colorIndex)
     val titleColor by animateColorAsState(
         if (task.done) ChekkiTheme.colors.taskDoneTitle else MaterialTheme.colorScheme.onSurface,
         label = "taskTitleColor"
@@ -113,14 +113,13 @@ fun TaskRow(task: TaskUi, onToggleDone: () -> Unit, modifier: Modifier = Modifie
 }
 
 /**
- * Цвет кольца отметки: цвет приоритета, у задачи без приоритета — цвет её категории,
- * без того и другого — светло-серый (как точка задачи без категории в календаре).
+ * Цвет кольца отметки — всегда цвет категории задачи (решено 26.10.2026: приоритет показывает только флажок),
+ * у задачи без категории — светло-серый (как точка задачи без категории в календаре).
  */
 @Composable
-internal fun checkboxColor(priorityColor: Color?, categoryColorIndex: Int?): Color {
+internal fun checkboxColor(categoryColorIndex: Int?): Color {
     val categoryColors = ChekkiTheme.colors.categories
-    return priorityColor
-        ?: categoryColorIndex?.let { categoryColors[it.mod(categoryColors.size)] }
+    return categoryColorIndex?.let { categoryColors[it.mod(categoryColors.size)] }
         ?: MaterialTheme.colorScheme.onSurfaceVariant
 }
 

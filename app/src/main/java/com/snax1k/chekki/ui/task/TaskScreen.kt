@@ -335,7 +335,6 @@ private fun ColumnScope.TaskBody(
         TitleRow(
             title = draft.title,
             isDone = isDone,
-            priority = draft.priority,
             categoryColorIndex = category?.colorIndex,
             onToggleDone = onToggleDone,
             onTitleChange = onTitleChange,
@@ -452,7 +451,6 @@ private fun Chip(background: Color, content: @Composable () -> Unit) {
 private fun TitleRow(
     title: String,
     isDone: Boolean,
-    priority: TaskPriority,
     categoryColorIndex: Int?,
     onToggleDone: () -> Unit,
     onTitleChange: (String) -> Unit,
@@ -464,10 +462,7 @@ private fun TitleRow(
         TaskCheckbox(
             done = isDone,
             title = title,
-            ringColor = checkboxColor(
-                priorityColor = if (priority == TaskPriority.None) null else priorityColor(priority),
-                categoryColorIndex = categoryColorIndex
-            ),
+            ringColor = checkboxColor(categoryColorIndex),
             onToggleDone = onToggleDone
         )
         PlainTextField(
