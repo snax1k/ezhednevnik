@@ -194,7 +194,7 @@
     <string name="menu_update_version">Версия %1$s · проверить обновления</string>
     <string name="menu_update_checking">Проверяю обновления…</string>
     <string name="menu_update_up_to_date">Версия %1$s — последняя</string>
-    <string name="menu_update_failed">Не удалось проверить: нет связи</string>
+    <string name="menu_update_failed">Не удалось проверить, попробуйте позже</string>
     <string name="menu_update_available">Доступна версия %1$s · показать</string>
     <!-- Обновление приложения -->
     <string name="update_available_title">Доступна версия %1$s</string>
