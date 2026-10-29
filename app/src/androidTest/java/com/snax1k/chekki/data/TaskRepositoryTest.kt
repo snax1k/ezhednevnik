@@ -669,6 +669,55 @@ class TaskRepositoryTest {
     }
 
     @Test
+    fun порядокУровнейМеняетСортировкуЗадач() {
+        runBlocking {
+            val day = today.plusYears(7)
+            repository.addTask("Низкая", "", day, null, null, PriorityLevels.LOW)
+            repository.addTask("Высокая", "", day, null, null, PriorityLevels.HIGH)
+            val urgent = repository.addPriorityLevel("Срочно", 0xFFB89CFF.toInt())!!
+            repository.addTask("Срочная", "", day, null, null, urgent)
+            // Новый уровень встал последним: срочная — после низкой, но выше задач без приоритета
+            repository.addTask("Без приоритета", "", day, null, null, PriorityLevels.NONE)
+            assertEquals(
+                listOf("Высокая", "Низкая", "Срочная", "Без приоритета"),
+                repository.observeTasksOn(day).first().map { it.task.title }
+            )
+            // «Срочно» — наверх
+            repository.reorderPriorityLevels(listOf(urgent, PriorityLevels.HIGH, PriorityLevels.MEDIUM, PriorityLevels.LOW))
+            assertEquals(
+                listOf("Срочная", "Высокая", "Низкая", "Без приоритета"),
+                repository.observeTasksOn(day).first().map { it.task.title }
+            )
+        }
+    }
+
+    @Test
+    fun удалённыйУровеньВозвращаетсяСЗадачами() {
+        runBlocking {
+            val day = today.plusYears(8)
+            val taskId = repository.addTask("Средняя", "", day, null, null, PriorityLevels.MEDIUM)
+            val deleted = repository.deletePriorityLevel(PriorityLevels.MEDIUM)!!
+            assertEquals(PriorityLevels.NONE, repository.getTaskWithDetails(taskId)!!.task.priority)
+            assertEquals(listOf("Высокий", "Низкий"), repository.getPriorityLevels().map { it.name })
+
+            repository.restorePriorityLevel(deleted)
+            val restored = repository.getTaskWithDetails(taskId)!!
+            assertEquals(PriorityLevels.MEDIUM, restored.task.priority)
+            assertEquals("Средний", restored.priorityName)
+            assertEquals(listOf("Высокий", "Средний", "Низкий"), repository.getPriorityLevels().map { it.name })
+        }
+    }
+
+    @Test
+    fun уровнейНеБольшеВосьми() {
+        runBlocking {
+            repeat(PriorityLevels.MAX - 3) { repository.addPriorityLevel("Уровень $it", 0xFF8AB4FF.toInt()) }
+            assertEquals(null, repository.addPriorityLevel("Лишний", 0xFF8AB4FF.toInt()))
+            assertEquals(PriorityLevels.MAX, repository.getPriorityLevels().size)
+        }
+    }
+
+    @Test
     fun задачиБезКатегории() {
         runBlocking {
             val before = repository.observeUncategorizedOpenCount().first()

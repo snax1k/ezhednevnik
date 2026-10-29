@@ -196,6 +196,19 @@
     <!-- Меню ☰ -->
     <string name="menu_habits">Привычки</string>
     <string name="menu_import">Перенести из старого приложения</string>
+    <string name="menu_priority_levels">Уровни важности</string>
+    <!-- Уровни важности -->
+    <string name="priority_levels_title">Уровни важности</string>
+    <string name="priority_levels_hint">Сверху — самые важные: в таком порядке задачи идут в списках. Чтобы поменять порядок, перетащите уровень за «≡».</string>
+    <string name="priority_level_new">Новый уровень</string>
+    <string name="priority_level_max">Уровней не больше восьми</string>
+    <string name="priority_level_edit">Уровень важности</string>
+    <string name="priority_level_name_label">Название уровня</string>
+    <string name="priority_level_name_hint">Например, Срочно</string>
+    <string name="priority_level_add">Добавить уровень</string>
+    <string name="priority_level_delete">Удалить уровень</string>
+    <string name="priority_level_delete_hint">Задачи с ним станут без приоритета</string>
+    <string name="priority_level_deleted">Уровень удалён</string>
     <string name="menu_update">Обновления</string>
     <string name="menu_update_version">Версия %1$s · проверить обновления</string>
     <string name="menu_update_checking">Проверяю обновления…</string>

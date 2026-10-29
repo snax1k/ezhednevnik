@@ -34,6 +34,12 @@ import androidx.navigation3.runtime.rememberSaveableStateHolderNavEntryDecorator
 import androidx.navigation3.ui.NavDisplay
 import com.snax1k.chekki.ChekkiApplication
 import com.snax1k.chekki.R
+import com.snax1k.chekki.ui.priority.suggestedPriorityColorCode
+import com.snax1k.chekki.ui.priority.priorityColorCode
+import com.snax1k.chekki.ui.priority.PriorityLevelsViewModel
+import com.snax1k.chekki.ui.priority.PriorityLevelsScreen
+import com.snax1k.chekki.ui.priority.PriorityLevelSheet
+import com.snax1k.chekki.data.DeletedPriorityLevel
 import com.snax1k.chekki.data.DeletedCategory
 import com.snax1k.chekki.data.DeletedHabit
 import com.snax1k.chekki.data.DeletedTask
@@ -113,6 +119,10 @@ data object CategoriesRoute : NavKey
 @Serializable
 data class CategoryRoute(val categoryId: Long?) : NavKey
 
+/** Уровни важности: порядок, названия и цвета флажков. */
+@Serializable
+data object PriorityLevelsRoute : NavKey
+
 /** Корень приложения: стек экранов (Navigation 3) и переходы между ними. */
 @Composable
 fun ChekkiApp() {
@@ -186,6 +196,10 @@ fun ChekkiApp() {
     val categoryDeletedMessage = stringResource(R.string.category_deleted)
     val showUndoCategoryDelete: (DeletedCategory) -> Unit = { deleted ->
         showUndo(categoryDeletedMessage) { container.taskRepository.restoreCategory(deleted) }
+    }
+    val priorityLevelDeletedMessage = stringResource(R.string.priority_level_deleted)
+    val showUndoPriorityLevelDelete: (DeletedPriorityLevel) -> Unit = { deleted ->
+        showUndo(priorityLevelDeletedMessage) { container.taskRepository.restorePriorityLevel(deleted) }
     }
     val showUndoPostpone: (MovedTask) -> Unit = { moved ->
         val newDate = moved.newDate ?: LocalDate.now()
@@ -382,6 +396,20 @@ fun ChekkiApp() {
                         }
                     )
                 }
+                entry<PriorityLevelsRoute> {
+                    val viewModel = viewModel { PriorityLevelsViewModel(container.taskRepository) }
+                    val state by viewModel.uiState.collectAsStateWithLifecycle()
+                    val suggestedColor = suggestedPriorityColorCode(state.levels)
+                    val codes = state.levels.associate { it.id to priorityColorCode(it.color) }
+                    PriorityLevelsScreen(
+                        state = state,
+                        onBack = { backStack.removeLastOrNull() },
+                        onLevelClick = { level -> viewModel.startEdit(level, codes[level.id] ?: level.color) },
+                        onAdd = { viewModel.startNew(suggestedColor) },
+                        onReorder = viewModel::reorder
+                    )
+                    PriorityLevelSheet(viewModel, onDeleted = showUndoPriorityLevelDelete)
+                }
                 entry<HabitsRoute> {
                     val viewModel = viewModel { HabitsViewModel(container.habitRepository, container.currentDate) }
                     val state by viewModel.uiState.collectAsStateWithLifecycle()
@@ -439,6 +467,7 @@ fun ChekkiApp() {
             },
             onHabits = { backStack.add(HabitsRoute) },
             onImport = { backStack.add(ImportRoute) },
+            onPriorityLevels = { backStack.add(PriorityLevelsRoute) },
             update = UpdateMenuState(updateManager.installedVersionName, manualCheck, latestUpdate?.versionName),
             onCheckUpdates = updateManager::checkNow,
             onShowUpdate = updateManager::showLatest

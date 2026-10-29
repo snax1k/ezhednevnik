@@ -256,7 +256,7 @@ private fun IconPicker(selected: CategoryIcon, color: Color, onSelect: (Category
  * Под ними «Свой цвет» — круг цветов, HEX и R, G, B ([ColorPickerDialog]).
  */
 @Composable
-private fun ColorPicker(selected: Int, onSelect: (Int) -> Unit) {
+internal fun ColorPicker(selected: Int, onSelect: (Int) -> Unit) {
     val palette = ChekkiTheme.colors.categories
     var isCustomOpen by remember { mutableStateOf(false) }
     Column(

@@ -44,7 +44,7 @@ data class UpdateMenuState(
 )
 
 /**
- * Меню ☰ главного экрана: «Привычки», «Перенести из старого приложения» и обновления. Макета нет.
+ * Меню ☰ главного экрана: «Привычки», «Уровни важности», «Перенести из старого приложения» и обновления. Макета нет.
  * Нажатие на строку обновлений проверяет их, а если новая версия уже найдена — возвращает её плашку.
  */
 // ModalBottomSheet в Material 3 1.4 всё ещё помечен экспериментальным
@@ -54,6 +54,7 @@ fun MainMenuSheet(
     onDismiss: () -> Unit,
     onHabits: () -> Unit,
     onImport: () -> Unit,
+    onPriorityLevels: () -> Unit,
     update: UpdateMenuState,
     onCheckUpdates: () -> Unit,
     onShowUpdate: () -> Unit
@@ -80,6 +81,7 @@ fun MainMenuSheet(
                 .padding(start = 12.dp, end = 12.dp, bottom = 16.dp)
         ) {
             MenuRow(ChekkiIcons.Habits, stringResource(R.string.menu_habits)) { then(onHabits) }
+            MenuRow(ChekkiIcons.PriorityFlag, stringResource(R.string.menu_priority_levels)) { then(onPriorityLevels) }
             MenuRow(ChekkiIcons.Archive, stringResource(R.string.menu_import)) { then(onImport) }
             UpdateRow(update, onClick = {
                 // Версия уже найдена — закрываем меню и показываем плашку; иначе проверяем, меню остаётся открытым
