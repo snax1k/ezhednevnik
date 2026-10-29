@@ -199,6 +199,45 @@ object ChekkiIcons {
     val Music: ImageVector by lazy {
         outlineIcon("Music", "M9 18V5l11-2v13M9 18a3 3 0 1 1-6 0a3 3 0 1 1 6 0zM20 16a3 3 0 1 1-6 0a3 3 0 1 1 6 0z")
     }
+
+    // Иконки категорий, добавленные 29.10.2026, в том же стиле: контур 2 dp, скруглённые концы, сетка 24×24
+    val CategoryCoffee: ImageVector by lazy { outlineIcon("CategoryCoffee", "M5 9h11v5a5 5 0 0 1-5 5h-1a5 5 0 0 1-5-5zM16 10h1.5a2.5 2.5 0 0 1 0 5H16M8 3.5v2M11 3v2.5M14 3.5v2") }
+    val CategoryFood: ImageVector by lazy { outlineIcon("CategoryFood", "M7 3v18M4.5 3v5a2.5 2.5 0 0 0 5 0V3M17 21V3c-2.2 1-3.5 3.5-3.5 7v3H17") }
+    val CategoryFitness: ImageVector by lazy { outlineIcon("CategoryFitness", "M6.5 6.5v11M17.5 6.5v11M3.5 9v6M20.5 9v6M6.5 12h11") }
+    val CategoryBike: ImageVector by lazy { outlineIcon("CategoryBike", "M2 17.5a3.5 3.5 0 1 0 7 0a3.5 3.5 0 1 0-7 0zM15 17.5a3.5 3.5 0 1 0 7 0a3.5 3.5 0 1 0-7 0zM5.5 17.5L9 9h6l3.5 8.5M9 9l3 8.5M8 6h3M15 9l-1-3h2.5") }
+    val CategoryMedical: ImageVector by lazy { outlineIcon("CategoryMedical", "M9.5 3.5h5v6h6v5h-6v6h-5v-6h-6v-5h6z") }
+    val CategoryUmbrella: ImageVector by lazy { outlineIcon("CategoryUmbrella", "M12 3a9 9 0 0 1 9 9H3a9 9 0 0 1 9-9zM12 12v6.5a2 2 0 0 1-4 0") }
+    val CategoryCloud: ImageVector by lazy { outlineIcon("CategoryCloud", "M7 18a4 4 0 0 1-.5-8 5.5 5.5 0 0 1 10.6-1.5A4.5 4.5 0 0 1 17 18z") }
+    val CategoryLeaf: ImageVector by lazy { outlineIcon("CategoryLeaf", "M5 19C5 10 10 5 20 4c0 9-5 15-12 15zM5 19c3-4 6-7 10-10") }
+    val CategoryPlant: ImageVector by lazy { outlineIcon("CategoryPlant", "M7 14h10l-1.5 7h-7zM12 14V8M12 10c-3 0-4.5-2-4.5-5 3 0 4.5 2 4.5 5zM12 8c0-3 1.5-5 4.5-5 0 3-1.5 5-4.5 5z") }
+    val CategoryPet: ImageVector by lazy { outlineIcon("CategoryPet", "M12 13c-3 0-5.5 3-5.5 5 0 1.5 1.5 2 2.5 2 1.2 0 2-.8 3-.8s1.8.8 3 .8c1 0 2.5-.5 2.5-2 0-2-2.5-5-5.5-5zM4.5 10a1.5 2 0 1 0 3 0a1.5 2 0 1 0-3 0zM16.5 10a1.5 2 0 1 0 3 0a1.5 2 0 1 0-3 0zM8 6a1.5 2 0 1 0 3 0a1.5 2 0 1 0-3 0zM13 6a1.5 2 0 1 0 3 0a1.5 2 0 1 0-3 0z") }
+    val CategoryFamily: ImageVector by lazy { outlineIcon("CategoryFamily", "M9 4a3 3 0 1 0 0 6a3 3 0 1 0 0-6zM3 20a6 6 0 0 1 12 0M16.5 6.5a2.5 2.5 0 1 1 0 5M17.5 14a5 5 0 0 1 3.5 6") }
+    val CategorySmile: ImageVector by lazy { outlineIcon("CategorySmile", "M12 3a9 9 0 1 0 0 18a9 9 0 1 0 0-18zM8.5 14.5c1.8 2 5.2 2 7 0M9 9.5h.01M15 9.5h.01") }
+    val CategoryCake: ImageVector by lazy { outlineIcon("CategoryCake", "M4 21h16M5 21v-7h14v7M5 16.5c1.2 1 2.3 1 3.5 0s2.3-1 3.5 0 2.3 1 3.5 0 2.3-1 3.5 0M12 14v-3M12 8.5c-.8-.6-1-1.6 0-3 1 1.4.8 2.4 0 3z") }
+    val CategoryIdea: ImageVector by lazy { outlineIcon("CategoryIdea", "M9 18h6M10 21h4M12 3a6 6 0 0 0-3.5 10.9c.8.6 1.5 1.6 1.5 2.6V17h4v-.5c0-1 .7-2 1.5-2.6A6 6 0 0 0 12 3z") }
+    val CategoryTarget: ImageVector by lazy { outlineIcon("CategoryTarget", "M12 3a9 9 0 1 0 0 18a9 9 0 1 0 0-18zM12 7a5 5 0 1 0 0 10a5 5 0 1 0 0-10zM12 11a1 1 0 1 0 0 2a1 1 0 1 0 0-2z") }
+    val CategoryTrophy: ImageVector by lazy { outlineIcon("CategoryTrophy", "M8 4h8v6a4 4 0 0 1-8 0zM8 6H5v1.5A3 3 0 0 0 8 10.5M16 6h3v1.5a3 3 0 0 1-3 3M12 14v3M10 17h4v3h-4zM8.5 20h7") }
+    val CategoryMail: ImageVector by lazy { outlineIcon("CategoryMail", "M4 6h16a1 1 0 0 1 1 1v10a1 1 0 0 1-1 1H4a1 1 0 0 1-1-1V7a1 1 0 0 1 1-1zM3.5 7l8.5 6 8.5-6") }
+    val CategoryChat: ImageVector by lazy { outlineIcon("CategoryChat", "M5 5h14a2 2 0 0 1 2 2v8a2 2 0 0 1-2 2h-8l-5 4v-4H5a2 2 0 0 1-2-2V7a2 2 0 0 1 2-2z") }
+    val CategoryLaptop: ImageVector by lazy { outlineIcon("CategoryLaptop", "M5 5h14a1 1 0 0 1 1 1v9H4V6a1 1 0 0 1 1-1zM2.5 18.5h19l-1.5-3.5H4z") }
+    val CategoryBuilding: ImageVector by lazy { outlineIcon("CategoryBuilding", "M5 21V4h10v17M15 9h4v12M3 21h18M8 8h.01M12 8h.01M8 12h.01M12 12h.01M8 16h.01M12 16h.01") }
+    val CategoryTools: ImageVector by lazy { outlineIcon("CategoryTools", "M15 4a5 5 0 0 0-4.6 6.9L4 17.3a1.9 1.9 0 0 0 2.7 2.7l6.4-6.4A5 5 0 0 0 20 9l-3 3-3-1-1-3 3-3z") }
+    val CategoryKey: ImageVector by lazy { outlineIcon("CategoryKey", "M8 11a4 4 0 1 0 0 8a4 4 0 1 0 0-8zM11 12l9-9M17 6l2.5 2.5M14.5 8.5l2 2") }
+    val CategoryLock: ImageVector by lazy { outlineIcon("CategoryLock", "M6 11h12v9H6zM8.5 11V8a3.5 3.5 0 0 1 7 0v3") }
+    val CategoryBus: ImageVector by lazy { outlineIcon("CategoryBus", "M6 4h12a2 2 0 0 1 2 2v11H4V6a2 2 0 0 1 2-2zM4 11h16M7 17v2.5M17 17v2.5M7.5 14h.01M16.5 14h.01") }
+    val CategoryPlace: ImageVector by lazy { outlineIcon("CategoryPlace", "M12 21s-7-6-7-11.5a7 7 0 0 1 14 0C19 15 12 21 12 21zM12 7a2.5 2.5 0 1 0 0 5a2.5 2.5 0 1 0 0-5z") }
+    val CategoryGlobe: ImageVector by lazy { outlineIcon("CategoryGlobe", "M12 3a9 9 0 1 0 0 18a9 9 0 1 0 0-18zM3 12h18M12 3c2.5 2.5 3.5 5.5 3.5 9s-1 6.5-3.5 9c-2.5-2.5-3.5-5.5-3.5-9s1-6.5 3.5-9z") }
+    val CategoryCamera: ImageVector by lazy { outlineIcon("CategoryCamera", "M4 8h3l1.5-2.5h7L17 8h3a1 1 0 0 1 1 1v9a1 1 0 0 1-1 1H4a1 1 0 0 1-1-1V9a1 1 0 0 1 1-1zM12 10a3.5 3.5 0 1 0 0 7a3.5 3.5 0 1 0 0-7z") }
+    val CategoryArt: ImageVector by lazy { outlineIcon("CategoryArt", "M12 3a9 9 0 0 0 0 18c1.2 0 2-.8 2-1.8 0-1.4-1.2-1.7-1.2-3 0-1 .8-1.7 1.8-1.7H17a4 4 0 0 0 4-4C21 6.5 17 3 12 3zM7.5 11.5h.01M10 7.5h.01M15 7.5h.01") }
+    val CategoryGame: ImageVector by lazy { outlineIcon("CategoryGame", "M7 8h10a4 4 0 0 1 4 4v1a4 4 0 0 1-7 2.6l-.5-.6h-3l-.5.6A4 4 0 0 1 3 13v-1a4 4 0 0 1 4-4zM7.5 10.5v3M6 12h3M15.5 11.5h.01M17.5 13h.01") }
+    val CategoryMovie: ImageVector by lazy { outlineIcon("CategoryMovie", "M4 5h16v14H4zM4 9h16M4 15h16M8 5v4M16 5v4M8 15v4M16 15v4") }
+    val CategoryMoney: ImageVector by lazy {
+        outlineIcon(
+            "CategoryMoney",
+            "M12 3a9 9 0 1 0 0 18a9 9 0 1 0 0-18zM14.5 9c-.5-1-1.5-1.5-2.5-1.5-1.5 0-2.5.8-2.5 2s1 1.7 2.5 2 2.5.8 2.5 2-1 2-2.5 2c-1 0-2-.5-2.5-1.5M12 6v1.5M12 16.5V18"
+        )
+    }
+    val CategoryClothes: ImageVector by lazy { outlineIcon("CategoryClothes", "M8 4l-5 3 2 4 2.5-1V20h9V10l2.5 1 2-4-5-3c-.5 1.5-2 2.5-4 2.5S8.5 5.5 8 4z") }
 }
 
 private const val PriorityFlagPath = "M5 21V4M5 4h11.5l-2.2 4.2 2.2 4.3H5"
