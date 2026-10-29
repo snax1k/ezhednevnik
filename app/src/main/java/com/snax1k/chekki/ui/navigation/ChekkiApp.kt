@@ -52,6 +52,8 @@ import com.snax1k.chekki.ui.calendar.CalendarViewModel
 import com.snax1k.chekki.ui.category.CategoriesScreen
 import com.snax1k.chekki.ui.search.SearchScreen
 import com.snax1k.chekki.ui.search.SearchViewModel
+import com.snax1k.chekki.ui.stats.StatsScreen
+import com.snax1k.chekki.ui.stats.StatsViewModel
 import com.snax1k.chekki.ui.category.CategoriesViewModel
 import com.snax1k.chekki.ui.category.CategoryEditorViewModel
 import com.snax1k.chekki.ui.category.CategorySheet
@@ -123,6 +125,10 @@ data class CategoryRoute(val categoryId: Long?) : NavKey
 /** Уровни важности: порядок, названия и цвета флажков. */
 @Serializable
 data object PriorityLevelsRoute : NavKey
+
+/** Статистика задач за неделю, месяц или год. */
+@Serializable
+data object StatsRoute : NavKey
 
 /** Корень приложения: стек экранов (Navigation 3) и переходы между ними. */
 @Composable
@@ -240,6 +246,7 @@ fun ChekkiApp() {
                         onTrackerLongClick = { tracker -> openHabitCard(tracker.habitId) },
                         onAddHabitClick = { openHabitSheet(null) },
                         onMenuClick = { isMenuOpen = true },
+                        onStatisticsClick = { backStack.add(StatsRoute) },
                         onQuickEntryClick = { entry ->
                             when (entry) {
                                 QuickEntry.Categories -> backStack.add(CategoriesRoute)
@@ -401,6 +408,17 @@ fun ChekkiApp() {
                             addTaskViewModel.onCategorySelect(route.categoryId)
                             isAddTaskOpen = true
                         }
+                    )
+                }
+                entry<StatsRoute> {
+                    val viewModel = viewModel { StatsViewModel(container.taskRepository, container.currentDate) }
+                    val state by viewModel.uiState.collectAsStateWithLifecycle()
+                    StatsScreen(
+                        state = state,
+                        onBack = { backStack.removeLastOrNull() },
+                        onSelectPeriod = viewModel::selectPeriod,
+                        onPrevious = viewModel::previous,
+                        onNext = viewModel::next
                     )
                 }
                 entry<PriorityLevelsRoute> {

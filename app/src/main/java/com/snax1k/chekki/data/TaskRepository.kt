@@ -354,6 +354,9 @@ class TaskRepository(
     /** Сколько всего выполненных задач: по нему экран решает, показывать ли «Показать ещё». */
     fun observeDoneCount(): Flow<Int> = taskDao.observeDoneCount()
 
+    /** Выполненные задачи для статистики. */
+    fun observeCompletedTasks(): Flow<List<CompletedTask>> = taskDao.observeCompletedTasks()
+
     /** Все задачи с названиями подзадач — для поиска. */
     fun observeSearchableTasks(): Flow<List<SearchableTask>> = taskDao.observeSearchableTasks()
 

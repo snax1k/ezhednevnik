@@ -5,6 +5,7 @@ import androidx.room.Dao
 import androidx.room.Embedded
 import androidx.room.Insert
 import androidx.room.Query
+import com.snax1k.chekki.data.CompletedTask
 import kotlinx.coroutines.flow.Flow
 import java.time.Instant
 import java.time.LocalDate
@@ -198,6 +199,10 @@ interface TaskDao {
 
     @Query("SELECT COUNT(*) FROM tasks WHERE is_done = 1")
     fun observeDoneCount(): Flow<Int>
+
+    /** Все выполненные задачи для статистики: когда отметили и на какой день были. После переноса — около 8,4 тыс. строк. */
+    @Query("SELECT completed_at, date FROM tasks WHERE is_done = 1 AND completed_at IS NOT NULL")
+    fun observeCompletedTasks(): Flow<List<CompletedTask>>
 
     /**
      * Все задачи для поиска с названиями подзадач. Совпадения ищет приложение: LIKE в SQLite
