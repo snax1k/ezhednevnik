@@ -43,6 +43,7 @@ import androidx.compose.ui.unit.dp
 import com.snax1k.chekki.R
 import com.snax1k.chekki.ui.components.formatShortDate
 import com.snax1k.chekki.ui.components.formatTime
+import com.snax1k.chekki.ui.category.categoryColor
 import com.snax1k.chekki.ui.icons.ChekkiIcons
 import com.snax1k.chekki.ui.theme.ChekkiTheme
 import java.time.LocalDate
@@ -118,8 +119,7 @@ fun TaskRow(task: TaskUi, onToggleDone: () -> Unit, modifier: Modifier = Modifie
  */
 @Composable
 internal fun checkboxColor(categoryColorIndex: Int?): Color {
-    val categoryColors = ChekkiTheme.colors.categories
-    return categoryColorIndex?.let { categoryColors[it.mod(categoryColors.size)] }
+    return categoryColorIndex?.let { categoryColor(it) }
         ?: MaterialTheme.colorScheme.onSurfaceVariant
 }
 
@@ -186,7 +186,6 @@ private fun highlightedTitle(task: TaskUi): AnnotatedString {
 /** Строка свойств: дата (в поиске и разделах приоритета; у задачи без даты — «Без даты»), время, категория, подзадачи, повтор, напоминание. */
 @Composable
 private fun TaskDetails(task: TaskUi, modifier: Modifier = Modifier) {
-    val categoryColors = ChekkiTheme.colors.categories
     Row(
         modifier,
         horizontalArrangement = Arrangement.spacedBy(10.dp),
@@ -211,7 +210,7 @@ private fun TaskDetails(task: TaskUi, modifier: Modifier = Modifier) {
                     Modifier
                         .size(8.dp)
                         .clip(CircleShape)
-                        .background(categoryColors[task.category.colorIndex % categoryColors.size])
+                        .background(categoryColor(task.category.colorIndex))
                 )
                 DetailText(task.category.name)
             }

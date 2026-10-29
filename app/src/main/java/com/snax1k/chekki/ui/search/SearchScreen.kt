@@ -63,6 +63,7 @@ import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.unit.dp
 import com.snax1k.chekki.R
+import com.snax1k.chekki.ui.category.categoryColor
 import com.snax1k.chekki.data.DateFilter
 import com.snax1k.chekki.ui.addtask.CategoryMark
 import com.snax1k.chekki.ui.addtask.CategoryOption
@@ -335,7 +336,6 @@ private fun FilterChip(
 private fun CategoryChip(selected: CategoryFilter, categories: List<CategoryOption>, onSelect: (CategoryFilter) -> Unit) {
     var expanded by remember { mutableStateOf(false) }
     val chosen = (selected as? CategoryFilter.Of)?.let { filter -> categories.firstOrNull { it.id == filter.id } }
-    val palette = ChekkiTheme.colors.categories
     val label = when {
         chosen != null -> chosen.name
         selected == CategoryFilter.None -> stringResource(R.string.add_task_no_category)
@@ -345,7 +345,7 @@ private fun CategoryChip(selected: CategoryFilter, categories: List<CategoryOpti
         FilterChip(
             label = label,
             selected = selected != CategoryFilter.Any,
-            leading = chosen?.let { { CategoryMark(it.icon, palette[it.colorIndex % palette.size], size = 16.dp) } },
+            leading = chosen?.let { { CategoryMark(it.icon, categoryColor(it.colorIndex), size = 16.dp) } },
             trailing = {
                 Icon(
                     ChekkiIcons.ChevronRight,
@@ -376,7 +376,7 @@ private fun CategoryChip(selected: CategoryFilter, categories: List<CategoryOpti
                 CategoryMenuItem(
                     name = category.name,
                     isSelected = chosen?.id == category.id,
-                    leading = { CategoryMark(category.icon, palette[category.colorIndex % palette.size]) }
+                    leading = { CategoryMark(category.icon, categoryColor(category.colorIndex)) }
                 ) {
                     expanded = false
                     onSelect(CategoryFilter.Of(category.id))

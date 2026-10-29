@@ -59,6 +59,7 @@ import androidx.compose.ui.unit.dp
 import androidx.lifecycle.Lifecycle
 import androidx.lifecycle.compose.LifecycleEventEffect
 import com.snax1k.chekki.R
+import com.snax1k.chekki.ui.category.categoryColor
 import com.snax1k.chekki.data.AllDayReminderTime
 import com.snax1k.chekki.data.db.TaskPriority
 import com.snax1k.chekki.reminders.TaskNotifications
@@ -161,7 +162,6 @@ internal fun CategoryRow(
 ) {
     var expanded by remember { mutableStateOf(false) }
     val selected = categories.firstOrNull { it.id == selectedId }
-    val palette = ChekkiTheme.colors.categories
     Box(modifier) {
         FieldRow(
             icon = ChekkiIcons.Tag,
@@ -170,7 +170,7 @@ internal fun CategoryRow(
             placement = placement
         ) {
             if (selected != null) {
-                CategoryMark(selected.icon, palette[selected.colorIndex % palette.size])
+                CategoryMark(selected.icon, categoryColor(selected.colorIndex))
             }
             Text(
                 text = selected?.name ?: stringResource(R.string.add_task_no_category),
@@ -199,7 +199,7 @@ internal fun CategoryRow(
                 CategoryMenuItem(
                     name = category.name,
                     icon = category.icon,
-                    color = palette[category.colorIndex % palette.size],
+                    color = categoryColor(category.colorIndex),
                     isSelected = category.id == selectedId,
                     onClick = {
                         onSelect(category.id)

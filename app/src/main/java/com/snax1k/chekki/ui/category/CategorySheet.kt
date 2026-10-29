@@ -29,14 +29,19 @@ import androidx.compose.material3.TextButton
 import androidx.compose.material3.rememberModalBottomSheetState
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
+import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.rememberCoroutineScope
+import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.focus.FocusRequester
 import androidx.compose.ui.focus.focusRequester
+import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.graphics.SolidColor
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.semantics.Role
 import androidx.compose.ui.semantics.contentDescription
@@ -52,6 +57,8 @@ import com.snax1k.chekki.ui.addtask.DragHandle
 import com.snax1k.chekki.ui.addtask.PlainTextField
 import com.snax1k.chekki.ui.addtask.SaveButton
 import com.snax1k.chekki.ui.addtask.sheetContentMaxHeight
+import com.snax1k.chekki.ui.components.ColorPickerDialog
+import com.snax1k.chekki.ui.components.colorToHex
 import com.snax1k.chekki.ui.habit.SectionLabel
 import com.snax1k.chekki.ui.habit.SheetHeader
 import com.snax1k.chekki.ui.icons.ChekkiIcons
@@ -244,10 +251,14 @@ private fun IconPicker(selected: CategoryIcon, color: Color, onSelect: (Category
     }
 }
 
-/** 12 цветов в два ряда по шесть: выбранный обведён и с галочкой. Ячейки делят ширину поровну. */
+/**
+ * 12 цветов в два ряда по шесть: выбранный обведён и с галочкой, ячейки делят ширину поровну.
+ * Под ними «Свой цвет» — круг цветов, HEX и R, G, B ([ColorPickerDialog]).
+ */
 @Composable
 private fun ColorPicker(selected: Int, onSelect: (Int) -> Unit) {
     val palette = ChekkiTheme.colors.categories
+    var isCustomOpen by remember { mutableStateOf(false) }
     Column(
         Modifier
             .fillMaxWidth()
@@ -286,6 +297,71 @@ private fun ColorPicker(selected: Int, onSelect: (Int) -> Unit) {
                     }
                 }
             }
+        }
+        CustomColorRow(selected, onClick = { isCustomOpen = true })
+    }
+    if (isCustomOpen) {
+        ColorPickerDialog(
+            initial = categoryColor(selected),
+            onDismiss = { isCustomOpen = false },
+            onPick = { color ->
+                isCustomOpen = false
+                onSelect(customCategoryColorCode(color))
+            }
+        )
+    }
+}
+
+/** «Свой цвет»: радужный круг, а если свой цвет уже выбран — он сам с галочкой и подписью «#7CC2FF». */
+@Composable
+private fun CustomColorRow(selected: Int, onClick: () -> Unit) {
+    val isCustom = isCustomCategoryColor(selected)
+    val title = stringResource(R.string.category_color_custom)
+    val description = if (isCustom) {
+        stringResource(R.string.category_color_custom_value, colorToHex(Color(selected)))
+    } else {
+        title
+    }
+    Row(
+        Modifier
+            .fillMaxWidth()
+            .padding(top = 6.dp)
+            .heightIn(min = 52.dp)
+            .clip(MaterialTheme.shapes.extraSmall)
+            .selectable(selected = isCustom, role = Role.RadioButton, onClick = onClick)
+            .semantics(mergeDescendants = true) { contentDescription = description }
+            .padding(horizontal = 8.dp),
+        horizontalArrangement = Arrangement.spacedBy(12.dp),
+        verticalAlignment = Alignment.CenterVertically
+    ) {
+        Box(
+            Modifier
+                .size(38.dp)
+                .then(if (isCustom) Modifier.border(2.dp, MaterialTheme.colorScheme.onSurface, CircleShape) else Modifier)
+                .padding(if (isCustom) 4.dp else 0.dp)
+                .clip(CircleShape)
+                .background(
+                    if (isCustom) {
+                        SolidColor(Color(selected))
+                    } else {
+                        Brush.sweepGradient(
+                            listOf(Color.Red, Color.Yellow, Color.Green, Color.Cyan, Color.Blue, Color.Magenta, Color.Red)
+                        )
+                    }
+                ),
+            contentAlignment = Alignment.Center
+        ) {
+            if (isCustom) {
+                Icon(ChekkiIcons.Check, contentDescription = null, Modifier.size(14.dp), tint = ChekkiTheme.colors.onFab)
+            }
+        }
+        Text(title, style = MaterialTheme.typography.titleSmall, color = MaterialTheme.colorScheme.onSurface)
+        if (isCustom) {
+            Text(
+                colorToHex(Color(selected)),
+                style = MaterialTheme.typography.bodyMedium,
+                color = MaterialTheme.colorScheme.onSurfaceVariant
+            )
         }
     }
 }

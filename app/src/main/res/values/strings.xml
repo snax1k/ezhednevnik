@@ -366,6 +366,11 @@
     <string name="category_color_lilac">Сиреневый</string>
     <string name="category_color_sand">Песочный</string>
     <string name="category_color_grey">Серый</string>
+    <string name="category_color_custom">Свой цвет</string>
+    <string name="category_color_custom_value">Свой цвет %1$s</string>
+    <string name="color_picker_title">Свой цвет</string>
+    <string name="color_picker_brightness">Яркость</string>
+    <string name="color_picker_wheel">Круг цветов</string>
 
     <!-- Все привычки -->
     <string name="habits_title">Привычки</string>

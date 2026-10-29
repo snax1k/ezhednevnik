@@ -3,6 +3,7 @@ package com.snax1k.chekki.ui.category
 import androidx.annotation.StringRes
 import androidx.compose.runtime.Composable
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.graphics.toArgb
 import androidx.compose.ui.graphics.vector.ImageVector
 import com.snax1k.chekki.R
 import com.snax1k.chekki.data.db.CategoryIcon
@@ -68,9 +69,18 @@ val CategoryColorLabels: List<Int> = listOf(
     R.string.category_color_grey
 )
 
-/** Цвет категории по номеру в палитре темы. */
+/**
+ * Цвет категории по коду из базы (`color_index`): 0–11 — номер в палитре темы, отрицательное число —
+ * свой цвет ARGB (непрозрачный цвет как Int всегда отрицательный). Решено 29.10.2026 вместо новой колонки.
+ */
 @Composable
-fun categoryColor(colorIndex: Int): Color {
+fun categoryColor(code: Int): Color {
+    if (isCustomCategoryColor(code)) return Color(code)
     val palette = ChekkiTheme.colors.categories
-    return palette[colorIndex.mod(palette.size)]
+    return palette[code.mod(palette.size)]
 }
+
+/** Код своего цвета для `color_index`: непрозрачный ARGB. */
+fun customCategoryColorCode(color: Color): Int = color.toArgb() or 0xFF000000.toInt()
+
+fun isCustomCategoryColor(code: Int): Boolean = code < 0

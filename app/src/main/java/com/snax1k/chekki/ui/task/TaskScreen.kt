@@ -68,6 +68,7 @@ import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.unit.dp
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import com.snax1k.chekki.R
+import com.snax1k.chekki.ui.category.categoryColor
 import com.snax1k.chekki.data.DeletedTask
 import com.snax1k.chekki.data.MovedTask
 import com.snax1k.chekki.data.db.RepeatRule
@@ -422,9 +423,8 @@ private fun TaskChips(group: TaskGroup, category: CategoryOption?) {
             Text(stringResource(group.title), style = MaterialTheme.typography.labelLarge, color = groupColor.tint)
         }
         if (category != null) {
-            val palette = colors.categories
             Chip(background = MaterialTheme.colorScheme.surfaceContainer) {
-                CategoryMark(category.icon, palette[category.colorIndex % palette.size], size = 14.dp)
+                CategoryMark(category.icon, categoryColor(category.colorIndex), size = 14.dp)
                 Text(category.name, style = MaterialTheme.typography.labelLarge)
             }
         }
