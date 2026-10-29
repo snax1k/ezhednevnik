@@ -139,4 +139,14 @@ interface HabitDao {
     /** Удаляет привычку; её отметки, напоминания и паузы удаляются вместе с ней. */
     @Query("DELETE FROM habits WHERE id = :id")
     suspend fun deleteHabit(id: Long)
+
+    @Query("SELECT id FROM habits")
+    suspend fun getAllHabitIds(): List<Long>
+
+    @Query("SELECT COUNT(*) FROM habits")
+    suspend fun countHabits(): Int
+
+    /** Перенос с заменой: привычки вместе с отметками, напоминаниями и паузами. */
+    @Query("DELETE FROM habits")
+    suspend fun deleteAllHabits()
 }

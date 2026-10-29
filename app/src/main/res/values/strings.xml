@@ -227,16 +227,17 @@
 
     <!-- Перенос из старого ежедневника -->
     <string name="import_title">Перенос из старого ежедневника</string>
-    <string name="import_intro">Перенесите задачи с подзадачами, категории и привычки с отметками из резервной копии старого приложения-ежедневника — файла с расширением .plnb.\n\nПеренос добавит их к тому, что уже есть в приложении, и ничего не удалит. Сначала будет видно, что именно перенесётся.</string>
+    <string name="import_intro">Перенесите задачи с подзадачами, категории и привычки с отметками из резервной копии старого приложения-ежедневника — файла с расширением .plnb.\n\nПеренос заменит всё, что сейчас есть в приложении: задачи, категории и привычки. Перед этим сохранится копия базы. Сначала будет видно, что именно перенесётся.</string>
     <string name="import_pick_file">Выбрать файл</string>
     <string name="import_pick_other">Выбрать другой файл</string>
     <string name="import_reading">Читаю копию…</string>
     <string name="import_importing">Переношу…\nЭто может занять до полуминуты.</string>
     <string name="import_preview_intro">Копия прочитана, пока ничего не изменилось. Будет перенесено:</string>
-    <string name="import_start">Перенести</string>
+    <string name="import_start">Перенести с заменой</string>
+    <string name="import_replace_warning">Всё, что сейчас есть в приложении, удалится и заменится копией: задач — %1$d, категорий — %2$d, привычек — %3$d. Перед этим сохранится копия базы.</string>
     <string name="import_done">Готово! Всё перенесено.</string>
     <string name="import_to_main">На главный экран</string>
-    <string name="import_already_imported">Эту копию вы уже переносили %1$s. Если перенести ещё раз, задачи и привычки задвоятся.</string>
+    <string name="import_already_imported">Эту копию вы уже переносили %1$s. Перенос сделает всё заново, без дублей.</string>
     <string name="import_row_categories">Категории</string>
     <string name="import_row_open_tasks">Задачи</string>
     <string name="import_row_done_tasks">Выполненные задачи</string>

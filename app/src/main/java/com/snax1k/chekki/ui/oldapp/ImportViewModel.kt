@@ -7,6 +7,7 @@ import androidx.annotation.StringRes
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
 import com.snax1k.chekki.R
+import com.snax1k.chekki.data.oldapp.ExistingData
 import com.snax1k.chekki.data.oldapp.ImportHistory
 import com.snax1k.chekki.data.oldapp.ImportPlan
 import com.snax1k.chekki.data.oldapp.ImportReport
@@ -29,8 +30,11 @@ sealed interface ImportStep {
 
     data object Reading : ImportStep
 
-    /** Копия прочитана, ничего ещё не записано. [importedOn] — эту же копию уже переносили в этот день. */
-    data class Preview(val report: ImportReport, val importedOn: LocalDate?) : ImportStep
+    /**
+     * Копия прочитана, ничего ещё не записано. [existing] — что сейчас есть в приложении и будет заменено,
+     * [importedOn] — эту же копию уже переносили в этот день.
+     */
+    data class Preview(val report: ImportReport, val existing: ExistingData, val importedOn: LocalDate?) : ImportStep
 
     data object Importing : ImportStep
 
@@ -66,9 +70,10 @@ class ImportViewModel(
                     val input = openStream(uri) ?: throw OldBackupReader.NotABackupException("Файл не открылся")
                     input.use { importer.read(it, workDir) }
                 }
+                val existing = withContext(Dispatchers.IO) { importer.existing() }
                 plan = newPlan
                 hash = backup.hash
-                ImportStep.Preview(newPlan.report, history.importedOn(backup.hash))
+                ImportStep.Preview(newPlan.report, existing, history.importedOn(backup.hash))
             } catch (e: OldBackupReader.NotABackupException) {
                 ImportStep.Failed(R.string.import_error_not_backup, describe(e))
             } catch (e: SQLiteException) {
@@ -82,7 +87,7 @@ class ImportViewModel(
         }
     }
 
-    /** «Перенести»: запись одной транзакцией — либо всё, либо ничего. */
+    /** «Перенести с заменой»: копия базы, затем удаление старого и запись одной транзакцией — либо всё, либо ничего. */
     fun import() {
         val current = plan ?: return
         _step.value = ImportStep.Importing

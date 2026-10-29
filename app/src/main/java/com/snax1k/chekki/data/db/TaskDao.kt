@@ -380,4 +380,18 @@ interface TaskDao {
     /** Удаляет копии повтора, созданные из задачи [taskId], если их ещё не выполнили. */
     @Query("DELETE FROM tasks WHERE repeated_from_id = :taskId AND is_done = 0")
     suspend fun deleteOpenRepeatsOf(taskId: Long)
+
+    // Перенос из старого приложения с заменой: всё старое удаляется
+
+    @Query("SELECT id FROM tasks")
+    suspend fun getAllTaskIds(): List<Long>
+
+    @Query("SELECT COUNT(*) FROM tasks")
+    suspend fun countTasks(): Int
+
+    @Query("DELETE FROM subtasks")
+    suspend fun deleteAllSubtasks()
+
+    @Query("DELETE FROM tasks")
+    suspend fun deleteAllTasks()
 }

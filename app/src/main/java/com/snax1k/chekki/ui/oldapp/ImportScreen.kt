@@ -37,6 +37,7 @@ import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.unit.dp
 import com.snax1k.chekki.R
+import com.snax1k.chekki.data.oldapp.ExistingData
 import com.snax1k.chekki.data.oldapp.ImportReport
 import com.snax1k.chekki.ui.addtask.SaveButton
 import com.snax1k.chekki.ui.components.SquareIconButton
@@ -105,8 +106,18 @@ fun ImportScreen(
                         BodyText(stringResource(R.string.import_preview_intro))
                         ReportCard(step.report)
                         Caveats(step.report)
+                        // Перенос заменяет всё, что есть в приложении (решено 29.10.2026)
+                        Notice(
+                            stringResource(
+                                R.string.import_replace_warning,
+                                step.existing.tasks,
+                                step.existing.categories,
+                                step.existing.habits
+                            ),
+                            warning = true
+                        )
                         step.importedOn?.let { day ->
-                            Notice(stringResource(R.string.import_already_imported, formatDayMonth(day, LocalDate.now())), warning = true)
+                            Notice(stringResource(R.string.import_already_imported, formatDayMonth(day, LocalDate.now())), warning = false)
                         }
                         SaveButton(enabled = true, onClick = onImport, text = stringResource(R.string.import_start))
                         TextButton(onClick = pickFile, modifier = Modifier.fillMaxWidth()) {
@@ -271,6 +282,6 @@ private fun ImportPreviewPreview() {
         extraCategories = 15, deadlines = 823, photos = 303, audio = 2
     )
     ChekkiTheme {
-        ImportScreen(ImportStep.Preview(report, importedOn = LocalDate.of(2026, 10, 25)))
+        ImportScreen(ImportStep.Preview(report, ExistingData(tasks = 12, categories = 6, habits = 3), importedOn = LocalDate.of(2026, 10, 25)))
     }
 }

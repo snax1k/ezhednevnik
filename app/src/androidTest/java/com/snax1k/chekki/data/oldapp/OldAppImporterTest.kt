@@ -8,6 +8,7 @@ import com.snax1k.chekki.data.HabitRepository
 import com.snax1k.chekki.data.TaskRepository
 import com.snax1k.chekki.data.db.ChekkiDatabase
 import com.snax1k.chekki.data.db.InitialDataCallback
+import com.snax1k.chekki.data.db.TaskPriority
 import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.runBlocking
 import org.junit.After
@@ -39,13 +40,14 @@ class OldAppImporterTest {
     private val clock = Clock.fixed(Instant.parse("2026-10-25T09:00:00Z"), ZoneOffset.ofHours(3))
     private lateinit var database: ChekkiDatabase
     private lateinit var importer: OldAppImporter
+    private var backups = 0
 
     @Before
     fun setUp() {
         database = Room.inMemoryDatabaseBuilder(context, ChekkiDatabase::class.java)
             .addCallback(InitialDataCallback(today = { today }))
             .build()
-        importer = OldAppImporter(database, TaskRepository(database), HabitRepository(database, clock = clock), clock)
+        importer = OldAppImporter(database, TaskRepository(database), HabitRepository(database, clock = clock), clock) { backups++ }
     }
 
     @After
@@ -54,11 +56,12 @@ class OldAppImporterTest {
     }
 
     @Test
-    fun копияЧитаетсяИПереносится() {
+    fun копияЧитаетсяИЗаменяетВсё() {
         runBlocking {
-            val tasksBefore = database.taskDao().observeDoneCount().first()
-            val categoriesBefore = database.categoryDao().observeAll().first().size
-            val habitsBefore = database.habitDao().observeAllHabits(today).first().size
+            // То, что было в приложении до переноса, должно исчезнуть
+            TaskRepository(database).addTask("Старая задача", "", today, null, null, TaskPriority.High)
+            val before = importer.existing()
+            assertTrue(before.tasks >= 1 && before.categories >= 6)
 
             val (backup, plan) = importer.read(ByteArrayInputStream(plnb()), context.cacheDir)
             assertEquals("abc123", backup.hash)
@@ -68,10 +71,11 @@ class OldAppImporterTest {
             assertEquals(2, backup.tasks.size)
 
             importer.import(plan)
+            assertEquals(1, backups)
 
             val categories = database.categoryDao().observeAll().first()
-            assertEquals(categoriesBefore + 1, categories.size)
-            val trips = categories.last()
+            assertEquals(listOf("Поездки"), categories.map { it.name })
+            val trips = categories.single()
             assertEquals("Поездки", trips.name)
 
             val open = database.taskDao().observeOpenTasksOfCategory(trips.id, emptyList()).first().single()
@@ -79,11 +83,12 @@ class OldAppImporterTest {
             assertEquals(LocalDate.of(2026, 10, 30), open.task.date)
             assertEquals(2, open.subtasksTotal)
             assertEquals(1, open.subtasksDone)
-            assertEquals(tasksBefore + 1, database.taskDao().observeDoneCount().first())
+            assertEquals(1, database.taskDao().observeDoneCount().first())
+            assertEquals(ExistingData(tasks = 2, categories = 1, habits = 1), importer.existing())
+            assertTrue(database.taskDao().observeTasksOn(today).first().none { it.task.title == "Старая задача" })
 
             val habits = database.habitDao().observeAllHabits(today).first()
-            assertEquals(habitsBefore + 1, habits.size)
-            val water = habits.last()
+            val water = habits.single()
             assertEquals("Пить воду", water.habit.title)
             assertEquals(2, water.habit.dailyTarget)
             assertEquals(1, water.reminderCount)

@@ -232,6 +232,11 @@ class HabitRepository(
     }
 
     /** Ставит будильники всех привычек с напоминаниями заново: при запуске, после перезагрузки и смены времени. */
+    /** Снимает будильники и уведомления всех привычек — перед переносом с заменой. */
+    suspend fun cancelAllReminders() {
+        database.habitDao().getAllHabitIds().forEach(reminders::cancel)
+    }
+
     suspend fun rescheduleAllReminders() {
         habitDao.getHabitIdsWithReminders().forEach { reschedule(it) }
     }

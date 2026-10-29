@@ -70,4 +70,11 @@ interface CategoryDao {
     /** Невыполненные задачи без категории. */
     @Query("SELECT COUNT(*) FROM tasks WHERE category_id IS NULL AND is_done = 0")
     fun observeUncategorizedOpenCount(): Flow<Int>
+
+    @Query("SELECT COUNT(*) FROM categories")
+    suspend fun countCategories(): Int
+
+    /** Перенос с заменой. Задачи к этому времени уже удалены. */
+    @Query("DELETE FROM categories")
+    suspend fun deleteAllCategories()
 }

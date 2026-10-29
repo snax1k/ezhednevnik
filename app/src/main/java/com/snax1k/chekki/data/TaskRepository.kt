@@ -351,6 +351,11 @@ class TaskRepository(
      * Ставит будильники всех будущих напоминаний заново: при запуске приложения, после перезагрузки,
      * смены времени или часового пояса.
      */
+    /** Снимает будильники и уведомления всех задач — перед переносом с заменой. */
+    suspend fun cancelAllReminders() {
+        database.taskDao().getAllTaskIds().forEach(reminders::cancel)
+    }
+
     suspend fun rescheduleAllReminders(today: LocalDate = LocalDate.now()) {
         taskDao.getUpcomingReminders(today).forEach(reminders::update)
     }

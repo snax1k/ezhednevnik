@@ -14,17 +14,30 @@ import java.time.Clock
 import java.time.Instant
 import java.time.LocalDate
 
+/** Что сейчас есть в приложении — перенос это заменит. */
+data class ExistingData(val tasks: Int, val categories: Int, val habits: Int)
+
 /**
  * Перенос из старого ежедневника: [read] читает файл `.plnb` и готовит план с отчётом (ничего не меняя),
- * [import] записывает план в базу одной транзакцией — либо всё, либо ничего. Перенос добавляет к тому,
- * что уже есть, и ничего не удаляет: новые категории и привычки встают после существующих.
+ * [import] заменяет всё, что есть в приложении, данными копии (решено 29.10.2026, раньше перенос добавлял).
+ * Сначала [backup] сохраняет копию базы, потом одной транзакцией удаляются задачи, категории и привычки
+ * и записывается план — либо всё, либо ничего.
  */
 class OldAppImporter(
     private val database: ChekkiDatabase,
     private val taskRepository: TaskRepository,
     private val habitRepository: HabitRepository,
-    private val clock: Clock = Clock.systemDefaultZone()
+    private val clock: Clock = Clock.systemDefaultZone(),
+    /** Копия базы перед заменой; не вышло — перенос не начинается. */
+    private val backup: () -> Unit = {}
 ) {
+
+    /** Сколько задач, категорий и привычек удалит перенос. */
+    suspend fun existing(): ExistingData = ExistingData(
+        tasks = database.taskDao().countTasks(),
+        categories = database.categoryDao().countCategories(),
+        habits = database.habitDao().countHabits()
+    )
 
     /** Читает копию и переводит её в наши данные. Временные файлы — в [workDir], после чтения удаляются. */
     fun read(input: InputStream, workDir: File): Pair<OldBackup, ImportPlan> {
@@ -34,10 +47,19 @@ class OldAppImporter(
 
     suspend fun import(plan: ImportPlan) {
         val today = LocalDate.now(clock)
+        backup()
+        // Будильники и уведомления удаляемых задач и привычек больше не нужны
+        taskRepository.cancelAllReminders()
+        habitRepository.cancelAllReminders()
         database.withTransaction {
             val categoryDao = database.categoryDao()
             val taskDao = database.taskDao()
             val habitDao = database.habitDao()
+
+            taskDao.deleteAllSubtasks()
+            taskDao.deleteAllTasks()
+            categoryDao.deleteAllCategories()
+            habitDao.deleteAllHabits()
 
             var categoryPosition = categoryDao.nextPosition()
             val categoryIds = plan.categories.associate { category ->
