@@ -36,6 +36,7 @@ import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.runtime.rememberUpdatedState
+import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.compose.runtime.setValue
 import androidx.compose.runtime.snapshotFlow
 import androidx.compose.ui.Alignment
@@ -75,6 +76,7 @@ import com.snax1k.chekki.ui.components.formatTime
 import com.snax1k.chekki.ui.habit.shortDayName
 import com.snax1k.chekki.ui.icons.ChekkiIcons
 import com.snax1k.chekki.ui.main.sampleTodayTasks
+import com.snax1k.chekki.ui.tasks.DoneSectionHeader
 import com.snax1k.chekki.ui.tasks.SwipeableTaskRow
 import com.snax1k.chekki.ui.tasks.TaskUi
 import com.snax1k.chekki.ui.theme.ChekkiTheme
@@ -124,6 +126,10 @@ fun CalendarScreen(
     }
     // Строка, открытая свайпом влево: открытой может быть только одна
     var openTaskId by remember { mutableStateOf<Long?>(null) }
+    // Выполненные задачи дня — в свёрнутом разделе после невыполненных и повторов
+    var isDoneExpanded by rememberSaveable { mutableStateOf(false) }
+    val openTasks = state.dayTasks.filter { !it.done }
+    val doneTasks = state.dayTasks.filter { it.done }
     val navigationBarHeight = WindowInsets.navigationBars.asPaddingValues().calculateBottomPadding()
 
     Surface(modifier = modifier.fillMaxSize(), color = MaterialTheme.colorScheme.background) {
@@ -174,7 +180,7 @@ fun CalendarScreen(
                             countVisible = !state.isLoading
                         )
                     }
-                    items(state.dayTasks, key = { it.id }, contentType = { "task" }) { task ->
+                    items(openTasks, key = { it.id }, contentType = { "task" }) { task ->
                         SwipeableTaskRow(
                             task = task,
                             today = state.today,
@@ -191,6 +197,34 @@ fun CalendarScreen(
                     // Будущие повторы — после настоящих задач дня, бледными строками
                     items(state.dayRepeats, key = { "repeat-${it.id}" }, contentType = { "repeat" }) { task ->
                         RepeatRow(task, onClick = { onTaskClick(task) }, modifier = Modifier.animateItem())
+                    }
+                    if (doneTasks.isNotEmpty()) {
+                        item(key = "done-header", contentType = "header") {
+                            DoneSectionHeader(
+                                text = stringResource(R.string.done_section_day, doneTasks.size),
+                                expanded = isDoneExpanded,
+                                onToggle = { isDoneExpanded = !isDoneExpanded },
+                                modifier = Modifier
+                                    .padding(top = 6.dp)
+                                    .animateItem()
+                            )
+                        }
+                    }
+                    if (isDoneExpanded) {
+                        items(doneTasks, key = { it.id }, contentType = { "task" }) { task ->
+                            SwipeableTaskRow(
+                                task = task,
+                                today = state.today,
+                                isOpen = openTaskId == task.id,
+                                onOpen = { openTaskId = task.id },
+                                onClose = { if (openTaskId == task.id) openTaskId = null },
+                                onToggleDone = { onToggleDone(task) },
+                                onClick = { onTaskClick(task) },
+                                onPostpone = { date -> onPostpone(task, date) },
+                                onDelete = { onDelete(task) },
+                                modifier = Modifier.animateItem()
+                            )
+                        }
                     }
                     if (!state.isLoading && state.dayTasks.isEmpty() && state.dayRepeats.isEmpty()) {
                         item(key = "empty") {

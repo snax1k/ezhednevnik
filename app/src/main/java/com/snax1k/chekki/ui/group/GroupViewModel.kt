@@ -82,7 +82,17 @@ class GroupViewModel(
             GroupUiState(group, today, sections = sectionsByPriorityOrDay(list.map { it.task.date to it.toTaskUi() }))
         }
         return when (group) {
-            TaskGroup.Today -> oneSection(repository.observeTasksOn(today))
+            // Выполненные уезжают в свёрнутый раздел внизу: там же всё, что выполнено сегодня из других дней
+            TaskGroup.Today -> combine(repository.observeTasksOn(today), repository.observeDoneToday(today)) { all, done ->
+                val open = all.filter { !it.task.isDone }.map { it.toTaskUi() }
+                val sections = buildList {
+                    if (open.isNotEmpty()) add(TaskSection(day = null, tasks = open))
+                    // У задач других дней — дата в строке, чтобы было видно, откуда задача
+                    val doneUi = done.map { it.toTaskUi().run { if (date != today) copy(showDate = true) else this } }
+                    if (doneUi.isNotEmpty()) add(TaskSection(day = null, tasks = doneUi, isDone = true))
+                }
+                GroupUiState(group, today, sections = sections)
+            }
             TaskGroup.Tomorrow -> oneSection(repository.observeOpenTasksBetween(ranges.tomorrow..ranges.tomorrow, keepIds))
             TaskGroup.NoDate -> oneSection(repository.observeOpenTasksWithoutDate(keepIds))
             TaskGroup.Overdue -> byTaskDate(repository.observeOpenTasksBetween(LocalDate.MIN..today.minusDays(1), keepIds))

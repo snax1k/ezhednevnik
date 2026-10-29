@@ -30,6 +30,7 @@ import androidx.compose.runtime.Composable
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
+import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
@@ -61,6 +62,7 @@ import com.snax1k.chekki.ui.components.formatShortDate
 import com.snax1k.chekki.ui.icons.ChekkiIcons
 import com.snax1k.chekki.ui.main.TaskGroup
 import com.snax1k.chekki.ui.main.sampleTodayTasks
+import com.snax1k.chekki.ui.tasks.DoneSectionHeader
 import com.snax1k.chekki.ui.tasks.Priority
 import com.snax1k.chekki.ui.tasks.SwipeableTaskRow
 import com.snax1k.chekki.ui.tasks.TaskUi
@@ -134,6 +136,8 @@ fun TaskListScreen(
     val navigationBarHeight = WindowInsets.navigationBars.asPaddingValues().calculateBottomPadding()
     // Строка, открытая свайпом влево: открытой может быть только одна
     var openTaskId by remember { mutableStateOf<Long?>(null) }
+    // Раздел «Выполнено сегодня» свёрнут, пока его не раскроют
+    var isDoneExpanded by rememberSaveable { mutableStateOf(false) }
     Surface(modifier = modifier.fillMaxSize(), color = MaterialTheme.colorScheme.background) {
         Box(Modifier.fillMaxSize()) {
             Column(
@@ -156,7 +160,32 @@ fun TaskListScreen(
                         header(Modifier.padding(bottom = 6.dp))
                     }
                     for (section in sections) {
-                        if (section.isPriority) {
+                        if (section.isDone) {
+                            if (sections.none { !it.isDone }) {
+                                item(key = "all-done", contentType = "note") {
+                                    Text(
+                                        text = stringResource(R.string.group_all_done_today),
+                                        modifier = Modifier
+                                            .fillMaxWidth()
+                                            .padding(vertical = 16.dp),
+                                        style = MaterialTheme.typography.bodyLarge,
+                                        color = MaterialTheme.colorScheme.onSurfaceVariant,
+                                        textAlign = TextAlign.Center
+                                    )
+                                }
+                            }
+                            item(key = "done-header", contentType = "day") {
+                                DoneSectionHeader(
+                                    text = stringResource(R.string.done_section_today, section.tasks.size),
+                                    expanded = isDoneExpanded,
+                                    onToggle = { isDoneExpanded = !isDoneExpanded },
+                                    modifier = Modifier
+                                        .padding(top = 6.dp)
+                                        .animateItem()
+                                )
+                            }
+                            if (!isDoneExpanded) continue
+                        } else if (section.isPriority) {
                             item(key = "priority-${section.priority}", contentType = "day") {
                                 PriorityHeader(section.priority)
                             }
@@ -317,14 +346,16 @@ private fun GroupHeader(state: GroupUiState, modifier: Modifier = Modifier) {
     when (state.group) {
         TaskGroup.Today -> {
             val colors = ChekkiTheme.colors.today
-            val done = state.tasks.count { it.done }
+            // Счётчик — задачи на сегодня; в разделе «Выполнено сегодня» бывают и задачи других дней
+            val todays = state.tasks.filter { it.date == state.today }
+            val done = todays.count { it.done }
             HighlightCard(colors, modifier) {
                 HeaderTitleRow(title, subtitle, colors.content, colors.contentSecondary, countAlpha) {
-                    ProgressCountText(done, state.tasks.size, colors)
+                    ProgressCountText(done, todays.size, colors)
                 }
                 CardProgressBar(
                     done = done,
-                    total = state.tasks.size,
+                    total = todays.size,
                     trackColor = ChekkiTheme.colors.todayProgressTrack,
                     color = colors.content,
                     modifier = Modifier

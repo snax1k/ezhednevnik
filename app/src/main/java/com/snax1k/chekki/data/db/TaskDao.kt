@@ -69,6 +69,25 @@ interface TaskDao {
     fun observeTasksOn(date: LocalDate): Flow<List<TaskWithDetails>>
 
     /**
+     * Раздел «Выполнено сегодня»: выполненные задачи на дату [date] и все задачи, выполненные с [from] до [to]
+     * (сегодня по часам телефона), даже если их дата другая — например, вчерашняя просроченная. Свежие сверху.
+     */
+    @Query(
+        """
+        SELECT t.*,
+            c.name AS category_name,
+            c.color_index AS category_color_index,
+            (SELECT COUNT(*) FROM subtasks s WHERE s.task_id = t.id AND s.is_done = 1) AS subtasks_done,
+            (SELECT COUNT(*) FROM subtasks s WHERE s.task_id = t.id) AS subtasks_total
+        FROM tasks t
+        LEFT JOIN categories c ON c.id = t.category_id
+        WHERE t.is_done = 1 AND (t.date = :date OR (t.completed_at >= :from AND t.completed_at < :to))
+        ORDER BY t.completed_at DESC, t.id DESC
+        """
+    )
+    fun observeDoneToday(date: LocalDate, from: Instant, to: Instant): Flow<List<TaskWithDetails>>
+
+    /**
      * Невыполненные задачи с [from] по [to] включительно: по приоритету (высокий сверху), внутри — по дате и времени,
      * «на весь день» в конце дня.
      * Задачи из [keepIds] попадают в список, даже если выполнены: так отмеченная на экране задача не пропадает сразу.

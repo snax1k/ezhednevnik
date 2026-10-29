@@ -649,6 +649,26 @@ class TaskRepositoryTest {
     }
 
     @Test
+    fun выполненоСегодня_задачиДняИВыполненныеСегодняИзДругихДней() {
+        runBlocking {
+            val zone = java.time.ZoneId.systemDefault()
+            val day = today.plusYears(6)
+            val dayStart = day.atStartOfDay(zone).toInstant()
+            val ofDay = repository.addTask("Задача дня", "", day, null, null, TaskPriority.None)
+            val fromPast = repository.addTask("Из прошлого", "", day.minusDays(3), null, null, TaskPriority.None)
+            val doneLongAgo = repository.addTask("Выполнена давно", "", day.minusDays(3), null, null, TaskPriority.None)
+            repository.addTask("Не выполнена", "", day, null, null, TaskPriority.None)
+            repository.toggleDone(ofDay, today = day, now = dayStart.plusSeconds(3600))
+            repository.toggleDone(fromPast, today = day, now = dayStart.plusSeconds(7200))
+            repository.toggleDone(doneLongAgo, today = day, now = dayStart.minusSeconds(3600))
+
+            val titles = repository.observeDoneToday(day, zone).first().map { it.task.title }
+            // Свежие сверху; выполненная накануне задача другого дня сюда не попадает
+            assertEquals(listOf("Из прошлого", "Задача дня"), titles)
+        }
+    }
+
+    @Test
     fun задачиБезКатегории() {
         runBlocking {
             val before = repository.observeUncategorizedOpenCount().first()

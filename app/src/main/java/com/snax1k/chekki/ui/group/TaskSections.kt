@@ -7,14 +7,15 @@ import java.time.LocalDate
 /**
  * Задачи под общим подзаголовком. [day] = null — секция без подзаголовка, а с [isNoDate] — под подзаголовком
  * «Без даты» (задачи без даты в конце списка категории). С [isPriority] подзаголовок — уровень [priority]
- * («Высокий», …; null — «Без приоритета»).
+ * («Высокий», …; null — «Без приоритета»). С [isDone] — свёрнутый раздел «Выполнено сегодня» внизу «Сегодня».
  */
 data class TaskSection(
     val day: LocalDate?,
     val tasks: List<TaskUi>,
     val isNoDate: Boolean = false,
     val isPriority: Boolean = false,
-    val priority: Priority? = null
+    val priority: Priority? = null,
+    val isDone: Boolean = false
 )
 
 /**

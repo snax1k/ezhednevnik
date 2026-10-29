@@ -35,6 +35,11 @@
     <string name="group_empty_this_month">До конца месяца задач нет</string>
     <string name="group_empty_later">Задач на потом нет</string>
     <string name="group_empty_done">Выполненных задач пока нет</string>
+    <string name="group_all_done_today">Все задачи на сегодня выполнены</string>
+    <string name="done_section_today">Выполнено сегодня · %1$d</string>
+    <string name="done_section_day">Выполнено · %1$d</string>
+    <string name="done_section_expanded">раскрыто</string>
+    <string name="done_section_collapsed">свёрнуто</string>
     <!-- Подпись группы «Потом»: «с 1 ноября» -->
     <string name="group_later_from">с %1$s</string>
     <string name="day_today">Сегодня</string>

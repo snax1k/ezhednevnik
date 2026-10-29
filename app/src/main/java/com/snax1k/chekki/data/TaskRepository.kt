@@ -20,6 +20,7 @@ import kotlinx.coroutines.flow.map
 import java.time.Instant
 import java.time.LocalDate
 import java.time.LocalTime
+import java.time.ZoneId
 
 /**
  * Задачи для экранов. Все списки и счётчики — потоки: при изменении базы экраны обновятся сами.
@@ -237,6 +238,14 @@ class TaskRepository(
 
     /** Задачи на дату, включая выполненные. */
     fun observeTasksOn(date: LocalDate): Flow<List<TaskWithDetails>> = taskDao.observeTasksOn(date)
+
+    /** Выполненные задачи на [today] и все, выполненные сегодня по часам телефона ([zone]). Свежие сверху. */
+    fun observeDoneToday(today: LocalDate, zone: ZoneId = ZoneId.systemDefault()): Flow<List<TaskWithDetails>> =
+        taskDao.observeDoneToday(
+            today,
+            today.atStartOfDay(zone).toInstant(),
+            today.plusDays(1).atStartOfDay(zone).toInstant()
+        )
 
     /**
      * Невыполненные задачи в диапазоне дат. Задачи из [keepIds] остаются в списке, даже если их выполнили.
