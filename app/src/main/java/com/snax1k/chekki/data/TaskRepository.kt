@@ -11,6 +11,7 @@ import com.snax1k.chekki.data.db.GroupCounts
 import com.snax1k.chekki.data.db.RepeatRule
 import com.snax1k.chekki.data.db.SubtaskEntity
 import com.snax1k.chekki.data.db.TaskEntity
+import com.snax1k.chekki.data.db.AttachmentEntity
 import com.snax1k.chekki.data.db.PriorityLevelEntity
 import com.snax1k.chekki.data.db.PriorityLevels
 import com.snax1k.chekki.data.db.TaskWithDetails
@@ -248,7 +249,12 @@ class TaskRepository(
     suspend fun deleteTask(id: Long): DeletedTask? {
         val deleted = database.withTransaction {
             val task = taskDao.getTask(id) ?: return@withTransaction null
-            val deleted = DeletedTask(task, taskDao.getSubtasks(id), taskDao.getRepeatCopyIds(id))
+            val deleted = DeletedTask(
+                task = task,
+                subtasks = taskDao.getSubtasks(id),
+                attachments = attachmentDao.getForTask(id),
+                repeatCopyIds = taskDao.getRepeatCopyIds(id)
+            )
             taskDao.deleteTask(id)
             deleted
         } ?: return null
@@ -261,10 +267,48 @@ class TaskRepository(
         database.withTransaction {
             taskDao.insertTask(deleted.task)
             if (deleted.subtasks.isNotEmpty()) taskDao.insertSubtasks(deleted.subtasks)
+            if (deleted.attachments.isNotEmpty()) attachmentDao.insertAll(deleted.attachments)
             if (deleted.repeatCopyIds.isNotEmpty()) taskDao.setRepeatedFrom(deleted.repeatCopyIds, deleted.task.id)
         }
         reminders.update(deleted.task)
     }
+
+    // Вложения (схема 7)
+
+    private val attachmentDao get() = database.attachmentDao()
+
+    fun observeAttachments(taskId: Long): Flow<List<AttachmentEntity>> = attachmentDao.observeForTask(taskId)
+
+    /** Вложение в конец списка задачи. Файл уже лежит у приложения ([StoredFile]). */
+    suspend fun addAttachment(taskId: Long, file: StoredFile, now: Instant = Instant.now()): Long = database.withTransaction {
+        attachmentDao.insert(
+            AttachmentEntity(
+                taskId = taskId,
+                kind = file.kind,
+                fileName = file.fileName,
+                displayName = file.displayName,
+                mimeType = file.mimeType,
+                size = file.size,
+                durationMs = file.durationMs,
+                createdAt = now,
+                position = attachmentDao.nextPosition(taskId)
+            )
+        )
+    }
+
+    /** Удаляет вложение; файл остаётся до следующего запуска — для «Отменить». */
+    suspend fun deleteAttachment(id: Long): AttachmentEntity? = database.withTransaction {
+        val attachment = attachmentDao.get(id) ?: return@withTransaction null
+        attachmentDao.delete(id)
+        attachment
+    }
+
+    suspend fun restoreAttachment(attachment: AttachmentEntity) {
+        attachmentDao.insert(attachment)
+    }
+
+    /** Файлы, на которые есть строки: остальные в папке вложений можно удалять. */
+    suspend fun attachmentFileNames(): Set<String> = attachmentDao.allFileNames().toSet()
 
     suspend fun setSubtaskDone(id: Long, isDone: Boolean) = taskDao.setSubtaskDone(id, isDone)
 
@@ -383,6 +427,11 @@ class TaskRepository(
             if (subtasks.isNotEmpty()) {
                 taskDao.insertSubtasks(subtasks.map { it.copy(id = 0, taskId = copyId, isDone = false) })
             }
+            // Вложения переходят к копии: свои строки на те же файлы
+            val attachments = attachmentDao.getForTask(taskId)
+            if (attachments.isNotEmpty()) {
+                attachmentDao.insertAll(attachments.map { it.copy(id = 0, taskId = copyId) })
+            }
         }
         remindersToCancel.forEach(reminders::cancel)
         remindersToUpdate.forEach(reminders::update)
@@ -406,6 +455,8 @@ class TaskRepository(
 data class DeletedTask(
     val task: TaskEntity,
     val subtasks: List<SubtaskEntity>,
+    /** Строки вложений; файлы при удалении задачи остаются до следующего запуска — «Отменить» их вернёт. */
+    val attachments: List<AttachmentEntity> = emptyList(),
     /** Копии повтора, созданные из этой задачи: при удалении их связь обнуляется, при отмене возвращается. */
     val repeatCopyIds: List<Long>
 )

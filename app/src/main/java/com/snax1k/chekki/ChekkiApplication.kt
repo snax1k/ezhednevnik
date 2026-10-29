@@ -2,6 +2,7 @@ package com.snax1k.chekki
 
 import android.app.Application
 import android.content.Context
+import com.snax1k.chekki.data.AttachmentStore
 import com.snax1k.chekki.data.HabitRepository
 import com.snax1k.chekki.data.RecentSearches
 import com.snax1k.chekki.data.TaskRepository
@@ -36,6 +37,8 @@ class ChekkiApplication : Application() {
         container.applicationScope.launch {
             container.taskRepository.rescheduleAllReminders()
             container.habitRepository.rescheduleAllReminders()
+            // Файлы удалённых задач и вложений: «Отменить» уже не нажмут
+            container.attachmentStore.cleanupOrphans(container.taskRepository.attachmentFileNames())
         }
     }
 }
@@ -63,6 +66,9 @@ class AppContainer(context: Context) {
 
     /** Последние запросы поиска. */
     val recentSearches: RecentSearches by lazy { RecentSearches(appContext) }
+
+    /** Файлы вложений задач. */
+    val attachmentStore: AttachmentStore by lazy { AttachmentStore(appContext) }
 
     /** Обновление приложения из выпусков на GitHub. */
     val updateManager: UpdateManager by lazy { UpdateManager(appContext, applicationScope) { database } }

@@ -8,6 +8,8 @@
     <uses-permission android:name="android.permission.SCHEDULE_EXACT_ALARM" />
     <!-- После перезагрузки будильники нужно поставить заново -->
     <uses-permission android:name="android.permission.RECEIVE_BOOT_COMPLETED" />
+    <!-- Запись голоса во вложение задачи: спрашивается, когда открывают диктофон -->
+    <uses-permission android:name="android.permission.RECORD_AUDIO" />
     <!-- Обновление из выпусков на GitHub: справка о версии и APK -->
     <uses-permission android:name="android.permission.INTERNET" />
     <!-- Установка скачанного обновления: Android один раз спрашивает «Разрешить из этого источника».
@@ -46,6 +48,17 @@
         <receiver
             android:name=".reminders.HabitReminderReceiver"
             android:exported="false" />
+
+        <!-- Файлы вложений для просмотра в других приложениях и для камеры -->
+        <provider
+            android:name="androidx.core.content.FileProvider"
+            android:authorities="${applicationId}.files"
+            android:exported="false"
+            android:grantUriPermissions="true">
+            <meta-data
+                android:name="android.support.FILE_PROVIDER_PATHS"
+                android:resource="@xml/file_paths" />
+        </provider>
 
         <!-- Итог установки обновления: окно подтверждения и ошибки -->
         <receiver

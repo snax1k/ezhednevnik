@@ -164,6 +164,14 @@ object ChekkiIcons {
     val Edit: ImageVector by lazy { outlineIcon("Edit", "M4 20h4L19 9l-4-4L4 16zM14 6l4 4") }
     // Коробка «Архив» из макета «Категории»
     val Archive: ImageVector by lazy { outlineIcon("Archive", "M4 5h16v4H4zM5.5 9v10h13V9M10 13h4") }
+    // «Слушать» и значок видео на миниатюре
+    val Play: ImageVector by lazy { outlineIcon("Play", "M8 5.5v13l10.5-6.5z") }
+    // Картинка — «из галереи»
+    val Gallery: ImageVector by lazy { outlineIcon("Gallery", "M4 5h16v14H4zM4 16l4.5-4.5 3.5 3.5 2.5-2.5L20 18M15 8.5h.01") }
+    // Скрепка — вложения задачи; нарисована в том же стиле
+    val Attachment: ImageVector by lazy {
+        outlineIcon("Attachment", "M15.5 7.5l-6.8 6.8a2 2 0 0 0 2.8 2.8l7-7a4 4 0 0 0-5.7-5.7l-7 7a6 6 0 0 0 8.5 8.5l6.3-6.3")
+    }
     // Обновление приложения: стрелка вниз в лоток, нарисована в том же стиле
     val Update: ImageVector by lazy { outlineIcon("Update", "M12 4v11M7 10l5 5 5-5M5 20h14") }
 

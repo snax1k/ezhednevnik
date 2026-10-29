@@ -60,6 +60,34 @@
     <string name="priority_low">Низкий приоритет</string>
     <string name="priority_section_none">Без приоритета</string>
     <string name="priority_named">Приоритет: %1$s</string>
+    <string name="task_attachments">Вложения</string>
+    <!-- Вложения в карточке задачи -->
+    <string name="attachments_title">Вложения</string>
+    <string name="attachments_add">Добавить вложение</string>
+    <string name="attachments_from_gallery">Фото или видео из галереи</string>
+    <string name="attachments_take_photo">Снять фото</string>
+    <string name="attachments_take_video">Снять видео</string>
+    <string name="attachments_record_audio">Записать голос</string>
+    <string name="attachments_pick_file">Файл</string>
+    <string name="attachments_delete">Удалить вложение %1$s</string>
+    <string name="attachments_deleted">Вложение удалено</string>
+    <string name="attachments_open">Открыть %1$s</string>
+    <string name="attachments_too_large">Файл больше 300 МБ — такой не сохранить</string>
+    <string name="attachments_failed">Не удалось добавить файл</string>
+    <string name="attachments_no_viewer">Нет приложения, чтобы открыть этот файл</string>
+    <string name="attachments_no_camera">Не нашлось приложения камеры</string>
+    <string name="attachments_voice_note">Голосовая заметка</string>
+    <string name="attachments_play">Слушать %1$s</string>
+    <string name="attachments_pause">Пауза</string>
+    <string name="attachments_video">Видео %1$s</string>
+    <string name="attachments_photo">Фото %1$s</string>
+    <string name="attachments_name_photo">Фото %1$s</string>
+    <string name="attachments_name_video">Видео %1$s</string>
+    <string name="attachments_name_voice">Голос %1$s</string>
+    <string name="recorder_hint">Нажмите, чтобы начать запись. Ещё раз — чтобы остановить и сохранить.</string>
+    <string name="recorder_no_permission">Без доступа к микрофону записать не получится. Разрешите его в настройках приложения.</string>
+    <string name="recorder_start">Начать запись</string>
+    <string name="recorder_stop">Остановить и сохранить</string>
 
     <!-- Уведомления -->
     <string name="notification_channel_reminders">Напоминания о задачах</string>

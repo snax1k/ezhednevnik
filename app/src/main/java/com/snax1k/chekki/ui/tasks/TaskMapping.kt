@@ -18,6 +18,7 @@ fun TaskWithDetails.toTaskUi(): TaskUi = TaskUi(
     },
     subtasksDone = subtasksDone,
     subtasksTotal = subtasksTotal,
+    attachments = attachmentsTotal,
     repeats = task.repeat.unit != RepeatUnit.None,
     hasReminder = task.reminderMinutesBefore != null,
     done = task.isDone,

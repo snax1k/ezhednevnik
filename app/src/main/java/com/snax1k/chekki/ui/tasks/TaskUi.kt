@@ -36,6 +36,8 @@ data class TaskUi(
     val priority: Priority?,
     val subtasksDone: Int = 0,
     val subtasksTotal: Int = 0,
+    /** Сколько вложений (фото, видео, аудио, файлы). */
+    val attachments: Int = 0,
     val repeats: Boolean = false,
     val hasReminder: Boolean = false,
     val done: Boolean = false,

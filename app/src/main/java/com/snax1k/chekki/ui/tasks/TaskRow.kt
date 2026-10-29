@@ -222,6 +222,13 @@ private fun TaskDetails(task: TaskUi, modifier: Modifier = Modifier) {
                 text = "${task.subtasksDone}/${task.subtasksTotal}"
             )
         }
+        if (task.attachments > 0) {
+            DetailWithIcon(
+                icon = ChekkiIcons.Attachment,
+                iconDescription = stringResource(R.string.task_attachments),
+                text = task.attachments.toString()
+            )
+        }
         if (task.repeats) {
             DetailIcon(ChekkiIcons.Repeat, stringResource(R.string.task_repeats))
         }

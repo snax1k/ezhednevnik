@@ -34,6 +34,7 @@ import androidx.navigation3.runtime.rememberSaveableStateHolderNavEntryDecorator
 import androidx.navigation3.ui.NavDisplay
 import com.snax1k.chekki.ChekkiApplication
 import com.snax1k.chekki.R
+import com.snax1k.chekki.data.db.AttachmentEntity
 import com.snax1k.chekki.ui.priority.suggestedPriorityColorCode
 import com.snax1k.chekki.ui.priority.priorityColorCode
 import com.snax1k.chekki.ui.priority.PriorityLevelsViewModel
@@ -201,6 +202,10 @@ fun ChekkiApp() {
     val showUndoPriorityLevelDelete: (DeletedPriorityLevel) -> Unit = { deleted ->
         showUndo(priorityLevelDeletedMessage) { container.taskRepository.restorePriorityLevel(deleted) }
     }
+    val attachmentDeletedMessage = stringResource(R.string.attachments_deleted)
+    val showUndoAttachmentDelete: (AttachmentEntity) -> Unit = { deleted ->
+        showUndo(attachmentDeletedMessage) { container.taskRepository.restoreAttachment(deleted) }
+    }
     val showUndoPostpone: (MovedTask) -> Unit = { moved ->
         val newDate = moved.newDate ?: LocalDate.now()
         showUndo(postponedMessage(context, newDate, LocalDate.now())) {
@@ -279,7 +284,8 @@ fun ChekkiApp() {
                             route.taskId,
                             container.taskRepository,
                             container.currentDate,
-                            container.reminderAccess
+                            container.reminderAccess,
+                            container.attachmentStore
                         )
                     }
                     TaskScreen(
@@ -293,7 +299,8 @@ fun ChekkiApp() {
                         onPostponed = { moved ->
                             backStack.removeLastOrNull()
                             showUndoPostpone(moved)
-                        }
+                        },
+                        onAttachmentDeleted = showUndoAttachmentDelete
                     )
                 }
                 entry<ImportRoute> {

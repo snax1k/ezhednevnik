@@ -3,6 +3,7 @@ package com.snax1k.chekki.data
 import androidx.room.Room
 import androidx.test.ext.junit.runners.AndroidJUnit4
 import androidx.test.platform.app.InstrumentationRegistry
+import com.snax1k.chekki.data.db.AttachmentKind
 import com.snax1k.chekki.data.db.CategoryIcon
 import com.snax1k.chekki.data.db.ChekkiDatabase
 import com.snax1k.chekki.data.db.GroupCounts
@@ -451,6 +452,60 @@ class TaskRepositoryTest {
             assertEquals(report, repository.getTaskWithDetails(report.task.id))
             assertEquals(subtasks, repository.observeSubtasks(report.task.id).first())
             assertEquals(listOf(report.task.id), scheduler.updated.map { it.id })
+        }
+    }
+
+    private fun storedFile(name: String, kind: AttachmentKind = AttachmentKind.Photo) =
+        StoredFile(fileName = name, displayName = name, mimeType = "image/jpeg", size = 100, durationMs = null, kind = kind)
+
+    @Test
+    fun вложенияДобавляютсяВКонецУдаляютсяИВозвращаются() {
+        runBlocking {
+            val call = repository.observeTasksOn(today).first().single { it.task.title == "Позвонить маме" }
+            repository.addAttachment(call.task.id, storedFile("a.jpg"))
+            repository.addAttachment(call.task.id, storedFile("b.m4a", AttachmentKind.Audio))
+            val attachments = repository.observeAttachments(call.task.id).first()
+            assertEquals(listOf("a.jpg", "b.m4a"), attachments.map { it.fileName })
+            assertEquals(listOf(0, 1), attachments.map { it.position })
+            assertEquals(2, repository.getTaskWithDetails(call.task.id)!!.attachmentsTotal)
+
+            val deleted = repository.deleteAttachment(attachments.first().id)!!
+            assertEquals(listOf("b.m4a"), repository.observeAttachments(call.task.id).first().map { it.fileName })
+            assertEquals(setOf("b.m4a"), repository.attachmentFileNames())
+
+            repository.restoreAttachment(deleted)
+            assertEquals(attachments, repository.observeAttachments(call.task.id).first())
+        }
+    }
+
+    @Test
+    fun отменаУдаленияЗадачиВозвращаетВложения() {
+        runBlocking {
+            val report = repository.observeTasksOn(today).first().single { it.task.title == "Отправить отчёт за квартал" }
+            repository.addAttachment(report.task.id, storedFile("report.pdf", AttachmentKind.Document))
+            val attachments = repository.observeAttachments(report.task.id).first()
+
+            val deleted = repository.deleteTask(report.task.id)!!
+            assertTrue(repository.attachmentFileNames().isEmpty())
+
+            repository.restoreTask(deleted)
+            assertEquals(attachments, repository.observeAttachments(report.task.id).first())
+        }
+    }
+
+    @Test
+    fun копияПовтораПолучаетВложенияНаТеЖеФайлы() {
+        runBlocking {
+            val call = repository.observeTasksOn(today).first().single { it.task.title == "Позвонить маме" }
+            repository.addAttachment(call.task.id, storedFile("a.jpg"))
+            repository.toggleDone(call.task.id, today = today)
+            val copy = repository.observeTasksOn(today.plusWeeks(1)).first().single { it.task.title == "Позвонить маме" }
+            assertEquals(1, copy.attachmentsTotal)
+            assertEquals(listOf("a.jpg"), repository.observeAttachments(copy.task.id).first().map { it.fileName })
+
+            // Сняли отметку — копия удалилась, а файл всё ещё нужен исходной задаче
+            repository.toggleDone(call.task.id, today = today)
+            assertEquals(setOf("a.jpg"), repository.attachmentFileNames())
         }
     }
 

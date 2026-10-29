@@ -20,7 +20,9 @@ data class TaskWithDetails(
     /** Уровень важности задачи; null — без приоритета (или уровень удалили). */
     @ColumnInfo(name = "priority_name") val priorityName: String? = null,
     @ColumnInfo(name = "priority_color") val priorityColor: Int? = null,
-    @ColumnInfo(name = "priority_position") val priorityPosition: Int? = null
+    @ColumnInfo(name = "priority_position") val priorityPosition: Int? = null,
+    /** Сколько у задачи вложений (фото, видео, аудио, файлы). */
+    @ColumnInfo(name = "attachments_total") val attachmentsTotal: Int = 0
 )
 
 /** Задача для поиска: как в списках, плюс названия подзадач через перевод строки. */
@@ -33,11 +35,13 @@ data class SearchableTask(
     @ColumnInfo(name = "subtask_titles") val subtaskTitles: String?,
     @ColumnInfo(name = "priority_name") val priorityName: String? = null,
     @ColumnInfo(name = "priority_color") val priorityColor: Int? = null,
-    @ColumnInfo(name = "priority_position") val priorityPosition: Int? = null
+    @ColumnInfo(name = "priority_position") val priorityPosition: Int? = null,
+    @ColumnInfo(name = "attachments_total") val attachmentsTotal: Int = 0
 ) {
     val details: TaskWithDetails
         get() = TaskWithDetails(
-            task, categoryName, categoryColorIndex, subtasksDone, subtasksTotal, priorityName, priorityColor, priorityPosition
+            task, categoryName, categoryColorIndex, subtasksDone, subtasksTotal, priorityName, priorityColor, priorityPosition,
+            attachmentsTotal
         )
     val subtasks: List<String> get() = subtaskTitles?.split('\n').orEmpty()
 }
@@ -70,7 +74,8 @@ interface TaskDao {
             c.color_index AS category_color_index,
             pl.name AS priority_name, pl.color AS priority_color, pl.position AS priority_position,
             (SELECT COUNT(*) FROM subtasks s WHERE s.task_id = t.id AND s.is_done = 1) AS subtasks_done,
-            (SELECT COUNT(*) FROM subtasks s WHERE s.task_id = t.id) AS subtasks_total
+            (SELECT COUNT(*) FROM subtasks s WHERE s.task_id = t.id) AS subtasks_total,
+            (SELECT COUNT(*) FROM attachments a WHERE a.task_id = t.id) AS attachments_total
         FROM tasks t
         LEFT JOIN categories c ON c.id = t.category_id
         LEFT JOIN priority_levels pl ON pl.id = t.priority
@@ -91,7 +96,8 @@ interface TaskDao {
             c.color_index AS category_color_index,
             pl.name AS priority_name, pl.color AS priority_color, pl.position AS priority_position,
             (SELECT COUNT(*) FROM subtasks s WHERE s.task_id = t.id AND s.is_done = 1) AS subtasks_done,
-            (SELECT COUNT(*) FROM subtasks s WHERE s.task_id = t.id) AS subtasks_total
+            (SELECT COUNT(*) FROM subtasks s WHERE s.task_id = t.id) AS subtasks_total,
+            (SELECT COUNT(*) FROM attachments a WHERE a.task_id = t.id) AS attachments_total
         FROM tasks t
         LEFT JOIN categories c ON c.id = t.category_id
         LEFT JOIN priority_levels pl ON pl.id = t.priority
@@ -113,7 +119,8 @@ interface TaskDao {
             c.color_index AS category_color_index,
             pl.name AS priority_name, pl.color AS priority_color, pl.position AS priority_position,
             (SELECT COUNT(*) FROM subtasks s WHERE s.task_id = t.id AND s.is_done = 1) AS subtasks_done,
-            (SELECT COUNT(*) FROM subtasks s WHERE s.task_id = t.id) AS subtasks_total
+            (SELECT COUNT(*) FROM subtasks s WHERE s.task_id = t.id) AS subtasks_total,
+            (SELECT COUNT(*) FROM attachments a WHERE a.task_id = t.id) AS attachments_total
         FROM tasks t
         LEFT JOIN categories c ON c.id = t.category_id
         LEFT JOIN priority_levels pl ON pl.id = t.priority
@@ -134,7 +141,8 @@ interface TaskDao {
             c.color_index AS category_color_index,
             pl.name AS priority_name, pl.color AS priority_color, pl.position AS priority_position,
             (SELECT COUNT(*) FROM subtasks s WHERE s.task_id = t.id AND s.is_done = 1) AS subtasks_done,
-            (SELECT COUNT(*) FROM subtasks s WHERE s.task_id = t.id) AS subtasks_total
+            (SELECT COUNT(*) FROM subtasks s WHERE s.task_id = t.id) AS subtasks_total,
+            (SELECT COUNT(*) FROM attachments a WHERE a.task_id = t.id) AS attachments_total
         FROM tasks t
         LEFT JOIN categories c ON c.id = t.category_id
         LEFT JOIN priority_levels pl ON pl.id = t.priority
@@ -153,7 +161,8 @@ interface TaskDao {
             c.color_index AS category_color_index,
             pl.name AS priority_name, pl.color AS priority_color, pl.position AS priority_position,
             (SELECT COUNT(*) FROM subtasks s WHERE s.task_id = t.id AND s.is_done = 1) AS subtasks_done,
-            (SELECT COUNT(*) FROM subtasks s WHERE s.task_id = t.id) AS subtasks_total
+            (SELECT COUNT(*) FROM subtasks s WHERE s.task_id = t.id) AS subtasks_total,
+            (SELECT COUNT(*) FROM attachments a WHERE a.task_id = t.id) AS attachments_total
         FROM tasks t
         LEFT JOIN categories c ON c.id = t.category_id
         LEFT JOIN priority_levels pl ON pl.id = t.priority
@@ -175,7 +184,8 @@ interface TaskDao {
             c.color_index AS category_color_index,
             pl.name AS priority_name, pl.color AS priority_color, pl.position AS priority_position,
             (SELECT COUNT(*) FROM subtasks s WHERE s.task_id = t.id AND s.is_done = 1) AS subtasks_done,
-            (SELECT COUNT(*) FROM subtasks s WHERE s.task_id = t.id) AS subtasks_total
+            (SELECT COUNT(*) FROM subtasks s WHERE s.task_id = t.id) AS subtasks_total,
+            (SELECT COUNT(*) FROM attachments a WHERE a.task_id = t.id) AS attachments_total
         FROM tasks t
         LEFT JOIN categories c ON c.id = t.category_id
         LEFT JOIN priority_levels pl ON pl.id = t.priority
@@ -201,6 +211,7 @@ interface TaskDao {
             pl.name AS priority_name, pl.color AS priority_color, pl.position AS priority_position,
             (SELECT COUNT(*) FROM subtasks s WHERE s.task_id = t.id AND s.is_done = 1) AS subtasks_done,
             (SELECT COUNT(*) FROM subtasks s WHERE s.task_id = t.id) AS subtasks_total,
+            (SELECT COUNT(*) FROM attachments a WHERE a.task_id = t.id) AS attachments_total,
             (SELECT GROUP_CONCAT(s.title, char(10)) FROM subtasks s WHERE s.task_id = t.id) AS subtask_titles
         FROM tasks t
         LEFT JOIN categories c ON c.id = t.category_id
@@ -233,7 +244,8 @@ interface TaskDao {
             c.color_index AS category_color_index,
             pl.name AS priority_name, pl.color AS priority_color, pl.position AS priority_position,
             (SELECT COUNT(*) FROM subtasks s WHERE s.task_id = t.id AND s.is_done = 1) AS subtasks_done,
-            (SELECT COUNT(*) FROM subtasks s WHERE s.task_id = t.id) AS subtasks_total
+            (SELECT COUNT(*) FROM subtasks s WHERE s.task_id = t.id) AS subtasks_total,
+            (SELECT COUNT(*) FROM attachments a WHERE a.task_id = t.id) AS attachments_total
         FROM tasks t
         LEFT JOIN categories c ON c.id = t.category_id
         LEFT JOIN priority_levels pl ON pl.id = t.priority
@@ -293,7 +305,8 @@ interface TaskDao {
             c.color_index AS category_color_index,
             pl.name AS priority_name, pl.color AS priority_color, pl.position AS priority_position,
             (SELECT COUNT(*) FROM subtasks s WHERE s.task_id = t.id AND s.is_done = 1) AS subtasks_done,
-            (SELECT COUNT(*) FROM subtasks s WHERE s.task_id = t.id) AS subtasks_total
+            (SELECT COUNT(*) FROM subtasks s WHERE s.task_id = t.id) AS subtasks_total,
+            (SELECT COUNT(*) FROM attachments a WHERE a.task_id = t.id) AS attachments_total
         FROM tasks t
         LEFT JOIN categories c ON c.id = t.category_id
         LEFT JOIN priority_levels pl ON pl.id = t.priority
@@ -310,7 +323,8 @@ interface TaskDao {
             c.color_index AS category_color_index,
             pl.name AS priority_name, pl.color AS priority_color, pl.position AS priority_position,
             (SELECT COUNT(*) FROM subtasks s WHERE s.task_id = t.id AND s.is_done = 1) AS subtasks_done,
-            (SELECT COUNT(*) FROM subtasks s WHERE s.task_id = t.id) AS subtasks_total
+            (SELECT COUNT(*) FROM subtasks s WHERE s.task_id = t.id) AS subtasks_total,
+            (SELECT COUNT(*) FROM attachments a WHERE a.task_id = t.id) AS attachments_total
         FROM tasks t
         LEFT JOIN categories c ON c.id = t.category_id
         LEFT JOIN priority_levels pl ON pl.id = t.priority

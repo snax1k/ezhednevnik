@@ -29,6 +29,12 @@ class Converters {
 
 
     @TypeConverter
+    fun attachmentKindToCode(kind: AttachmentKind): Int = kind.code
+
+    @TypeConverter
+    fun codeToAttachmentKind(code: Int): AttachmentKind = AttachmentKind.fromCode(code)
+
+    @TypeConverter
     fun repeatUnitToCode(unit: RepeatUnit): Int = unit.code
 
     @TypeConverter

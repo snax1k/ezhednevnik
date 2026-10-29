@@ -11,6 +11,7 @@ import org.junit.Assert.assertEquals
 import org.junit.Rule
 import org.junit.Test
 import org.junit.runner.RunWith
+import java.time.Instant
 import java.time.LocalDate
 import java.time.LocalTime
 
@@ -78,6 +79,17 @@ class MigrationTest {
                     listOf("Высокий", "Средний", "Низкий"),
                     database.priorityLevelDao().getAll().map { it.name }
                 )
+                // 6 → 7: у старых задач вложений нет, а новые записываются и удаляются вместе с задачей
+                assertEquals(0, task.attachmentsTotal)
+                database.attachmentDao().insert(
+                    AttachmentEntity(
+                        taskId = 1, kind = AttachmentKind.Photo, fileName = "a.jpg", displayName = "Фото",
+                        mimeType = "image/jpeg", size = 10, durationMs = null, createdAt = Instant.EPOCH, position = 0
+                    )
+                )
+                assertEquals(1, database.taskDao().getTaskWithDetails(1)!!.attachmentsTotal)
+                database.openHelper.writableDatabase.execSQL("DELETE FROM tasks WHERE id = 1")
+                assertEquals(emptyList<String>(), database.attachmentDao().allFileNames())
             }
         } finally {
             database.close()

@@ -5,6 +5,14 @@ import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.setValue
 import androidx.lifecycle.ViewModel
+import kotlinx.coroutines.withContext
+import kotlinx.coroutines.Dispatchers
+import java.io.File
+import com.snax1k.chekki.data.db.AttachmentEntity
+import com.snax1k.chekki.data.AttachmentTooLargeException
+import com.snax1k.chekki.data.AttachmentStore
+import com.snax1k.chekki.R
+import android.net.Uri
 import androidx.lifecycle.viewModelScope
 import com.snax1k.chekki.data.DeletedTask
 import com.snax1k.chekki.data.GroupRanges
@@ -65,8 +73,55 @@ class TaskViewModel(
     private val taskId: Long,
     private val repository: TaskRepository,
     currentDate: Flow<LocalDate>,
-    private val reminderAccess: ReminderAccess
+    private val reminderAccess: ReminderAccess,
+    private val attachmentStore: AttachmentStore? = null
 ) : ViewModel() {
+
+    /** Вложения задачи по порядку. */
+    val attachments: StateFlow<List<AttachmentEntity>> = repository.observeAttachments(taskId)
+        .stateIn(viewModelScope, SharingStarted.WhileSubscribed(5_000), emptyList())
+
+    fun attachmentFile(attachment: AttachmentEntity): File = attachmentStore!!.file(attachment.fileName)
+
+    fun attachmentUri(attachment: AttachmentEntity): Uri = attachmentStore!!.uriFor(attachment.fileName)
+
+    fun uriForFile(file: File): Uri = attachmentStore!!.uriFor(file.name)
+
+    /** Пустой файл под снимок камеры или запись голоса. */
+    fun newAttachmentFile(extension: String): File = attachmentStore!!.newFile(extension)
+
+    /** Выбранное в галерее или «Файлах»: копируется к приложению. [onError] — строка с причиной. */
+    fun addAttachments(uris: List<Uri>, onError: (Int) -> Unit) {
+        val store = attachmentStore ?: return
+        viewModelScope.launch {
+            uris.forEach { uri ->
+                try {
+                    repository.addAttachment(taskId, store.copyFrom(uri))
+                } catch (e: AttachmentTooLargeException) {
+                    onError(R.string.attachments_too_large)
+                } catch (e: Exception) {
+                    onError(R.string.attachments_failed)
+                }
+            }
+        }
+    }
+
+    /** Снимок камеры или запись голоса уже лежат в папке вложений: осталось записать строку. */
+    fun addRecordedAttachment(file: File, mimeType: String, displayName: String) {
+        val store = attachmentStore ?: return
+        if (!file.exists() || file.length() == 0L) {
+            file.delete()
+            return
+        }
+        viewModelScope.launch {
+            val stored = withContext(Dispatchers.IO) { store.describe(file, displayName, mimeType) }
+            repository.addAttachment(taskId, stored)
+        }
+    }
+
+    fun deleteAttachment(id: Long, onDeleted: (AttachmentEntity) -> Unit) {
+        viewModelScope.launch { repository.deleteAttachment(id)?.let(onDeleted) }
+    }
 
     /**
      * Поля, которые правятся в карточке; null — задача ещё не загрузилась.

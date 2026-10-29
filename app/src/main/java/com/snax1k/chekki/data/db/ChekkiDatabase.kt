@@ -8,7 +8,7 @@ import androidx.room.TypeConverters
 
 /**
  * База задач и привычек. Версия 2 — привычки и их отметки, версия 3 — напоминания привычек, версия 4 — паузы привычек,
- * версия 5 — иконка и архив у категорий, версия 6 — свои уровни важности.
+ * версия 5 — иконка и архив у категорий, версия 6 — свои уровни важности, версия 7 — вложения задач.
  *
  * С версии 5 (25.10.2026) база не пересоздаётся: в ней настоящие данные, в том числе перенесённые из старого
  * приложения. Каждое изменение схемы — новая версия и миграция в [Migrations], проверенная тестом `MigrationTest`.
@@ -22,7 +22,8 @@ import androidx.room.TypeConverters
         HabitCheckEntity::class,
         HabitReminderEntity::class,
         HabitPauseEntity::class,
-        PriorityLevelEntity::class
+        PriorityLevelEntity::class,
+        AttachmentEntity::class
     ],
     version = ChekkiDatabase.VERSION,
     exportSchema = true
@@ -37,9 +38,11 @@ abstract class ChekkiDatabase : RoomDatabase() {
 
     abstract fun priorityLevelDao(): PriorityLevelDao
 
+    abstract fun attachmentDao(): AttachmentDao
+
     companion object {
         /** Текущая версия схемы. Подняли — добавьте миграцию в [Migrations]. */
-        const val VERSION = 6
+        const val VERSION = 7
 
         /** С этой версии данные только переносятся миграциями. */
         const val FIRST_KEPT_VERSION = 5

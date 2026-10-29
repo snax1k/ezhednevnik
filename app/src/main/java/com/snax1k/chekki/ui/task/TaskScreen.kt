@@ -68,6 +68,7 @@ import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.unit.dp
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import com.snax1k.chekki.R
+import com.snax1k.chekki.data.db.AttachmentEntity
 import com.snax1k.chekki.ui.category.categoryColor
 import com.snax1k.chekki.data.DeletedTask
 import com.snax1k.chekki.data.MovedTask
@@ -121,7 +122,8 @@ fun TaskScreen(
     viewModel: TaskViewModel,
     onBack: () -> Unit,
     onDeleted: (DeletedTask) -> Unit,
-    onPostponed: (MovedTask) -> Unit
+    onPostponed: (MovedTask) -> Unit,
+    onAttachmentDeleted: (AttachmentEntity) -> Unit = {}
 ) {
     val isDone by viewModel.isDone.collectAsStateWithLifecycle()
     val subtasks by viewModel.subtasks.collectAsStateWithLifecycle()
@@ -175,7 +177,8 @@ fun TaskScreen(
                 onDelete = viewModel::deleteSubtask,
                 onAdd = viewModel::addSubtask
             )
-        }
+        },
+        attachmentsBlock = { modifier -> TaskAttachments(viewModel, onAttachmentDeleted, modifier) }
     )
 
     if (showExactAlarmDialog) {
@@ -222,7 +225,8 @@ private fun TaskContent(
     onPrioritySelect: (Long) -> Unit,
     onCategorySelect: (Long?) -> Unit,
     subtaskRows: List<SubtaskRowUi>,
-    subtaskActions: SubtaskActions
+    subtaskActions: SubtaskActions,
+    attachmentsBlock: @Composable (Modifier) -> Unit = {}
 ) {
     var pickerStep by rememberSaveable { mutableStateOf<PickerStep?>(null) }
     Surface(Modifier.fillMaxSize(), color = MaterialTheme.colorScheme.background) {
@@ -258,7 +262,8 @@ private fun TaskContent(
                     onPrioritySelect = onPrioritySelect,
                     onCategorySelect = onCategorySelect,
                     subtaskRows = subtaskRows,
-                    subtaskActions = subtaskActions
+                    subtaskActions = subtaskActions,
+                    attachmentsBlock = attachmentsBlock
                 )
             }
         }
@@ -326,7 +331,8 @@ private fun ColumnScope.TaskBody(
     onPrioritySelect: (Long) -> Unit,
     onCategorySelect: (Long?) -> Unit,
     subtaskRows: List<SubtaskRowUi>,
-    subtaskActions: SubtaskActions
+    subtaskActions: SubtaskActions,
+    attachmentsBlock: @Composable (Modifier) -> Unit
 ) {
     val date = draft.dateFor(today)
     Column(
@@ -380,6 +386,7 @@ private fun ColumnScope.TaskBody(
             modifier = Modifier.padding(top = 16.dp)
         )
         SubtasksCard(subtasks, subtaskRows, subtaskActions, Modifier.padding(top = 16.dp))
+        attachmentsBlock(Modifier.padding(top = 16.dp))
         Spacer(Modifier.height(24.dp))
     }
     BottomButtons(

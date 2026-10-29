@@ -28,8 +28,22 @@ object Migrations {
         }
     }
 
+    /** 6 → 7: вложения задач (29.10.2026) — новая таблица, старые данные не меняются. */
+    val MIGRATION_6_7 = object : Migration(6, 7) {
+        override fun migrate(db: SupportSQLiteDatabase) {
+            db.execSQL(
+                "CREATE TABLE IF NOT EXISTS `attachments` (`id` INTEGER PRIMARY KEY AUTOINCREMENT NOT NULL, " +
+                    "`task_id` INTEGER NOT NULL, `kind` INTEGER NOT NULL, `file_name` TEXT NOT NULL, " +
+                    "`display_name` TEXT NOT NULL, `mime_type` TEXT NOT NULL, `size` INTEGER NOT NULL, " +
+                    "`duration_ms` INTEGER, `created_at` INTEGER NOT NULL, `position` INTEGER NOT NULL, " +
+                    "FOREIGN KEY(`task_id`) REFERENCES `tasks`(`id`) ON UPDATE NO ACTION ON DELETE CASCADE )"
+            )
+            db.execSQL("CREATE INDEX IF NOT EXISTS `index_attachments_task_id` ON `attachments` (`task_id`)")
+        }
+    }
+
     /** Все миграции по порядку. */
-    val ALL: Array<Migration> = arrayOf(MIGRATION_5_6)
+    val ALL: Array<Migration> = arrayOf(MIGRATION_5_6, MIGRATION_6_7)
 }
 
 /** Три уровня по умолчанию — при миграции и при создании новой базы. */
