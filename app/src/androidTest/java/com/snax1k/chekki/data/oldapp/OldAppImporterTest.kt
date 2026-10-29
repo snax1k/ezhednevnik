@@ -4,6 +4,7 @@ import android.database.sqlite.SQLiteDatabase
 import androidx.room.Room
 import androidx.test.ext.junit.runners.AndroidJUnit4
 import androidx.test.platform.app.InstrumentationRegistry
+import com.snax1k.chekki.data.AttachmentStore
 import com.snax1k.chekki.data.HabitRepository
 import com.snax1k.chekki.data.TaskRepository
 import com.snax1k.chekki.data.db.ChekkiDatabase
@@ -40,6 +41,7 @@ class OldAppImporterTest {
     private val clock = Clock.fixed(Instant.parse("2026-10-25T09:00:00Z"), ZoneOffset.ofHours(3))
     private lateinit var database: ChekkiDatabase
     private lateinit var importer: OldAppImporter
+    private val attachmentStore = AttachmentStore(context)
     private var backups = 0
 
     @Before
@@ -47,12 +49,15 @@ class OldAppImporterTest {
         database = Room.inMemoryDatabaseBuilder(context, ChekkiDatabase::class.java)
             .addCallback(InitialDataCallback(today = { today }))
             .build()
-        importer = OldAppImporter(database, TaskRepository(database), HabitRepository(database, clock = clock), clock) { backups++ }
+        importer = OldAppImporter(
+            database, TaskRepository(database), HabitRepository(database, clock = clock), clock, attachmentStore
+        ) { backups++ }
     }
 
     @After
     fun tearDown() {
         database.close()
+        attachmentStore.clearImportDirectory()
     }
 
     @Test
@@ -66,6 +71,10 @@ class OldAppImporterTest {
             val (backup, plan) = importer.read(ByteArrayInputStream(plnb()), context.cacheDir)
             assertEquals("abc123", backup.hash)
             assertEquals(1, backup.photoCount)
+            // Фото распаковано в папку переноса и ждёт «Перенести»
+            assertEquals(listOf("photo-1.jpg"), attachmentStore.importDirectory.list()?.toList())
+            assertEquals(1, plan.report.photos)
+            assertEquals(1, plan.report.missingMedia)
             // Удалённые строки не читаются
             assertEquals(listOf("Поездки"), backup.categories.map { it.title })
             assertEquals(2, backup.tasks.size)
@@ -83,6 +92,13 @@ class OldAppImporterTest {
             assertEquals(LocalDate.of(2026, 10, 30), open.task.date)
             assertEquals(2, open.subtasksTotal)
             assertEquals(1, open.subtasksDone)
+            val photo = database.attachmentDao().getForTask(open.task.id).single()
+            assertEquals("Фото 02.10.2026", photo.displayName)
+            assertEquals("image/jpeg", photo.mimeType)
+            assertEquals(3L, photo.size)
+            assertTrue(attachmentStore.file(photo.fileName).readBytes().contentEquals(byteArrayOf(1, 2, 3)))
+            assertTrue(attachmentStore.file(photo.fileName).delete())
+            assertTrue(!attachmentStore.importDirectory.exists())
             assertEquals(1, database.taskDao().observeDoneCount().first())
             assertEquals(ExistingData(tasks = 2, categories = 1, habits = 1), importer.existing())
             assertTrue(database.taskDao().observeTasksOn(today).first().none { it.task.title == "Старая задача" })
@@ -127,6 +143,13 @@ class OldAppImporterTest {
             db.execSQL("INSERT INTO implementation VALUES ('h1', '20:0', 0)")
             db.execSQL("INSERT INTO implementation VALUES ('h1', NULL, 0)")
             db.execSQL("INSERT INTO habit_record VALUES ('h1', 1, 2, '2026-10-24T08:00:00Z', 0)")
+            // Фото «Купить билеты»: одно есть в архиве, второго нет; фото удалённой задачи не переносится
+            db.execSQL("INSERT INTO photo VALUES ('p1', 't1', 'f1', 0, '2026-10-02T10:00:00.000Z')")
+            db.execSQL("INSERT INTO photo VALUES ('p2', 't1', 'f2', 0, NULL)")
+            db.execSQL("INSERT INTO photo VALUES ('p3', 't3', 'f1', 0, NULL)")
+            db.execSQL("INSERT INTO photo VALUES ('p4', 't1', 'f1', 1, NULL)")
+            db.execSQL("INSERT INTO sync_file VALUES ('f1', '1.jpg')")
+            db.execSQL("INSERT INTO sync_file VALUES ('f2', '2.jpg')")
         }
         val bytes = ByteArrayOutputStream()
         bytes.write(ByteArray(8) { 7 })
@@ -154,7 +177,10 @@ class OldAppImporterTest {
             """CREATE TABLE habit (uid TEXT, title TEXT, color INTEGER, icon TEXT, regularityUid TEXT, position INTEGER,
                 startDate TEXT, pause INTEGER, completed INTEGER, isRemoved INTEGER)""",
             "CREATE TABLE implementation (habitId TEXT, notifyTime TEXT, isRemoved INTEGER)",
-            "CREATE TABLE habit_record (habitId TEXT, count INTEGER, maxCount INTEGER, date TEXT, isRemoved INTEGER)"
+            "CREATE TABLE habit_record (habitId TEXT, count INTEGER, maxCount INTEGER, date TEXT, isRemoved INTEGER)",
+            "CREATE TABLE photo (uid TEXT, taskId TEXT, fileUid TEXT, isRemoved INTEGER, created TEXT)",
+            "CREATE TABLE sound (uid TEXT, taskId TEXT, fileUid TEXT, isRemoved INTEGER, created INTEGER)",
+            "CREATE TABLE sync_file (uid TEXT, localPath TEXT)"
         )
     }
 }

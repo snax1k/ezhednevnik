@@ -1,8 +1,11 @@
 package com.snax1k.chekki.data.oldapp
 
 import androidx.room.withTransaction
+import com.snax1k.chekki.data.AttachmentStore
 import com.snax1k.chekki.data.HabitRepository
 import com.snax1k.chekki.data.TaskRepository
+import com.snax1k.chekki.data.StoredFile
+import com.snax1k.chekki.data.db.AttachmentEntity
 import com.snax1k.chekki.data.db.CategoryEntity
 import com.snax1k.chekki.data.db.ChekkiDatabase
 import com.snax1k.chekki.data.db.HabitPauseEntity
@@ -22,13 +25,15 @@ data class ExistingData(val tasks: Int, val categories: Int, val habits: Int)
  * Перенос из старого ежедневника: [read] читает файл `.plnb` и готовит план с отчётом (ничего не меняя),
  * [import] заменяет всё, что есть в приложении, данными копии (решено 29.10.2026, раньше перенос добавлял).
  * Сначала [backup] сохраняет копию базы, потом одной транзакцией удаляются задачи, категории и привычки
- * и записывается план — либо всё, либо ничего.
+ * и записывается план — либо всё, либо ничего. Фото и аудио копии [read] распаковывает в папку переноса
+ * [attachmentStore]; при записи они становятся вложениями задач. Без [attachmentStore] (в тестах) — только считаются.
  */
 class OldAppImporter(
     private val database: ChekkiDatabase,
     private val taskRepository: TaskRepository,
     private val habitRepository: HabitRepository,
     private val clock: Clock = Clock.systemDefaultZone(),
+    private val attachmentStore: AttachmentStore? = null,
     /** Копия базы перед заменой; не вышло — перенос не начинается. */
     private val backup: () -> Unit = {}
 ) {
@@ -42,8 +47,20 @@ class OldAppImporter(
 
     /** Читает копию и переводит её в наши данные. Временные файлы — в [workDir], после чтения удаляются. */
     fun read(input: InputStream, workDir: File): Pair<OldBackup, ImportPlan> {
-        val backup = OldBackupReader.read(input, workDir)
+        // Фото и аудио прошлой, брошенной копии больше не нужны
+        attachmentStore?.clearImportDirectory()
+        val backup = try {
+            OldBackupReader.read(input, workDir, attachmentStore?.importDirectory)
+        } catch (e: Throwable) {
+            attachmentStore?.clearImportDirectory()
+            throw e
+        }
         return backup to OldAppConverter.convert(backup, clock.zone, Instant.now(clock))
+    }
+
+    /** Перенос не состоялся (ушли с экрана, выбрали другой файл): распакованные фото и аудио удаляются. */
+    fun discard() {
+        attachmentStore?.clearImportDirectory()
     }
 
     suspend fun import(plan: ImportPlan) {
@@ -52,6 +69,13 @@ class OldAppImporter(
         // Будильники и уведомления удаляемых задач и привычек больше не нужны
         taskRepository.cancelAllReminders()
         habitRepository.cancelAllReminders()
+        // Файлы — к вложениям до записи: не запишется — останутся без строк и удалятся при следующем запуске
+        val storedMedia: List<List<Pair<StoredFile, Instant>>> = plan.tasks.map { planned ->
+            val store = attachmentStore ?: return@map emptyList()
+            planned.attachments.mapNotNull { media ->
+                store.adopt(File(store.importDirectory, media.fileName), media.displayName, media.mimeType)?.let { it to media.createdAt }
+            }
+        }
         database.withTransaction {
             val categoryDao = database.categoryDao()
             val taskDao = database.taskDao()
@@ -81,7 +105,8 @@ class OldAppImporter(
                 PriorityLevels.MEDIUM to levels.getOrNull(1)?.id,
                 PriorityLevels.LOW to levels.getOrNull(2)?.id
             )
-            plan.tasks.forEach { planned ->
+            val attachmentDao = database.attachmentDao()
+            plan.tasks.forEachIndexed { index, planned ->
                 val taskId = taskDao.insertTask(
                     planned.task.copy(
                         categoryId = planned.categoryUid?.let(categoryIds::get),
@@ -91,6 +116,24 @@ class OldAppImporter(
                 if (planned.subtasks.isNotEmpty()) {
                     taskDao.insertSubtasks(
                         planned.subtasks.map { SubtaskEntity(taskId = taskId, title = it.title, isDone = it.isDone, position = it.position) }
+                    )
+                }
+                val media = storedMedia[index]
+                if (media.isNotEmpty()) {
+                    attachmentDao.insertAll(
+                        media.mapIndexed { position, (file, createdAt) ->
+                            AttachmentEntity(
+                                taskId = taskId,
+                                kind = file.kind,
+                                fileName = file.fileName,
+                                displayName = file.displayName,
+                                mimeType = file.mimeType,
+                                size = file.size,
+                                durationMs = file.durationMs,
+                                createdAt = createdAt,
+                                position = position
+                            )
+                        }
                     )
                 }
             }
@@ -105,6 +148,7 @@ class OldAppImporter(
                 if (planned.paused) habitDao.insertPause(HabitPauseEntity(habitId = habitId, startDate = today, resumeDate = null))
             }
         }
+        attachmentStore?.clearImportDirectory()
         // Будильники перенесённых напоминаний
         taskRepository.rescheduleAllReminders(today)
         habitRepository.rescheduleAllReminders()

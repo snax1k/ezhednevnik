@@ -183,6 +183,8 @@ private fun ReportCard(report: ImportReport) {
         ReportRow(stringResource(R.string.import_row_habits), report.habits.toString())
         ReportRow(stringResource(R.string.import_row_habit_checks), report.habitChecks.toString())
         ReportRow(stringResource(R.string.import_row_habit_reminders), report.habitReminders.toString())
+        if (report.photos > 0) ReportRow(stringResource(R.string.import_row_photos), report.photos.toString())
+        if (report.audio > 0) ReportRow(stringResource(R.string.import_row_audio), report.audio.toString())
     }
 }
 
@@ -210,7 +212,7 @@ private fun Caveats(report: ImportReport) {
         if (report.approximatedRepeats.isNotEmpty()) {
             add(stringResource(R.string.import_caveat_repeats, report.approximatedRepeats.joinToString(", ") { "«$it»" }))
         }
-        if (report.photos > 0 || report.audio > 0) add(stringResource(R.string.import_caveat_media, report.photos, report.audio))
+        if (report.missingMedia > 0) add(stringResource(R.string.import_caveat_media, report.missingMedia))
     }
     if (lines.isEmpty()) return
     Text(
@@ -279,7 +281,7 @@ private fun ImportPreviewPreview() {
     val report = ImportReport(
         categories = 17, openTasks = 147, doneTasks = 8430, subtasks = 17152, habits = 4, habitChecks = 482,
         habitReminders = 7, mergedDuplicates = 49, missedRepeats = 5, approximatedRepeats = listOf("Счётчики"),
-        extraCategories = 15, deadlines = 823, photos = 303, audio = 2
+        extraCategories = 15, deadlines = 823, photos = 272, audio = 2, missingMedia = 85
     )
     ChekkiTheme {
         ImportScreen(ImportStep.Preview(report, ExistingData(tasks = 12, categories = 6, habits = 3), importedOn = LocalDate.of(2026, 10, 25)))

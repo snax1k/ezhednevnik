@@ -108,7 +108,13 @@ class ImportViewModel(
     fun reset() {
         plan = null
         hash = null
+        importer.discard()
         _step.value = ImportStep.Start
+    }
+
+    override fun onCleared() {
+        // Ушли с экрана, не перенеся: распакованные фото и аудио копии не нужны
+        if (plan != null) importer.discard()
     }
 
     private companion object {

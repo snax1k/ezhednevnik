@@ -27,7 +27,15 @@ data class ImportPlan(
 data class PlannedCategory(val oldUid: String, val name: String, val icon: CategoryIcon, val colorIndex: Int)
 
 /** Задача: [task] без id и категории — категорию ставит запись по [categoryUid]. */
-data class PlannedTask(val task: TaskEntity, val categoryUid: String?, val subtasks: List<PlannedSubtask>)
+data class PlannedTask(
+    val task: TaskEntity,
+    val categoryUid: String?,
+    val subtasks: List<PlannedSubtask>,
+    val attachments: List<PlannedAttachment> = emptyList()
+)
+
+/** Фото или аудио задачи: файл [fileName] лежит в папке переноса, [displayName] — «Фото 12.03.2025». */
+data class PlannedAttachment(val fileName: String, val displayName: String, val mimeType: String, val createdAt: Instant)
 
 data class PlannedSubtask(val title: String, val isDone: Boolean, val position: Int)
 
@@ -58,8 +66,11 @@ data class ImportReport(
     val extraCategories: Int,
     /** Задачи со сроком «до»: он дописан в заметку. */
     val deadlines: Int,
+    /** Фото и аудио, которые станут вложениями задач. */
     val photos: Int,
-    val audio: Int
+    val audio: Int,
+    /** Фото и аудио задач, самих файлов которых в копии нет: не переносятся. */
+    val missingMedia: Int = 0
 )
 
 /**
@@ -67,7 +78,7 @@ data class ImportReport(
  * - у задачи одна категория — первая, остальные дописываются в заметку («Также: Работа»), срок «до» — тоже («Срок: 30 окт 2026»);
  * - повтор — в наше правило; чего у нас нет (несколько чисел месяца, разные дни двух недель) — ближайшее правило и строка в отчёте;
  * - моменты из UTC переводятся в часовой пояс телефона [zone];
- * - фото, аудио и настойчивые напоминания не переносятся.
+ * - фото и аудио становятся вложениями задач (решено 29.10.2026), настойчивые напоминания не переносятся.
  *
  * Особенности копии: у повторяющейся задачи бывает и основная строка серии, и её копия на ту же дату — они сводятся
  * в одну; повтор достаётся только самой поздней невыполненной копии, ранние (пропущенные) переносятся без повтора,
@@ -90,15 +101,22 @@ object OldAppConverter {
 
         // Дубли невыполненных: одна задача, одна дата и время, одно правило — оставляем ту, где больше подзадач
         val (open, done) = backup.tasks.partition { !it.completed }
-        val openKept = open
+        val openGroups = open
             .groupBy { listOf(it.title.trim(), it.nextDate, it.time, it.regularityUid) }
             .values
-            .map { group ->
-                group.sortedWith(
-                    compareByDescending<OldTask> { subtasksByTask[it.uid]?.size ?: 0 }.thenBy { it.created.orEmpty() }
-                ).first()
-            }
+        val openKept = openGroups.map { group ->
+            group.sortedWith(
+                compareByDescending<OldTask> { subtasksByTask[it.uid]?.size ?: 0 }.thenBy { it.created.orEmpty() }
+            ).first()
+        }
         val mergedDuplicates = open.size - openKept.size
+        // Фото и аудио сведённых дублей переходят к оставшейся строке
+        val keptUid = openGroups.zip(openKept).flatMap { (group, kept) -> group.map { it.uid to kept.uid } }.toMap()
+        val liveUids = (openKept + done).map { it.uid }.toSet()
+        val mediaByTask = backup.attachments
+            .groupBy { keptUid[it.taskUid] ?: it.taskUid }
+            .filterKeys { it in liveUids }
+        val missingMedia = mediaByTask.values.sumOf { media -> media.count { it.fileName == null } }
         // Повтор — только самой поздней невыполненной копии серии
         val repeatHeads = openKept
             .filter { it.regularityUid != null && it.nextDate != null }
@@ -144,7 +162,8 @@ object OldAppConverter {
                 subtasks = subtasksByTask[old.uid].orEmpty()
                     .sortedBy { it.position }
                     .mapIndexed { index, sub -> PlannedSubtask(sub.title.trim(), sub.completed, index) }
-                    .filter { it.title.isNotEmpty() }
+                    .filter { it.title.isNotEmpty() },
+                attachments = plannedAttachments(mediaByTask[old.uid].orEmpty(), zone, now)
             )
         }
 
@@ -187,10 +206,39 @@ object OldAppConverter {
                 approximatedRepeats = approximated.distinct().sorted(),
                 extraCategories = extraCategories,
                 deadlines = deadlines,
-                photos = backup.photoCount,
-                audio = backup.audioCount
+                photos = tasks.sumOf { task -> task.attachments.count { !it.mimeType.startsWith("audio/") } },
+                audio = tasks.sumOf { task -> task.attachments.count { it.mimeType.startsWith("audio/") } },
+                missingMedia = missingMedia
             )
         )
+    }
+
+    /** Вложения задачи по времени добавления; файл, привязанный дважды (у дублей), — один раз. */
+    private fun plannedAttachments(media: List<OldAttachment>, zone: ZoneId, now: Instant): List<PlannedAttachment> =
+        media
+            .filter { it.fileName != null }
+            .distinctBy { it.fileName }
+            .map { old ->
+                val created = parseInstant(old.created)
+                val label = if (old.isAudio) "Аудио" else "Фото"
+                PlannedAttachment(
+                    fileName = old.fileName!!,
+                    displayName = created?.let { "$label " + it.atZone(zone).format(AttachmentDateFormatter) } ?: label,
+                    mimeType = mediaType(old.fileName, old.isAudio),
+                    createdAt = created ?: now
+                )
+            }
+            .sortedBy { it.createdAt }
+
+    /** Тип файла по расширению; в копии фото — jpg, jpeg и png, аудио — aac. */
+    private fun mediaType(fileName: String, isAudio: Boolean): String = when (fileName.substringAfterLast('.').lowercase()) {
+        "jpg", "jpeg" -> "image/jpeg"
+        "png" -> "image/png"
+        "webp" -> "image/webp"
+        "aac" -> "audio/aac"
+        "m4a", "mp4" -> if (isAudio) "audio/mp4" else "video/mp4"
+        "mp3" -> "audio/mpeg"
+        else -> if (isAudio) "audio/aac" else "image/jpeg"
     }
 
     /** Заметка и дописанное к ней: вторая категория и срок «до». */
@@ -347,4 +395,5 @@ object OldAppConverter {
     private const val MAX_REMINDER_MINUTES = 7L * 24 * 60
     private const val MAX_HABIT_TARGET = 99
     private val DeadlineFormatter: DateTimeFormatter = DateTimeFormatter.ofPattern("d MMM yyyy", Locale.forLanguageTag("ru"))
+    private val AttachmentDateFormatter: DateTimeFormatter = DateTimeFormatter.ofPattern("dd.MM.yyyy")
 }

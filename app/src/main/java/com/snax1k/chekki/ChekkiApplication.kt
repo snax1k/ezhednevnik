@@ -39,6 +39,8 @@ class ChekkiApplication : Application() {
             container.habitRepository.rescheduleAllReminders()
             // Файлы удалённых задач и вложений: «Отменить» уже не нажмут
             container.attachmentStore.cleanupOrphans(container.taskRepository.attachmentFileNames())
+            // Фото и аудио брошенного переноса из старого приложения (приложение закрыли на предпросмотре)
+            container.attachmentStore.clearImportDirectory()
         }
     }
 }
@@ -58,7 +60,7 @@ class AppContainer(context: Context) {
 
     /** Перенос из старого ежедневника и копии, которые уже переносились. */
     val oldAppImporter: OldAppImporter by lazy {
-        OldAppImporter(database, taskRepository, habitRepository) {
+        OldAppImporter(database, taskRepository, habitRepository, attachmentStore = attachmentStore) {
             DatabaseBackups.backupOpen(appContext, database, "before-import")
         }
     }

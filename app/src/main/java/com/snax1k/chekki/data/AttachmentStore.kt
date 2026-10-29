@@ -46,6 +46,29 @@ class AttachmentStore(context: Context) {
     /** Пустой файл под снимок камеры или запись голоса. */
     fun newFile(extension: String): File = File(directory, "${UUID.randomUUID()}.$extension")
 
+    /**
+     * Папка переноса из старого приложения: фото и аудио копии лежат здесь от чтения копии до «Перенести».
+     * Она на том же диске, что и вложения, поэтому [adopt] переносит файл без копирования.
+     */
+    val importDirectory: File get() = File(appContext.filesDir, IMPORT_DIRECTORY)
+
+    /** Убирает папку переноса: перенос закончен или брошен. */
+    fun clearImportDirectory() {
+        importDirectory.deleteRecursively()
+    }
+
+    /** Файл из папки переноса становится вложением: переезжает к остальным под случайным именем. Нет файла — null. */
+    fun adopt(file: File, displayName: String, mimeType: String): StoredFile? {
+        if (!file.exists()) return null
+        val extension = file.name.substringAfterLast('.', "").takeIf { it.isNotEmpty() && it.length <= 5 } ?: "bin"
+        val target = newFile(extension)
+        if (!file.renameTo(target)) {
+            file.copyTo(target)
+            file.delete()
+        }
+        return describe(target, displayName, mimeType)
+    }
+
     /** Копирует выбранное в галерее или «Файлах» к себе. Больше [MAX_SIZE] — [AttachmentTooLargeException]. */
     suspend fun copyFrom(uri: Uri): StoredFile = withContext(Dispatchers.IO) {
         val resolver = appContext.contentResolver
@@ -130,6 +153,7 @@ class AttachmentStore(context: Context) {
     companion object {
         private const val TAG = "AttachmentStore"
         private const val DIRECTORY = "attachments"
+        private const val IMPORT_DIRECTORY = "old-app-import"
 
         /** Больше — не храним: телефон быстро заполнится, а копия базы и перенос станут тяжёлыми. */
         const val MAX_SIZE = 300L * 1024 * 1024

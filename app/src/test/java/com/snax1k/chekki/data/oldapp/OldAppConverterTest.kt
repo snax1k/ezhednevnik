@@ -57,8 +57,12 @@ class OldAppConverterTest {
         regularities: List<OldRegularity> = emptyList(),
         habits: List<OldHabit> = emptyList(),
         records: List<OldHabitRecord> = emptyList(),
-        implementations: List<OldImplementation> = emptyList()
-    ) = OldBackup(categories, tasks, subtasks, links, regularities, habits, records, implementations, photoCount = 3, audioCount = 1)
+        implementations: List<OldImplementation> = emptyList(),
+        attachments: List<OldAttachment> = emptyList()
+    ) = OldBackup(
+        categories, tasks, subtasks, links, regularities, habits, records, implementations,
+        photoCount = 3, audioCount = 1, attachments = attachments
+    )
 
     private fun convert(backup: OldBackup) = OldAppConverter.convert(backup, zone, now)
 
@@ -83,7 +87,42 @@ class OldAppConverterTest {
         assertEquals(listOf(0, 2), plan.categories.map { it.colorIndex })
         assertEquals(1, plan.report.extraCategories)
         assertEquals(1, plan.report.deadlines)
-        assertEquals(3, plan.report.photos)
+        assertEquals(0, plan.report.photos)
+    }
+
+    @Test
+    fun фотоИАудиоСтановятсяВложениямиЗадач() {
+        val plan = convert(
+            backup(
+                tasks = listOf(
+                    task("old", title = "Ремонт", date = "2026-10-26"),
+                    task("copy", title = "Ремонт", date = "2026-10-26", created = "2026-10-25T21:00:00Z"),
+                    task("done", title = "Счёт", completed = true)
+                ),
+                subtasks = listOf(OldSubtask("old", "Плитка", 0, false)),
+                attachments = listOf(
+                    OldAttachment("old", isAudio = false, fileName = "photo-b.jpg", created = "2025-03-12T22:30:00Z"),
+                    // У дубля — своё фото: переходит к оставшейся строке
+                    OldAttachment("copy", isAudio = false, fileName = "photo-a.png", created = "2025-03-01T10:00:00Z"),
+                    OldAttachment("done", isAudio = true, fileName = "audio-voice.aac", created = null),
+                    // Файла в копии нет, задачи нет — не переносятся
+                    OldAttachment("old", isAudio = false, fileName = null, created = null),
+                    OldAttachment("removed", isAudio = false, fileName = "photo-c.jpg", created = null)
+                )
+            )
+        )
+        val repair = plan.tasks.single { it.task.title == "Ремонт" }
+        // По времени добавления; подпись — местный день (12.03 22:30 UTC = 13.03 по UTC+3)
+        assertEquals(listOf("photo-a.png", "photo-b.jpg"), repair.attachments.map { it.fileName })
+        assertEquals(listOf("Фото 01.03.2025", "Фото 13.03.2025"), repair.attachments.map { it.displayName })
+        assertEquals(listOf("image/png", "image/jpeg"), repair.attachments.map { it.mimeType })
+        val voice = plan.tasks.single { it.task.title == "Счёт" }.attachments.single()
+        assertEquals("Аудио", voice.displayName)
+        assertEquals("audio/aac", voice.mimeType)
+        assertEquals(now, voice.createdAt)
+        assertEquals(2, plan.report.photos)
+        assertEquals(1, plan.report.audio)
+        assertEquals(1, plan.report.missingMedia)
     }
 
     @Test

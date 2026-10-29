@@ -269,7 +269,7 @@
 
     <!-- Перенос из старого ежедневника -->
     <string name="import_title">Перенос из старого ежедневника</string>
-    <string name="import_intro">Перенесите задачи с подзадачами, категории и привычки с отметками из резервной копии старого приложения-ежедневника — файла с расширением .plnb.\n\nПеренос заменит всё, что сейчас есть в приложении: задачи, категории и привычки. Перед этим сохранится копия базы. Сначала будет видно, что именно перенесётся.</string>
+    <string name="import_intro">Перенесите задачи с подзадачами, фото и аудио, категории и привычки с отметками из резервной копии старого приложения-ежедневника — файла с расширением .plnb.\n\nПеренос заменит всё, что сейчас есть в приложении: задачи, категории и привычки. Перед этим сохранится копия базы. Сначала будет видно, что именно перенесётся.</string>
     <string name="import_pick_file">Выбрать файл</string>
     <string name="import_pick_other">Выбрать другой файл</string>
     <string name="import_reading">Читаю копию…</string>
@@ -287,13 +287,15 @@
     <string name="import_row_habits">Привычки</string>
     <string name="import_row_habit_checks">Отметки привычек</string>
     <string name="import_row_habit_reminders">Напоминания привычек</string>
+    <string name="import_row_photos">Фото к задачам</string>
+    <string name="import_row_audio">Аудио к задачам</string>
     <string name="import_caveats_title">Перенесётся не полностью</string>
     <string name="import_caveat_duplicates">Дубли задач на одну дату сведены в одну: %1$d</string>
     <string name="import_caveat_missed">Пропущенные повторы перенесены без повтора: %1$d</string>
     <string name="import_caveat_categories">Вторая категория задачи дописана в заметку: %1$d</string>
     <string name="import_caveat_deadlines">Срок «до» дописан в заметку: %1$d</string>
     <string name="import_caveat_repeats">Повтор записан приблизительно — проверьте: %1$s</string>
-    <string name="import_caveat_media">Фото (%1$d) и аудио (%2$d) пока не переносятся</string>
+    <string name="import_caveat_media">Фото и аудио без файла в копии (%1$d): в копии есть только запись о них, перенести нечего</string>
     <string name="import_error_not_backup">Это не похоже на резервную копию старого ежедневника. Выберите файл .plnb.</string>
     <string name="import_error_read">Копия не прочиталась. Попробуйте выбрать файл ещё раз.</string>
     <string name="import_error_write">Перенос не удался, ничего не изменилось. Попробуйте ещё раз.</string>

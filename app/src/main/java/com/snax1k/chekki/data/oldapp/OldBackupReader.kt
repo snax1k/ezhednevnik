@@ -12,18 +12,22 @@ import java.util.zip.ZipInputStream
 /**
  * Чтение файла `.plnb`: это zip, перед которым несколько лишних байт (в изученной копии — 8). Ищем начало
  * zip по подписи `PK\u0003\u0004`, достаём `Planner.db` во временный файл в [workDir] и читаем его
- * стандартным SQLite Android только на чтение. Фото и аудио не распаковываются — только считаются.
+ * стандартным SQLite Android только на чтение. Фото и аудио (`photo/`, `audio/`) распаковываются в [mediaDir],
+ * если она задана, — для вложений задач; без неё только считаются.
  */
 object OldBackupReader {
 
     /** Нет `Planner.db` или файл не похож на копию старого ежедневника. */
     class NotABackupException(message: String) : IOException(message)
 
-    fun read(input: InputStream, workDir: File): OldBackup {
+    fun read(input: InputStream, workDir: File, mediaDir: File? = null): OldBackup {
         val databaseFile = File(workDir, "old-planner.db")
         try {
             var photoCount = 0
             var audioCount = 0
+            // «photo/имя» → имя распакованного файла в mediaDir
+            val extracted = mutableMapOf<String, String>()
+            mediaDir?.mkdirs()
             var hash: String? = null
             var hasDatabase = false
             ZipInputStream(skipToZip(input)).use { zip ->
@@ -35,13 +39,29 @@ object OldBackupReader {
                             hasDatabase = true
                         }
                         entry.name == META_ENTRY -> hash = readHash(zip.readBytes())
-                        entry.name.startsWith("photo/") && !entry.isDirectory -> photoCount++
-                        entry.name.startsWith("audio/") && !entry.isDirectory -> audioCount++
+                        entry.isDirectory -> Unit
+                        entry.name.startsWith(PHOTO_DIR) || entry.name.startsWith(AUDIO_DIR) -> {
+                            val isAudio = entry.name.startsWith(AUDIO_DIR)
+                            if (isAudio) audioCount++ else photoCount++
+                            // Только имя файла: путь из архива с «..» не должен выйти из папки
+                            val name = entry.name.substringAfterLast('/')
+                            if (mediaDir != null && name.isNotEmpty() && name != "..") {
+                                val stored = (if (isAudio) "audio-" else "photo-") + name
+                                File(mediaDir, stored).outputStream().use { zip.copyTo(it) }
+                                extracted[(if (isAudio) AUDIO_DIR else PHOTO_DIR) + name] = stored
+                            }
+                        }
                     }
                 }
             }
             if (!hasDatabase) throw NotABackupException("В архиве нет $DATABASE_ENTRY")
-            return readDatabase(databaseFile).copy(photoCount = photoCount, audioCount = audioCount, hash = hash)
+            val backup = readDatabase(databaseFile)
+            return backup.copy(
+                photoCount = photoCount,
+                audioCount = audioCount,
+                hash = hash,
+                attachments = backup.attachments.map { it.copy(fileName = it.fileName?.let(extracted::get)) }
+            )
         } finally {
             databaseFile.delete()
             File(databaseFile.path + "-journal").delete()
@@ -134,10 +154,33 @@ object OldBackupReader {
                 },
                 implementations = it.rows("SELECT habitId, notifyTime FROM implementation WHERE isRemoved = 0") { c ->
                     OldImplementation(c.str(0)!!, c.str(1))
-                }
+                },
+                attachments = it.attachments("photo", isAudio = false) + it.attachments("sound", isAudio = true)
             )
         }
     }
+
+    /**
+     * Фото ([table] `photo`) или аудио (`sound`) задач. Имя файла берётся из `sync_file.localPath`; пока это имя
+     * в архиве («photo/…»), настоящее имя распакованного файла подставляет [read]. Нет таблиц — вложений нет.
+     */
+    private fun SQLiteDatabase.attachments(table: String, isAudio: Boolean): List<OldAttachment> {
+        if (!hasTable(table) || !hasTable("sync_file")) return emptyList()
+        return rows(
+            "SELECT p.taskId, f.localPath, p.created FROM $table p LEFT JOIN sync_file f ON f.uid = p.fileUid WHERE p.isRemoved = 0"
+        ) { c ->
+            val name = c.str(1)?.substringAfterLast('/')
+            OldAttachment(
+                taskUid = c.str(0).orEmpty(),
+                isAudio = isAudio,
+                fileName = name?.let { (if (isAudio) AUDIO_DIR else PHOTO_DIR) + it },
+                created = c.str(2)
+            )
+        }
+    }
+
+    private fun SQLiteDatabase.hasTable(name: String): Boolean =
+        rawQuery("SELECT 1 FROM sqlite_master WHERE type = 'table' AND name = ?", arrayOf(name)).use { it.moveToFirst() }
 
     private fun <T> SQLiteDatabase.rows(sql: String, map: (Cursor) -> T): List<T> =
         rawQuery(sql, null).use { cursor -> buildList { while (cursor.moveToNext()) add(map(cursor)) } }
@@ -146,6 +189,8 @@ object OldBackupReader {
 
     private const val DATABASE_ENTRY = "Planner.db"
     private const val META_ENTRY = "backup_meta"
+    private const val PHOTO_DIR = "photo/"
+    private const val AUDIO_DIR = "audio/"
     private const val MAX_PREFIX = 1024
     private val ZIP_SIGNATURE = byteArrayOf(0x50, 0x4B, 0x03, 0x04)
 }

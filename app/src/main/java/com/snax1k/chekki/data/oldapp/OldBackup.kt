@@ -14,9 +14,11 @@ data class OldBackup(
     val habits: List<OldHabit>,
     val habitRecords: List<OldHabitRecord>,
     val implementations: List<OldImplementation>,
-    /** Вложения в архиве (`photo/`, `audio/`): пока не переносятся, только считаются для отчёта. */
+    /** Сколько файлов в архиве (`photo/`, `audio/`). */
     val photoCount: Int = 0,
     val audioCount: Int = 0,
+    /** Фото и аудио задач (таблицы `photo`, `sound` и `sync_file`). */
+    val attachments: List<OldAttachment> = emptyList(),
     /** Подпись копии из `backup_meta`: по ней узнаётся повторный перенос той же копии. */
     val hash: String? = null
 )
@@ -97,6 +99,18 @@ data class OldHabitRecord(
     val count: Int,
     val maxCount: Int,
     val date: String
+)
+
+/**
+ * Фото или аудио задачи. [fileName] — имя файла, распакованного из архива в папку переноса; null — самого файла
+ * в копии нет (в настоящей копии так у 85 фото: видимо, остались только в облаке старого приложения).
+ * [created] — момент ISO в UTC.
+ */
+data class OldAttachment(
+    val taskUid: String,
+    val isAudio: Boolean,
+    val fileName: String?,
+    val created: String?
 )
 
 /** Одна «реализация» привычки в день; [notifyTime] «20:0» — время напоминания, null — без напоминания. */
