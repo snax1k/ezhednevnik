@@ -10,7 +10,7 @@ import com.snax1k.chekki.data.db.InitialDataCallback
 import com.snax1k.chekki.data.db.RepeatRule
 import com.snax1k.chekki.data.db.RepeatUnit
 import com.snax1k.chekki.data.db.TaskEntity
-import com.snax1k.chekki.data.db.TaskPriority
+import com.snax1k.chekki.data.db.PriorityLevels
 import com.snax1k.chekki.reminders.ReminderScheduler
 import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.runBlocking
@@ -241,7 +241,7 @@ class TaskRepositoryTest {
                 date = today,
                 time = null,
                 categoryId = workId,
-                priority = TaskPriority.High
+                priority = PriorityLevels.HIGH
             )
             repository.addTask(
                 title = "Разобрать почту",
@@ -249,7 +249,7 @@ class TaskRepositoryTest {
                 date = null,
                 time = null,
                 categoryId = null,
-                priority = TaskPriority.None
+                priority = PriorityLevels.NONE
             )
 
             val added = repository.observeTasksOn(today).first().first { it.task.title == "Купить подарок" }
@@ -257,7 +257,7 @@ class TaskRepositoryTest {
             assertEquals("Что-нибудь к чаю", added.task.note)
             assertEquals(null, added.task.time)
             assertEquals("Работа", added.categoryName)
-            assertEquals(TaskPriority.High, added.task.priority)
+            assertEquals(PriorityLevels.HIGH, added.task.priority)
             assertEquals(countsBefore.noDate + 1, repository.observeGroupCounts(today).first().noDate)
         }
     }
@@ -271,7 +271,7 @@ class TaskRepositoryTest {
                 date = today,
                 time = LocalTime.of(12, 0),
                 categoryId = null,
-                priority = TaskPriority.None
+                priority = PriorityLevels.NONE
             )
             val titles = repository.observeTasksOn(today).first().map { it.task.title }
             // Среди задач без приоритета — между пробежкой в 07:30 и продуктами в 18:00
@@ -289,7 +289,7 @@ class TaskRepositoryTest {
                 date = today,
                 time = null,
                 categoryId = null,
-                priority = TaskPriority.None,
+                priority = PriorityLevels.NONE,
                 subtasks = listOf("Палатка", "Спальник", "Фонарик")
             )
             val added = repository.observeTasksOn(today).first().single { it.task.id == taskId }
@@ -312,7 +312,7 @@ class TaskRepositoryTest {
                 date = today,
                 time = LocalTime.of(20, 0),
                 categoryId = null,
-                priority = TaskPriority.None,
+                priority = PriorityLevels.NONE,
                 repeat = weekly,
                 reminderMinutesBefore = 30
             )
@@ -351,7 +351,7 @@ class TaskRepositoryTest {
                 date = today,
                 time = LocalTime.of(20, 0),
                 categoryId = null,
-                priority = TaskPriority.None,
+                priority = PriorityLevels.NONE,
                 reminderMinutesBefore = 30
             )
             val scheduled = scheduler.updated.single()
@@ -412,7 +412,7 @@ class TaskRepositoryTest {
                 date = today.plusDays(2),
                 time = LocalTime.of(8, 0),
                 categoryId = null,
-                priority = TaskPriority.High,
+                priority = PriorityLevels.HIGH,
                 repeat = RepeatRule.None,
                 reminderMinutesBefore = 15
             )
@@ -422,7 +422,7 @@ class TaskRepositoryTest {
             assertEquals(today.plusDays(2), updated.date)
             assertEquals(LocalTime.of(8, 0), updated.time)
             assertEquals(null, updated.categoryId)
-            assertEquals(TaskPriority.High, updated.priority)
+            assertEquals(PriorityLevels.HIGH, updated.priority)
             assertEquals(RepeatRule.None, updated.repeat)
             // Отметку выполнения и время выполнения изменение не трогает
             assertTrue(updated.isDone)
@@ -576,10 +576,10 @@ class TaskRepositoryTest {
     fun счётчикиКатегории() {
         runBlocking {
             val trips = insertTripsCategory()
-            repository.addTask("Купить билеты", "", today, null, trips, TaskPriority.None)
-            val packed = repository.addTask("Собрать чемодан", "", today, null, trips, TaskPriority.None)
-            repository.addTask("Забронировать отель", "", today.plusDays(3), null, trips, TaskPriority.None)
-            repository.addTask("Выбрать маршрут", "", null, null, trips, TaskPriority.None)
+            repository.addTask("Купить билеты", "", today, null, trips, PriorityLevels.NONE)
+            val packed = repository.addTask("Собрать чемодан", "", today, null, trips, PriorityLevels.NONE)
+            repository.addTask("Забронировать отель", "", today.plusDays(3), null, trips, PriorityLevels.NONE)
+            repository.addTask("Выбрать маршрут", "", null, null, trips, PriorityLevels.NONE)
             repository.toggleDone(packed)
 
             val summary = repository.observeCategorySummaries(today).first().last()
@@ -595,11 +595,11 @@ class TaskRepositoryTest {
         runBlocking {
             val trips = insertTripsCategory()
             val start = Instant.parse("2026-10-20T10:00:00Z")
-            repository.addTask("Старая без даты", "", null, null, trips, TaskPriority.None, now = start)
-            repository.addTask("Новая без даты", "", null, null, trips, TaskPriority.None, now = start.plusSeconds(60))
-            repository.addTask("Отель", "", today.plusDays(3), null, trips, TaskPriority.None)
-            repository.addTask("Билеты", "", today, LocalTime.of(18, 0), trips, TaskPriority.None)
-            repository.addTask("Виза", "", today.minusDays(2), null, trips, TaskPriority.None)
+            repository.addTask("Старая без даты", "", null, null, trips, PriorityLevels.NONE, now = start)
+            repository.addTask("Новая без даты", "", null, null, trips, PriorityLevels.NONE, now = start.plusSeconds(60))
+            repository.addTask("Отель", "", today.plusDays(3), null, trips, PriorityLevels.NONE)
+            repository.addTask("Билеты", "", today, LocalTime.of(18, 0), trips, PriorityLevels.NONE)
+            repository.addTask("Виза", "", today.minusDays(2), null, trips, PriorityLevels.NONE)
 
             val titles = repository.observeOpenTasksOfCategory(trips).first().map { it.task.title }
             assertEquals(listOf("Виза", "Билеты", "Отель", "Новая без даты", "Старая без даты"), titles)
@@ -611,13 +611,13 @@ class TaskRepositoryTest {
         runBlocking {
             // Далёкий день, чтобы не задеть другие задачи базы
             val day = today.plusYears(5)
-            repository.addTask("Без приоритета утром", "", day, LocalTime.of(8, 0), null, TaskPriority.None)
-            repository.addTask("Низкий", "", day, LocalTime.of(9, 0), null, TaskPriority.Low)
-            repository.addTask("Высокий вечером", "", day, LocalTime.of(20, 0), null, TaskPriority.High)
-            repository.addTask("Высокий на весь день", "", day, null, null, TaskPriority.High)
-            repository.addTask("Средний", "", day, LocalTime.of(12, 0), null, TaskPriority.Medium)
-            repository.addTask("Высокий утром", "", day, LocalTime.of(7, 0), null, TaskPriority.High)
-            repository.addTask("Завтра высокий", "", day.plusDays(1), LocalTime.of(7, 0), null, TaskPriority.High)
+            repository.addTask("Без приоритета утром", "", day, LocalTime.of(8, 0), null, PriorityLevels.NONE)
+            repository.addTask("Низкий", "", day, LocalTime.of(9, 0), null, PriorityLevels.LOW)
+            repository.addTask("Высокий вечером", "", day, LocalTime.of(20, 0), null, PriorityLevels.HIGH)
+            repository.addTask("Высокий на весь день", "", day, null, null, PriorityLevels.HIGH)
+            repository.addTask("Средний", "", day, LocalTime.of(12, 0), null, PriorityLevels.MEDIUM)
+            repository.addTask("Высокий утром", "", day, LocalTime.of(7, 0), null, PriorityLevels.HIGH)
+            repository.addTask("Завтра высокий", "", day.plusDays(1), LocalTime.of(7, 0), null, PriorityLevels.HIGH)
             val expected = listOf(
                 "Высокий утром", "Высокий вечером", "Высокий на весь день", "Средний", "Низкий", "Без приоритета утром"
             )
@@ -636,10 +636,10 @@ class TaskRepositoryTest {
         runBlocking {
             val trips = insertTripsCategory()
             val start = Instant.parse("2026-10-20T10:00:00Z")
-            repository.addTask("Старая высокая", "", null, null, trips, TaskPriority.High, now = start)
-            repository.addTask("Новая обычная", "", null, null, trips, TaskPriority.None, now = start.plusSeconds(60))
-            repository.addTask("Новая высокая", "", null, null, trips, TaskPriority.High, now = start.plusSeconds(120))
-            repository.addTask("Средняя", "", null, null, trips, TaskPriority.Medium, now = start.plusSeconds(30))
+            repository.addTask("Старая высокая", "", null, null, trips, PriorityLevels.HIGH, now = start)
+            repository.addTask("Новая обычная", "", null, null, trips, PriorityLevels.NONE, now = start.plusSeconds(60))
+            repository.addTask("Новая высокая", "", null, null, trips, PriorityLevels.HIGH, now = start.plusSeconds(120))
+            repository.addTask("Средняя", "", null, null, trips, PriorityLevels.MEDIUM, now = start.plusSeconds(30))
 
             val titles = repository.observeOpenTasksWithoutDate().first()
                 .filter { it.task.categoryId == trips }
@@ -654,10 +654,10 @@ class TaskRepositoryTest {
             val zone = java.time.ZoneId.systemDefault()
             val day = today.plusYears(6)
             val dayStart = day.atStartOfDay(zone).toInstant()
-            val ofDay = repository.addTask("Задача дня", "", day, null, null, TaskPriority.None)
-            val fromPast = repository.addTask("Из прошлого", "", day.minusDays(3), null, null, TaskPriority.None)
-            val doneLongAgo = repository.addTask("Выполнена давно", "", day.minusDays(3), null, null, TaskPriority.None)
-            repository.addTask("Не выполнена", "", day, null, null, TaskPriority.None)
+            val ofDay = repository.addTask("Задача дня", "", day, null, null, PriorityLevels.NONE)
+            val fromPast = repository.addTask("Из прошлого", "", day.minusDays(3), null, null, PriorityLevels.NONE)
+            val doneLongAgo = repository.addTask("Выполнена давно", "", day.minusDays(3), null, null, PriorityLevels.NONE)
+            repository.addTask("Не выполнена", "", day, null, null, PriorityLevels.NONE)
             repository.toggleDone(ofDay, today = day, now = dayStart.plusSeconds(3600))
             repository.toggleDone(fromPast, today = day, now = dayStart.plusSeconds(7200))
             repository.toggleDone(doneLongAgo, today = day, now = dayStart.minusSeconds(3600))
@@ -672,7 +672,7 @@ class TaskRepositoryTest {
     fun задачиБезКатегории() {
         runBlocking {
             val before = repository.observeUncategorizedOpenCount().first()
-            repository.addTask("Без категории", "", null, null, null, TaskPriority.None)
+            repository.addTask("Без категории", "", null, null, null, PriorityLevels.NONE)
             assertEquals(before + 1, repository.observeUncategorizedOpenCount().first())
             val tasks = repository.observeOpenTasksOfCategory(null).first()
             assertEquals(before + 1, tasks.size)
@@ -775,7 +775,7 @@ class TaskRepositoryTest {
         runBlocking {
             val weekly = RepeatRule(RepeatUnit.Week, every = 1, weekdays = 0)
             val inThreeDays = today.plusDays(3)
-            val id = repository.addTask("Планёрка", "", inThreeDays, LocalTime.of(10, 0), 1, TaskPriority.None, repeat = weekly)
+            val id = repository.addTask("Планёрка", "", inThreeDays, LocalTime.of(10, 0), 1, PriorityLevels.NONE, repeat = weekly)
             val nextWeek = inThreeDays.plusWeeks(1)
 
             // Повтор через неделю виден в точках и в списке того дня, хотя задачи в базе ещё нет

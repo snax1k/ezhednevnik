@@ -16,7 +16,11 @@ data class TaskWithDetails(
     @ColumnInfo(name = "category_name") val categoryName: String?,
     @ColumnInfo(name = "category_color_index") val categoryColorIndex: Int?,
     @ColumnInfo(name = "subtasks_done") val subtasksDone: Int,
-    @ColumnInfo(name = "subtasks_total") val subtasksTotal: Int
+    @ColumnInfo(name = "subtasks_total") val subtasksTotal: Int,
+    /** Уровень важности задачи; null — без приоритета (или уровень удалили). */
+    @ColumnInfo(name = "priority_name") val priorityName: String? = null,
+    @ColumnInfo(name = "priority_color") val priorityColor: Int? = null,
+    @ColumnInfo(name = "priority_position") val priorityPosition: Int? = null
 )
 
 /** Задача для поиска: как в списках, плюс названия подзадач через перевод строки. */
@@ -26,9 +30,15 @@ data class SearchableTask(
     @ColumnInfo(name = "category_color_index") val categoryColorIndex: Int?,
     @ColumnInfo(name = "subtasks_done") val subtasksDone: Int,
     @ColumnInfo(name = "subtasks_total") val subtasksTotal: Int,
-    @ColumnInfo(name = "subtask_titles") val subtaskTitles: String?
+    @ColumnInfo(name = "subtask_titles") val subtaskTitles: String?,
+    @ColumnInfo(name = "priority_name") val priorityName: String? = null,
+    @ColumnInfo(name = "priority_color") val priorityColor: Int? = null,
+    @ColumnInfo(name = "priority_position") val priorityPosition: Int? = null
 ) {
-    val details: TaskWithDetails get() = TaskWithDetails(task, categoryName, categoryColorIndex, subtasksDone, subtasksTotal)
+    val details: TaskWithDetails
+        get() = TaskWithDetails(
+            task, categoryName, categoryColorIndex, subtasksDone, subtasksTotal, priorityName, priorityColor, priorityPosition
+        )
     val subtasks: List<String> get() = subtaskTitles?.split('\n').orEmpty()
 }
 
@@ -52,18 +62,20 @@ data class GroupCounts(
 @Dao
 interface TaskDao {
 
-    /** Задачи на дату, включая выполненные: по приоритету (высокий сверху), внутри — по времени, «на весь день» в конце. */
+    /** Задачи на дату, включая выполненные: по важности (по порядку уровней, самый важный сверху), внутри — по времени, «на весь день» в конце. */
     @Query(
         """
         SELECT t.*,
             c.name AS category_name,
             c.color_index AS category_color_index,
+            pl.name AS priority_name, pl.color AS priority_color, pl.position AS priority_position,
             (SELECT COUNT(*) FROM subtasks s WHERE s.task_id = t.id AND s.is_done = 1) AS subtasks_done,
             (SELECT COUNT(*) FROM subtasks s WHERE s.task_id = t.id) AS subtasks_total
         FROM tasks t
         LEFT JOIN categories c ON c.id = t.category_id
+        LEFT JOIN priority_levels pl ON pl.id = t.priority
         WHERE t.date = :date
-        ORDER BY t.priority DESC, t.time IS NULL, t.time, t.created_at, t.id
+        ORDER BY pl.position IS NULL, pl.position, t.time IS NULL, t.time, t.created_at, t.id
         """
     )
     fun observeTasksOn(date: LocalDate): Flow<List<TaskWithDetails>>
@@ -77,10 +89,12 @@ interface TaskDao {
         SELECT t.*,
             c.name AS category_name,
             c.color_index AS category_color_index,
+            pl.name AS priority_name, pl.color AS priority_color, pl.position AS priority_position,
             (SELECT COUNT(*) FROM subtasks s WHERE s.task_id = t.id AND s.is_done = 1) AS subtasks_done,
             (SELECT COUNT(*) FROM subtasks s WHERE s.task_id = t.id) AS subtasks_total
         FROM tasks t
         LEFT JOIN categories c ON c.id = t.category_id
+        LEFT JOIN priority_levels pl ON pl.id = t.priority
         WHERE t.is_done = 1 AND (t.date = :date OR (t.completed_at >= :from AND t.completed_at < :to))
         ORDER BY t.completed_at DESC, t.id DESC
         """
@@ -88,7 +102,7 @@ interface TaskDao {
     fun observeDoneToday(date: LocalDate, from: Instant, to: Instant): Flow<List<TaskWithDetails>>
 
     /**
-     * Невыполненные задачи с [from] по [to] включительно: по приоритету (высокий сверху), внутри — по дате и времени,
+     * Невыполненные задачи с [from] по [to] включительно: по важности (по порядку уровней, самый важный сверху), внутри — по дате и времени,
      * «на весь день» в конце дня.
      * Задачи из [keepIds] попадают в список, даже если выполнены: так отмеченная на экране задача не пропадает сразу.
      */
@@ -97,12 +111,14 @@ interface TaskDao {
         SELECT t.*,
             c.name AS category_name,
             c.color_index AS category_color_index,
+            pl.name AS priority_name, pl.color AS priority_color, pl.position AS priority_position,
             (SELECT COUNT(*) FROM subtasks s WHERE s.task_id = t.id AND s.is_done = 1) AS subtasks_done,
             (SELECT COUNT(*) FROM subtasks s WHERE s.task_id = t.id) AS subtasks_total
         FROM tasks t
         LEFT JOIN categories c ON c.id = t.category_id
+        LEFT JOIN priority_levels pl ON pl.id = t.priority
         WHERE t.date BETWEEN :from AND :to AND (t.is_done = 0 OR t.id IN (:keepIds))
-        ORDER BY t.priority DESC, t.date, t.time IS NULL, t.time, t.created_at, t.id
+        ORDER BY pl.position IS NULL, pl.position, t.date, t.time IS NULL, t.time, t.created_at, t.id
         """
     )
     fun observeOpenTasksBetween(from: LocalDate, to: LocalDate, keepIds: List<Long>): Flow<List<TaskWithDetails>>
@@ -116,12 +132,14 @@ interface TaskDao {
         SELECT t.*,
             c.name AS category_name,
             c.color_index AS category_color_index,
+            pl.name AS priority_name, pl.color AS priority_color, pl.position AS priority_position,
             (SELECT COUNT(*) FROM subtasks s WHERE s.task_id = t.id AND s.is_done = 1) AS subtasks_done,
             (SELECT COUNT(*) FROM subtasks s WHERE s.task_id = t.id) AS subtasks_total
         FROM tasks t
         LEFT JOIN categories c ON c.id = t.category_id
+        LEFT JOIN priority_levels pl ON pl.id = t.priority
         WHERE t.category_id IS :categoryId AND (t.is_done = 0 OR t.id IN (:keepIds))
-        ORDER BY t.priority DESC, t.date IS NULL, t.date, t.time IS NULL, t.time,
+        ORDER BY pl.position IS NULL, pl.position, t.date IS NULL, t.date, t.time IS NULL, t.time,
             CASE WHEN t.date IS NULL THEN -t.created_at ELSE t.created_at END, t.id
         """
     )
@@ -133,12 +151,14 @@ interface TaskDao {
         SELECT t.*,
             c.name AS category_name,
             c.color_index AS category_color_index,
+            pl.name AS priority_name, pl.color AS priority_color, pl.position AS priority_position,
             (SELECT COUNT(*) FROM subtasks s WHERE s.task_id = t.id AND s.is_done = 1) AS subtasks_done,
             (SELECT COUNT(*) FROM subtasks s WHERE s.task_id = t.id) AS subtasks_total
         FROM tasks t
         LEFT JOIN categories c ON c.id = t.category_id
+        LEFT JOIN priority_levels pl ON pl.id = t.priority
         WHERE t.date IS NULL AND (t.is_done = 0 OR t.id IN (:keepIds))
-        ORDER BY t.priority DESC, t.created_at DESC, t.id DESC
+        ORDER BY pl.position IS NULL, pl.position, t.created_at DESC, t.id DESC
         """
     )
     fun observeOpenTasksWithoutDate(keepIds: List<Long>): Flow<List<TaskWithDetails>>
@@ -153,10 +173,12 @@ interface TaskDao {
         SELECT t.*,
             c.name AS category_name,
             c.color_index AS category_color_index,
+            pl.name AS priority_name, pl.color AS priority_color, pl.position AS priority_position,
             (SELECT COUNT(*) FROM subtasks s WHERE s.task_id = t.id AND s.is_done = 1) AS subtasks_done,
             (SELECT COUNT(*) FROM subtasks s WHERE s.task_id = t.id) AS subtasks_total
         FROM tasks t
         LEFT JOIN categories c ON c.id = t.category_id
+        LEFT JOIN priority_levels pl ON pl.id = t.priority
         WHERE t.id IN (SELECT id FROM tasks WHERE is_done = 1 ORDER BY completed_at DESC, id DESC LIMIT :limit)
             OR t.id IN (:keepIds)
         ORDER BY t.completed_at DESC, t.id DESC
@@ -176,11 +198,13 @@ interface TaskDao {
         SELECT t.*,
             c.name AS category_name,
             c.color_index AS category_color_index,
+            pl.name AS priority_name, pl.color AS priority_color, pl.position AS priority_position,
             (SELECT COUNT(*) FROM subtasks s WHERE s.task_id = t.id AND s.is_done = 1) AS subtasks_done,
             (SELECT COUNT(*) FROM subtasks s WHERE s.task_id = t.id) AS subtasks_total,
             (SELECT GROUP_CONCAT(s.title, char(10)) FROM subtasks s WHERE s.task_id = t.id) AS subtask_titles
         FROM tasks t
         LEFT JOIN categories c ON c.id = t.category_id
+        LEFT JOIN priority_levels pl ON pl.id = t.priority
         """
     )
     fun observeSearchableTasks(): Flow<List<SearchableTask>>
@@ -191,8 +215,9 @@ interface TaskDao {
         SELECT t.date, t.is_done, c.color_index AS category_color_index
         FROM tasks t
         LEFT JOIN categories c ON c.id = t.category_id
+        LEFT JOIN priority_levels pl ON pl.id = t.priority
         WHERE t.date BETWEEN :from AND :to
-        ORDER BY t.date, t.priority DESC, t.time IS NULL, t.time, t.created_at, t.id
+        ORDER BY t.date, pl.position IS NULL, pl.position, t.time IS NULL, t.time, t.created_at, t.id
         """
     )
     fun observeCalendarMarks(from: LocalDate, to: LocalDate): Flow<List<CalendarTaskMark>>
@@ -206,12 +231,14 @@ interface TaskDao {
         SELECT t.*,
             c.name AS category_name,
             c.color_index AS category_color_index,
+            pl.name AS priority_name, pl.color AS priority_color, pl.position AS priority_position,
             (SELECT COUNT(*) FROM subtasks s WHERE s.task_id = t.id AND s.is_done = 1) AS subtasks_done,
             (SELECT COUNT(*) FROM subtasks s WHERE s.task_id = t.id) AS subtasks_total
         FROM tasks t
         LEFT JOIN categories c ON c.id = t.category_id
+        LEFT JOIN priority_levels pl ON pl.id = t.priority
         WHERE t.is_done = 0 AND t.repeat_unit != 0 AND t.date IS NOT NULL
-        ORDER BY t.priority DESC, t.time IS NULL, t.time, t.created_at, t.id
+        ORDER BY pl.position IS NULL, pl.position, t.time IS NULL, t.time, t.created_at, t.id
         """
     )
     fun observeOpenRepeatingTasks(): Flow<List<TaskWithDetails>>
@@ -246,9 +273,10 @@ interface TaskDao {
     /** Названия первых просроченных задач в порядке экрана «Просроченные»: по приоритету, внутри — старые сверху. */
     @Query(
         """
-        SELECT title FROM tasks
-        WHERE is_done = 0 AND date < :today
-        ORDER BY priority DESC, date, time IS NULL, time, created_at
+        SELECT t.title FROM tasks t
+        LEFT JOIN priority_levels pl ON pl.id = t.priority
+        WHERE t.is_done = 0 AND t.date < :today
+        ORDER BY pl.position IS NULL, pl.position, t.date, t.time IS NULL, t.time, t.created_at
         LIMIT :limit
         """
     )
@@ -263,10 +291,12 @@ interface TaskDao {
         SELECT t.*,
             c.name AS category_name,
             c.color_index AS category_color_index,
+            pl.name AS priority_name, pl.color AS priority_color, pl.position AS priority_position,
             (SELECT COUNT(*) FROM subtasks s WHERE s.task_id = t.id AND s.is_done = 1) AS subtasks_done,
             (SELECT COUNT(*) FROM subtasks s WHERE s.task_id = t.id) AS subtasks_total
         FROM tasks t
         LEFT JOIN categories c ON c.id = t.category_id
+        LEFT JOIN priority_levels pl ON pl.id = t.priority
         WHERE t.id = :id
         """
     )
@@ -278,10 +308,12 @@ interface TaskDao {
         SELECT t.*,
             c.name AS category_name,
             c.color_index AS category_color_index,
+            pl.name AS priority_name, pl.color AS priority_color, pl.position AS priority_position,
             (SELECT COUNT(*) FROM subtasks s WHERE s.task_id = t.id AND s.is_done = 1) AS subtasks_done,
             (SELECT COUNT(*) FROM subtasks s WHERE s.task_id = t.id) AS subtasks_total
         FROM tasks t
         LEFT JOIN categories c ON c.id = t.category_id
+        LEFT JOIN priority_levels pl ON pl.id = t.priority
         WHERE t.id = :id
         """
     )
@@ -314,7 +346,7 @@ interface TaskDao {
         date: LocalDate?,
         time: LocalTime?,
         categoryId: Long?,
-        priority: TaskPriority,
+        priority: Long,
         repeatUnit: RepeatUnit,
         repeatEvery: Int,
         repeatWeekdays: Int,

@@ -11,7 +11,8 @@ import com.snax1k.chekki.data.db.GroupCounts
 import com.snax1k.chekki.data.db.RepeatRule
 import com.snax1k.chekki.data.db.SubtaskEntity
 import com.snax1k.chekki.data.db.TaskEntity
-import com.snax1k.chekki.data.db.TaskPriority
+import com.snax1k.chekki.data.db.PriorityLevelEntity
+import com.snax1k.chekki.data.db.PriorityLevels
 import com.snax1k.chekki.data.db.TaskWithDetails
 import com.snax1k.chekki.reminders.ReminderScheduler
 import kotlinx.coroutines.flow.Flow
@@ -97,6 +98,46 @@ class TaskRepository(
         if (deleted.taskIds.isNotEmpty()) categoryDao.setCategory(deleted.taskIds, deleted.category.id)
     }
 
+    // Уровни важности (свои у пользователя, схема 6)
+
+    private val priorityDao get() = database.priorityLevelDao()
+
+    /** Уровни важности, самый важный первым. */
+    fun observePriorityLevels(): Flow<List<PriorityLevelEntity>> = priorityDao.observeAll()
+
+    suspend fun getPriorityLevels(): List<PriorityLevelEntity> = priorityDao.getAll()
+
+    /** Новый уровень встаёт последним — наименее важным. Больше [PriorityLevels.MAX] уровней не бывает: null. */
+    suspend fun addPriorityLevel(name: String, color: Int): Long? = database.withTransaction {
+        if (priorityDao.getAll().size >= PriorityLevels.MAX) return@withTransaction null
+        priorityDao.insert(PriorityLevelEntity(name = name, color = color, position = priorityDao.nextPosition()))
+    }
+
+    suspend fun updatePriorityLevel(id: Long, name: String, color: Int) {
+        val level = priorityDao.get(id) ?: return
+        priorityDao.update(level.copy(name = name, color = color))
+    }
+
+    /** Новый порядок: первым — самый важный. Сразу меняет сортировку задач. */
+    suspend fun reorderPriorityLevels(ids: List<Long>) = database.withTransaction {
+        ids.forEachIndexed { index, id -> priorityDao.setPosition(id, index) }
+    }
+
+    /** Удаляет уровень; его задачи становятся без приоритета. Возвращает всё, что нужно для «Отменить». */
+    suspend fun deletePriorityLevel(id: Long): DeletedPriorityLevel? = database.withTransaction {
+        val level = priorityDao.get(id) ?: return@withTransaction null
+        val taskIds = priorityDao.getTaskIds(id)
+        priorityDao.clearFromTasks(id)
+        priorityDao.delete(id)
+        DeletedPriorityLevel(level, taskIds)
+    }
+
+    /** «Отменить» удаление: уровень возвращается с тем же id и местом, задачам — их уровень. */
+    suspend fun restorePriorityLevel(deleted: DeletedPriorityLevel) = database.withTransaction {
+        priorityDao.insert(deleted.level)
+        if (deleted.taskIds.isNotEmpty()) priorityDao.setOnTasks(deleted.level.id, deleted.taskIds)
+    }
+
     /** Невыполненные задачи категории ([categoryId] null — без категории), задачи без даты в конце. */
     fun observeOpenTasksOfCategory(categoryId: Long?, keepIds: Set<Long> = emptySet()): Flow<List<TaskWithDetails>> =
         taskDao.observeOpenTasksOfCategory(categoryId, keepIds.toList())
@@ -111,7 +152,7 @@ class TaskRepository(
         date: LocalDate?,
         time: LocalTime?,
         categoryId: Long?,
-        priority: TaskPriority,
+        priority: Long,
         repeat: RepeatRule = RepeatRule.None,
         reminderMinutesBefore: Int? = null,
         subtasks: List<String> = emptyList(),
@@ -163,7 +204,7 @@ class TaskRepository(
         date: LocalDate?,
         time: LocalTime?,
         categoryId: Long?,
-        priority: TaskPriority,
+        priority: Long,
         repeat: RepeatRule,
         reminderMinutesBefore: Int?
     ) {
@@ -378,3 +419,6 @@ data class MovedTask(
 
 /** Удалённая категория и задачи, которые в ней были, — чтобы вернуть всё кнопкой «Отменить». */
 data class DeletedCategory(val category: CategoryEntity, val taskIds: List<Long>)
+
+/** Удалённый уровень важности и задачи, у которых он был: для «Отменить». */
+data class DeletedPriorityLevel(val level: PriorityLevelEntity, val taskIds: List<Long>)

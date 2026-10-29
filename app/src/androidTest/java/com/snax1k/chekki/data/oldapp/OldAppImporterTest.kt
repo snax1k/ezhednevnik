@@ -8,7 +8,7 @@ import com.snax1k.chekki.data.HabitRepository
 import com.snax1k.chekki.data.TaskRepository
 import com.snax1k.chekki.data.db.ChekkiDatabase
 import com.snax1k.chekki.data.db.InitialDataCallback
-import com.snax1k.chekki.data.db.TaskPriority
+import com.snax1k.chekki.data.db.PriorityLevels
 import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.runBlocking
 import org.junit.After
@@ -59,7 +59,7 @@ class OldAppImporterTest {
     fun копияЧитаетсяИЗаменяетВсё() {
         runBlocking {
             // То, что было в приложении до переноса, должно исчезнуть
-            TaskRepository(database).addTask("Старая задача", "", today, null, null, TaskPriority.High)
+            TaskRepository(database).addTask("Старая задача", "", today, null, null, PriorityLevels.HIGH)
             val before = importer.existing()
             assertTrue(before.tasks >= 1 && before.categories >= 6)
 

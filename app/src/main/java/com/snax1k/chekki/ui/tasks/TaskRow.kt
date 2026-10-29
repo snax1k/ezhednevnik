@@ -103,7 +103,7 @@ fun TaskRow(task: TaskUi, onToggleDone: () -> Unit, modifier: Modifier = Modifie
         if (task.priority != null && priorityColor != null && !task.done) {
             Icon(
                 ChekkiIcons.PriorityFlag,
-                contentDescription = stringResource(priorityLabel(task.priority)),
+                contentDescription = stringResource(R.string.priority_named, task.priority.name),
                 modifier = Modifier
                     .padding(start = 8.dp, top = 15.dp)
                     .size(18.dp),
@@ -258,15 +258,5 @@ private fun DetailText(text: String) {
     )
 }
 
-@Composable
-internal fun priorityColor(priority: Priority): Color = when (priority) {
-    Priority.High -> ChekkiTheme.colors.priorityHigh
-    Priority.Medium -> ChekkiTheme.colors.priorityMedium
-    Priority.Low -> ChekkiTheme.colors.priorityLow
-}
-
-internal fun priorityLabel(priority: Priority): Int = when (priority) {
-    Priority.High -> R.string.priority_high
-    Priority.Medium -> R.string.priority_medium
-    Priority.Low -> R.string.priority_low
-}
+/** Цвет флажка уровня важности. */
+internal fun priorityColor(priority: Priority): Color = Color(priority.color)

@@ -27,11 +27,6 @@ class Converters {
     @TypeConverter
     fun millisToInstant(millis: Long): Instant = Instant.ofEpochMilli(millis)
 
-    @TypeConverter
-    fun priorityToCode(priority: TaskPriority): Int = priority.code
-
-    @TypeConverter
-    fun codeToPriority(code: Int): TaskPriority = TaskPriority.fromCode(code)
 
     @TypeConverter
     fun repeatUnitToCode(unit: RepeatUnit): Int = unit.code

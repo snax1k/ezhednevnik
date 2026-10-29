@@ -59,6 +59,7 @@
     <string name="priority_medium">Средний приоритет</string>
     <string name="priority_low">Низкий приоритет</string>
     <string name="priority_section_none">Без приоритета</string>
+    <string name="priority_named">Приоритет: %1$s</string>
 
     <!-- Уведомления -->
     <string name="notification_channel_reminders">Напоминания о задачах</string>
@@ -266,7 +267,8 @@
     <string name="search_filter_category">Категория</string>
     <string name="search_filter_any_category">Любая категория</string>
     <string name="search_filter_reminder">С напоминанием</string>
-    <string name="search_filter_high">Высокий приоритет</string>
+    <string name="search_filter_priority">Приоритет</string>
+    <string name="search_filter_any_priority">Любой приоритет</string>
     <string name="search_date_any">Любая дата</string>
     <string name="search_date_week">На этой неделе</string>
     <string name="search_date_period">Выбрать период…</string>

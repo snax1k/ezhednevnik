@@ -3,7 +3,7 @@ package com.snax1k.chekki.ui.addtask
 import com.snax1k.chekki.data.AllDayReminderTime
 import com.snax1k.chekki.data.db.RepeatRule
 import com.snax1k.chekki.data.db.RepeatUnit
-import com.snax1k.chekki.data.db.TaskPriority
+import com.snax1k.chekki.data.db.PriorityLevels
 import java.time.LocalDate
 import java.time.LocalTime
 
@@ -20,7 +20,8 @@ data class TaskDraft(
     /** Время задачи; null — на весь день. */
     val time: LocalTime? = null,
     val categoryId: Long? = null,
-    val priority: TaskPriority = TaskPriority.None,
+    /** Уровень важности: id в `priority_levels`, [PriorityLevels.NONE] — без приоритета. */
+    val priority: Long = PriorityLevels.NONE,
     val repeat: RepeatRule = RepeatRule.None,
     /**
      * За сколько минут напомнить; null — без напоминания.

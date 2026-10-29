@@ -12,13 +12,14 @@ import com.snax1k.chekki.data.MovedTask
 import com.snax1k.chekki.data.RecentSearches
 import com.snax1k.chekki.data.TaskRepository
 import com.snax1k.chekki.data.db.SearchableTask
-import com.snax1k.chekki.data.db.TaskPriority
 import com.snax1k.chekki.data.matchTask
 import com.snax1k.chekki.data.searchWords
 import com.snax1k.chekki.ui.addtask.CategoryOption
 import com.snax1k.chekki.ui.main.TaskGroup
 import com.snax1k.chekki.ui.task.taskGroupOf
+import com.snax1k.chekki.ui.tasks.Priority
 import com.snax1k.chekki.ui.tasks.TaskUi
+import com.snax1k.chekki.ui.tasks.toPriority
 import com.snax1k.chekki.ui.tasks.toTaskUi
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.FlowPreview
@@ -49,11 +50,12 @@ data class SearchFilters(
     val openOnly: Boolean = true,
     val category: CategoryFilter = CategoryFilter.Any,
     val withReminder: Boolean = false,
-    val highPriority: Boolean = false,
+    /** Уровень важности (id в `priority_levels`); null — любой. */
+    val priority: Long? = null,
     val date: DateFilter = DateFilter.Any
 ) {
     /** Сужает ли что-то список кроме «Невыполненных»: тогда результаты видны и без текста запроса. */
-    val narrows: Boolean get() = category != CategoryFilter.Any || withReminder || highPriority || date != DateFilter.Any
+    val narrows: Boolean get() = category != CategoryFilter.Any || withReminder || priority != null || date != DateFilter.Any
 }
 
 /** Найденные задачи одной группы под цветным подзаголовком. */
@@ -73,6 +75,8 @@ data class SearchUiState(
     val isIdle: Boolean,
     /** Последние запросы, новые сверху. */
     val recent: List<String> = emptyList(),
+    /** Уровни важности для меню фильтра, самый важный первым. */
+    val priorityLevels: List<Priority> = emptyList(),
     val isLoading: Boolean = false
 )
 
@@ -108,10 +112,10 @@ class SearchViewModel(
         combine(debouncedQuery, filters, toggledIds, limit, ::SearchParams),
         repository.observeSearchableTasks(),
         currentDate,
-        categories,
+        combine(categories, repository.observePriorityLevels(), ::Pair),
         recentSearches?.items ?: flowOf(emptyList())
-    ) { params, tasks, today, categoryOptions, recent ->
-        search(params, tasks, today, categoryOptions).copy(recent = recent)
+    ) { params, tasks, today, (categoryOptions, levels), recent ->
+        search(params, tasks, today, categoryOptions).copy(recent = recent, priorityLevels = levels.map { it.toPriority() })
     }
         // Тысячи задач после переноса — считаем не в главном потоке
         .flowOn(Dispatchers.Default)
@@ -153,7 +157,7 @@ class SearchViewModel(
             val task = searchable.task
             if (filters.openOnly && task.isDone && task.id !in params.keepIds) return@mapNotNull null
             if (filters.withReminder && task.reminderMinutesBefore == null) return@mapNotNull null
-            if (filters.highPriority && task.priority != TaskPriority.High) return@mapNotNull null
+            if (filters.priority != null && task.priority != filters.priority) return@mapNotNull null
             if (!filters.date.accepts(task.date, task.isDone, today)) return@mapNotNull null
             when (val category = filters.category) {
                 CategoryFilter.Any -> Unit
@@ -261,9 +265,10 @@ class SearchViewModel(
          */
         fun orderIn(group: TaskGroup): Comparator<Pair<SearchableTask, Any>> = when (group) {
             TaskGroup.Done -> compareByDescending { it.first.task.completedAt }
-            TaskGroup.NoDate -> compareByDescending<Pair<SearchableTask, Any>> { it.first.task.priority.code }
+            // По порядку уровней важности: самый важный сверху, без приоритета — в конце
+            TaskGroup.NoDate -> compareBy<Pair<SearchableTask, Any>> { it.first.priorityPosition ?: Int.MAX_VALUE }
                 .thenByDescending { it.first.task.createdAt }
-            else -> compareByDescending<Pair<SearchableTask, Any>> { it.first.task.priority.code }
+            else -> compareBy<Pair<SearchableTask, Any>> { it.first.priorityPosition ?: Int.MAX_VALUE }
                 .thenBy { it.first.task.date }
                 .thenBy { it.first.task.time == null }
                 .thenBy { it.first.task.time }

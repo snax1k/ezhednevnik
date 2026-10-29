@@ -1,9 +1,24 @@
 package com.snax1k.chekki.ui.tasks
 
+import com.snax1k.chekki.data.db.PriorityLevelEntity
+import com.snax1k.chekki.data.db.PriorityLevels
 import java.time.LocalDate
 import java.time.LocalTime
 
-enum class Priority { High, Medium, Low }
+/**
+ * Уровень важности задачи на экране: название, цвет флажка (ARGB) и место по важности (0 — самый важный).
+ * [id] — уровень в `priority_levels`. Уровни у пользователя свои (решено 29.10.2026).
+ */
+data class Priority(val id: Long, val name: String, val color: Int, val position: Int = 0) {
+    companion object {
+        // Уровни по умолчанию — для превью и тестов
+        val High = PriorityLevels.defaults[0].toPriority()
+        val Medium = PriorityLevels.defaults[1].toPriority()
+        val Low = PriorityLevels.defaults[2].toPriority()
+    }
+}
+
+fun PriorityLevelEntity.toPriority() = Priority(id = id, name = name, color = color, position = position)
 
 /** Категория задачи. Цвет — номер в палитре категорий темы (`ChekkiTheme.colors.categories`). */
 data class CategoryUi(

@@ -39,7 +39,8 @@ data class TaskEntity(
     /** Время задачи; null — на весь день. */
     val time: LocalTime?,
     @ColumnInfo(name = "category_id") val categoryId: Long?,
-    val priority: TaskPriority = TaskPriority.None,
+    /** Уровень важности: id в `priority_levels`, [PriorityLevels.NONE] — без приоритета. */
+    val priority: Long = PriorityLevels.NONE,
     @Embedded(prefix = "repeat_") val repeat: RepeatRule = RepeatRule.None,
     /** За сколько минут до времени задачи напомнить; null — без напоминания. */
     @ColumnInfo(name = "reminder_minutes_before") val reminderMinutesBefore: Int? = null,
@@ -75,17 +76,6 @@ data class RepeatRule(
 
 // У значений фиксированные коды для базы, чтобы переименование в коде её не портило.
 // Коды менять нельзя, новые значения — только с новыми кодами.
-
-enum class TaskPriority(val code: Int) {
-    None(0),
-    Low(1),
-    Medium(2),
-    High(3);
-
-    companion object {
-        fun fromCode(code: Int): TaskPriority = entries.firstOrNull { it.code == code } ?: None
-    }
-}
 
 enum class RepeatUnit(val code: Int) {
     None(0),

@@ -67,7 +67,6 @@ import com.snax1k.chekki.ui.tasks.Priority
 import com.snax1k.chekki.ui.tasks.SwipeableTaskRow
 import com.snax1k.chekki.ui.tasks.TaskUi
 import com.snax1k.chekki.ui.tasks.priorityColor
-import com.snax1k.chekki.ui.tasks.priorityLabel
 import com.snax1k.chekki.ui.theme.ChekkiTheme
 import com.snax1k.chekki.ui.theme.GroupColor
 import com.snax1k.chekki.ui.theme.cssLinearGradient
@@ -296,7 +295,7 @@ private fun PriorityHeader(priority: Priority?) {
             Icon(ChekkiIcons.PriorityFlag, contentDescription = null, Modifier.size(16.dp), tint = color)
         }
         Text(
-            text = stringResource(priority?.let { priorityLabel(it) } ?: R.string.priority_section_none),
+            text = priority?.name ?: stringResource(R.string.priority_section_none),
             style = MaterialTheme.typography.titleSmall,
             color = color
         )

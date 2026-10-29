@@ -61,12 +61,12 @@ import androidx.lifecycle.compose.LifecycleEventEffect
 import com.snax1k.chekki.R
 import com.snax1k.chekki.ui.category.categoryColor
 import com.snax1k.chekki.data.AllDayReminderTime
-import com.snax1k.chekki.data.db.TaskPriority
 import com.snax1k.chekki.reminders.TaskNotifications
 import com.snax1k.chekki.ui.components.formatDayMonthShort
 import com.snax1k.chekki.ui.components.formatShortWeekday
 import com.snax1k.chekki.ui.components.formatTime
 import com.snax1k.chekki.ui.icons.ChekkiIcons
+import com.snax1k.chekki.ui.tasks.Priority
 import com.snax1k.chekki.ui.theme.ChekkiTheme
 import java.time.LocalDate
 import java.time.LocalTime
@@ -464,13 +464,17 @@ internal fun CategoryMark(icon: CategoryIcon, color: Color, size: Dp = 18.dp) {
     Icon(icon.vector, contentDescription = null, Modifier.size(size), tint = color)
 }
 
+/** Уровень с этим id; null — без приоритета или уровень уже удалили. */
+internal fun List<Priority>.levelOf(id: Long): Priority? = firstOrNull { it.id == id }
+
+/** Цвет флажка уровня; без приоритета — вторичный текст. */
 @Composable
-internal fun priorityColor(priority: TaskPriority): Color = when (priority) {
-    TaskPriority.None -> MaterialTheme.colorScheme.onSurfaceVariant
-    TaskPriority.Low -> ChekkiTheme.colors.priorityLow
-    TaskPriority.Medium -> ChekkiTheme.colors.priorityMedium
-    TaskPriority.High -> ChekkiTheme.colors.priorityHigh
-}
+internal fun priorityTint(level: Priority?): Color =
+    level?.let { Color(it.color) } ?: MaterialTheme.colorScheme.onSurfaceVariant
+
+/** Название уровня или «Нет». */
+@Composable
+internal fun priorityShortLabel(level: Priority?): String = level?.name ?: stringResource(R.string.priority_short_none)
 
 internal val QuickDate.label: Int
     get() = when (this) {
@@ -478,14 +482,6 @@ internal val QuickDate.label: Int
         QuickDate.Tomorrow -> R.string.quick_date_tomorrow
         QuickDate.Weekend -> R.string.quick_date_weekend
         QuickDate.NoDate -> R.string.quick_date_none
-    }
-
-internal val TaskPriority.shortLabel: Int
-    get() = when (this) {
-        TaskPriority.None -> R.string.priority_short_none
-        TaskPriority.Low -> R.string.priority_short_low
-        TaskPriority.Medium -> R.string.priority_short_medium
-        TaskPriority.High -> R.string.priority_short_high
     }
 
 /** «Добавить подзадачу» под списком подзадач. [contentPadding] — отступ иконки внутри зоны нажатия. */

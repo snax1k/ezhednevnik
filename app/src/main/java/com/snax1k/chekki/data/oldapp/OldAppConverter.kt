@@ -7,7 +7,7 @@ import com.snax1k.chekki.data.db.HabitIcon
 import com.snax1k.chekki.data.db.RepeatRule
 import com.snax1k.chekki.data.db.RepeatUnit
 import com.snax1k.chekki.data.db.TaskEntity
-import com.snax1k.chekki.data.db.TaskPriority
+import com.snax1k.chekki.data.db.PriorityLevels
 import java.time.Duration
 import java.time.Instant
 import java.time.LocalDate
@@ -207,11 +207,15 @@ object OldAppConverter {
         }
     }
 
-    private fun priority(importance: String?): TaskPriority = when (importance) {
-        "small" -> TaskPriority.Low
-        "medium" -> TaskPriority.Medium
-        "large" -> TaskPriority.High
-        else -> TaskPriority.None
+    /**
+     * Важность старого приложения как ранг: 3 — высокая, 2 — средняя, 1 — низкая (совпадает с id уровней по умолчанию).
+     * Уровни у пользователя могут быть свои — настоящий id подставляет [OldAppImporter] по порядку уровней.
+     */
+    private fun priority(importance: String?): Long = when (importance) {
+        "small" -> PriorityLevels.LOW
+        "medium" -> PriorityLevels.MEDIUM
+        "large" -> PriorityLevels.HIGH
+        else -> PriorityLevels.NONE
     }
 
     /**

@@ -70,6 +70,14 @@ class MigrationTest {
                 assertEquals(1, task.subtasksDone)
                 assertEquals(15, task.task.reminderMinutesBefore)
                 assertEquals(4, database.habitDao().observeChecks(1).first().single().count)
+                // 5 → 6: прежний высокий приоритет (код 3) — уровень «Высокий», самый важный
+                assertEquals(PriorityLevels.HIGH, task.task.priority)
+                assertEquals("Высокий", task.priorityName)
+                assertEquals(0, task.priorityPosition)
+                assertEquals(
+                    listOf("Высокий", "Средний", "Низкий"),
+                    database.priorityLevelDao().getAll().map { it.name }
+                )
             }
         } finally {
             database.close()

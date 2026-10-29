@@ -5,7 +5,7 @@ import com.snax1k.chekki.data.db.HabitEntity
 import com.snax1k.chekki.data.db.HabitIcon
 import com.snax1k.chekki.data.db.RepeatRule
 import com.snax1k.chekki.data.db.RepeatUnit
-import com.snax1k.chekki.data.db.TaskPriority
+import com.snax1k.chekki.data.db.PriorityLevels
 import org.junit.Assert.assertEquals
 import org.junit.Assert.assertFalse
 import org.junit.Assert.assertNull
@@ -75,7 +75,7 @@ class OldAppConverterTest {
             )
         )
         val planned = plan.tasks.single()
-        assertEquals(TaskPriority.High, planned.task.priority)
+        assertEquals(PriorityLevels.HIGH, planned.task.priority)
         // Первая категория — по порядку в задаче, вторая дописана в заметку вместе со сроком (срок — по местному дню)
         assertEquals("c1", planned.categoryUid)
         assertEquals("Взять паспорт\n\nТакже: Дом\nСрок: 1 нояб 2026", planned.task.note)

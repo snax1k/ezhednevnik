@@ -41,6 +41,7 @@ class InitialDataCallback(private val today: () -> LocalDate = LocalDate::now) :
     }
 
     private fun fill(db: SupportSQLiteDatabase) {
+        insertDefaultPriorityLevels(db)
         DefaultCategories.forEachIndexed { index, (name, icon) ->
             db.insert(
                 "categories",

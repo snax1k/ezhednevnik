@@ -63,6 +63,7 @@ import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.unit.dp
 import com.snax1k.chekki.R
+import com.snax1k.chekki.ui.tasks.Priority
 import com.snax1k.chekki.ui.category.categoryColor
 import com.snax1k.chekki.data.DateFilter
 import com.snax1k.chekki.ui.addtask.CategoryMark
@@ -129,7 +130,7 @@ fun SearchScreen(
                 SearchField(query, onQueryChange, onSearch, onBack, Modifier.focusRequester(focusRequester))
             }
             item(key = "filters") {
-                FilterChips(state.filters, state.categories, state.today, onFiltersChange, Modifier.padding(top = 8.dp))
+                FilterChips(state.filters, state.categories, state.priorityLevels, state.today, onFiltersChange, Modifier.padding(top = 8.dp))
             }
             when {
                 state.isLoading -> Unit
@@ -270,6 +271,7 @@ private fun RoundIconButton(icon: ImageVector, description: String, onClick: () 
 private fun FilterChips(
     filters: SearchFilters,
     categories: List<CategoryOption>,
+    priorityLevels: List<Priority>,
     today: LocalDate,
     onChange: (SearchFilters) -> Unit,
     modifier: Modifier = Modifier
@@ -287,9 +289,7 @@ private fun FilterChips(
         FilterChip(stringResource(R.string.search_filter_reminder), filters.withReminder) {
             onChange(filters.copy(withReminder = !filters.withReminder))
         }
-        FilterChip(stringResource(R.string.search_filter_high), filters.highPriority) {
-            onChange(filters.copy(highPriority = !filters.highPriority))
-        }
+        PriorityChip(filters.priority, priorityLevels) { onChange(filters.copy(priority = it)) }
     }
 }
 
@@ -380,6 +380,54 @@ private fun CategoryChip(selected: CategoryFilter, categories: List<CategoryOpti
                 ) {
                     expanded = false
                     onSelect(CategoryFilter.Of(category.id))
+                }
+            }
+        }
+    }
+}
+
+/** «Приоритет ▾» — меню: любой и уровни важности пользователя с флажками их цвета. */
+@Composable
+private fun PriorityChip(selected: Long?, levels: List<Priority>, onSelect: (Long?) -> Unit) {
+    var expanded by remember { mutableStateOf(false) }
+    val chosen = selected?.let { id -> levels.firstOrNull { it.id == id } }
+    Box {
+        FilterChip(
+            label = chosen?.name ?: stringResource(R.string.search_filter_priority),
+            selected = selected != null,
+            leading = chosen?.let {
+                { Icon(ChekkiIcons.PriorityFlag, contentDescription = null, Modifier.size(16.dp), tint = Color(it.color)) }
+            },
+            trailing = {
+                Icon(
+                    ChekkiIcons.ChevronRight,
+                    contentDescription = null,
+                    modifier = Modifier
+                        .size(16.dp)
+                        .rotate(90f),
+                    tint = MaterialTheme.colorScheme.onSurfaceVariant
+                )
+            },
+            onClick = { expanded = true }
+        )
+        DropdownMenu(
+            expanded = expanded,
+            onDismissRequest = { expanded = false },
+            containerColor = MaterialTheme.colorScheme.surfaceContainerHigh
+        ) {
+            CategoryMenuItem(stringResource(R.string.search_filter_any_priority), selected == null) {
+                expanded = false
+                onSelect(null)
+            }
+            HorizontalDivider(color = MaterialTheme.colorScheme.outline.copy(alpha = 0.4f))
+            levels.forEach { level ->
+                CategoryMenuItem(
+                    name = level.name,
+                    isSelected = chosen?.id == level.id,
+                    leading = { Icon(ChekkiIcons.PriorityFlag, contentDescription = null, Modifier.size(18.dp), tint = Color(level.color)) }
+                ) {
+                    expanded = false
+                    onSelect(level.id)
                 }
             }
         }

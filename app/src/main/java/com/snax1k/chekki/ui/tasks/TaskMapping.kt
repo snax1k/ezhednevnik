@@ -1,7 +1,6 @@
 package com.snax1k.chekki.ui.tasks
 
 import com.snax1k.chekki.data.db.RepeatUnit
-import com.snax1k.chekki.data.db.TaskPriority
 import com.snax1k.chekki.data.db.TaskWithDetails
 
 /** Задача из базы → строка списка. */
@@ -14,11 +13,8 @@ fun TaskWithDetails.toTaskUi(): TaskUi = TaskUi(
     } else {
         null
     },
-    priority = when (task.priority) {
-        TaskPriority.None -> null
-        TaskPriority.Low -> Priority.Low
-        TaskPriority.Medium -> Priority.Medium
-        TaskPriority.High -> Priority.High
+    priority = priorityName?.let { name ->
+        Priority(id = task.priority, name = name, color = priorityColor ?: 0, position = priorityPosition ?: 0)
     },
     subtasksDone = subtasksDone,
     subtasksTotal = subtasksTotal,

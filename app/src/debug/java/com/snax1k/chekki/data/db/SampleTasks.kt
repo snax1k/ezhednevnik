@@ -37,11 +37,11 @@ internal object SampleTasks {
             )
             task(
                 "Созвон с командой", today, LocalTime.of(10, 30), WORK,
-                priority = TaskPriority.High, repeat = weekly, reminder = 15
+                priority = PriorityLevels.HIGH, repeat = weekly, reminder = 15
             )
             task(
                 "Отправить отчёт за квартал", today, LocalTime.of(14, 0), WORK,
-                priority = TaskPriority.Medium, repeat = quarterly, reminder = 30,
+                priority = PriorityLevels.MEDIUM, repeat = quarterly, reminder = 30,
                 note = "Свести продажи из таблицы, приложить графики и отправить Ольге до конца дня.",
                 subtasks = listOf(
                     "Выгрузить данные о продажах" to true,
@@ -58,9 +58,9 @@ internal object SampleTasks {
             task("Позвонить маме", today, LocalTime.of(19, 0), PERSONAL, repeat = weekly, reminder = 10)
             task(
                 "Прочитать 30 страниц", today, LocalTime.of(21, 0), STUDY,
-                priority = TaskPriority.Low, repeat = daily
+                priority = PriorityLevels.LOW, repeat = daily
             )
-            task("Оплатить коммуналку", today, null, FINANCE, priority = TaskPriority.High, reminder = 0)
+            task("Оплатить коммуналку", today, null, FINANCE, priority = PriorityLevels.HIGH, reminder = 0)
             task(
                 "Полить цветы", today, null, HOME,
                 repeat = RepeatRule(RepeatUnit.Day, every = 3, weekdays = 0)
@@ -75,7 +75,7 @@ internal object SampleTasks {
             task("Забрать посылку", today.plusDays(1), LocalTime.of(18, 30), PERSONAL)
 
             // Просроченные
-            task("Оплатить интернет", today.minusDays(2), null, FINANCE, priority = TaskPriority.High)
+            task("Оплатить интернет", today.minusDays(2), null, FINANCE, priority = PriorityLevels.HIGH)
             task("Записаться к врачу", today.minusDays(1), null, HEALTH)
             task("Вернуть книгу в библиотеку", today.minusDays(5), null, STUDY)
 
@@ -87,14 +87,14 @@ internal object SampleTasks {
             // Дальше: в какие группы попадут, зависит от дня недели и месяца
             task(
                 "Подготовить презентацию", today.plusDays(3), LocalTime.of(12, 0), WORK,
-                priority = TaskPriority.Medium,
+                priority = PriorityLevels.MEDIUM,
                 subtasks = listOf("Собрать цифры из отчёта" to false, "Сделать 10 слайдов" to false)
             )
             task("День рождения Пети", today.plusDays(5), null, PERSONAL, reminder = 0)
             task("Поменять масло в машине", today.plusDays(12), null, HOME)
             task("Сдать показания счётчиков", today.plusDays(20), null, FINANCE, repeat = monthly)
             task("Забронировать отель на отпуск", today.plusDays(40), null, PERSONAL)
-            task("Продлить страховку", today.plusDays(90), null, FINANCE, priority = TaskPriority.Medium)
+            task("Продлить страховку", today.plusDays(90), null, FINANCE, priority = PriorityLevels.MEDIUM)
 
             // Выполненное раньше
             task("Отправить резюме", today.minusDays(1), null, WORK, done = true)
@@ -110,7 +110,7 @@ internal object SampleTasks {
             date: LocalDate?,
             time: LocalTime?,
             categoryId: Long?,
-            priority: TaskPriority = TaskPriority.None,
+            priority: Long = PriorityLevels.NONE,
             repeat: RepeatRule = RepeatRule.None,
             reminder: Int? = null,
             note: String = "",
@@ -129,7 +129,7 @@ internal object SampleTasks {
                     "date" to date?.let(converters::localDateToEpochDay),
                     "time" to time?.let(converters::localTimeToMinutes),
                     "category_id" to categoryId,
-                    "priority" to converters.priorityToCode(priority),
+                    "priority" to priority,
                     "repeat_unit" to converters.repeatUnitToCode(repeat.unit),
                     "repeat_every" to repeat.every,
                     "repeat_weekdays" to repeat.weekdays,

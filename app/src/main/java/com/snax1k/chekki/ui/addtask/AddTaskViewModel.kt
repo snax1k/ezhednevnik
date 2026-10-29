@@ -8,8 +8,9 @@ import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
 import com.snax1k.chekki.data.TaskRepository
 import com.snax1k.chekki.data.db.RepeatRule
-import com.snax1k.chekki.data.db.TaskPriority
 import com.snax1k.chekki.reminders.ReminderAccess
+import com.snax1k.chekki.ui.tasks.Priority
+import com.snax1k.chekki.ui.tasks.toPriority
 import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.SharingStarted
 import kotlinx.coroutines.flow.StateFlow
@@ -49,6 +50,11 @@ class AddTaskViewModel(
         }
         .stateIn(viewModelScope, SharingStarted.WhileSubscribed(5_000), emptyList())
 
+    /** Уровни важности пользователя, самый важный первым. */
+    val priorityLevels: StateFlow<List<Priority>> = repository.observePriorityLevels()
+        .map { list -> list.map { it.toPriority() } }
+        .stateIn(viewModelScope, SharingStarted.WhileSubscribed(5_000), emptyList())
+
     /** Сегодняшняя дата: по ней «Завтра» и «На выходных» превращаются в конкретный день. */
     val today: StateFlow<LocalDate> = currentDate
         .stateIn(viewModelScope, SharingStarted.WhileSubscribed(5_000), LocalDate.now())
@@ -81,7 +87,7 @@ class AddTaskViewModel(
         draft = draft.copy(categoryId = categoryId)
     }
 
-    fun onPrioritySelect(priority: TaskPriority) {
+    fun onPrioritySelect(priority: Long) {
         draft = draft.copy(priority = priority)
     }
 

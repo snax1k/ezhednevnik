@@ -12,12 +12,13 @@ import com.snax1k.chekki.data.MovedTask
 import com.snax1k.chekki.data.TaskRepository
 import com.snax1k.chekki.data.db.RepeatRule
 import com.snax1k.chekki.data.db.TaskEntity
-import com.snax1k.chekki.data.db.TaskPriority
 import com.snax1k.chekki.reminders.ReminderAccess
 import com.snax1k.chekki.ui.addtask.CategoryOption
 import com.snax1k.chekki.ui.addtask.QuickDate
 import com.snax1k.chekki.ui.addtask.TaskDraft
 import com.snax1k.chekki.ui.main.TaskGroup
+import com.snax1k.chekki.ui.tasks.Priority
+import com.snax1k.chekki.ui.tasks.toPriority
 import kotlinx.coroutines.channels.Channel
 import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.MutableStateFlow
@@ -91,6 +92,11 @@ class TaskViewModel(
         .map { list ->
             list.map { CategoryOption(id = it.id, name = it.name, colorIndex = it.colorIndex, icon = it.icon, isArchived = it.isArchived) }
         }
+        .stateIn(viewModelScope, SharingStarted.WhileSubscribed(5_000), emptyList())
+
+    /** Уровни важности пользователя, самый важный первым. */
+    val priorityLevels: StateFlow<List<Priority>> = repository.observePriorityLevels()
+        .map { list -> list.map { it.toPriority() } }
         .stateIn(viewModelScope, SharingStarted.WhileSubscribed(5_000), emptyList())
 
     val today: StateFlow<LocalDate> = currentDate
@@ -171,7 +177,7 @@ class TaskViewModel(
 
     fun onCategorySelect(categoryId: Long?) = edit { it.copy(categoryId = categoryId) }
 
-    fun onPrioritySelect(priority: TaskPriority) = edit { it.copy(priority = priority) }
+    fun onPrioritySelect(priority: Long) = edit { it.copy(priority = priority) }
 
     fun onRepeatSelect(repeat: RepeatRule) = edit { it.withRepeat(repeat) }
 

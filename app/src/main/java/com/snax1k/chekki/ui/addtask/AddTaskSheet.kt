@@ -4,6 +4,8 @@ import androidx.compose.foundation.background
 import androidx.compose.foundation.border
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Arrangement
+import androidx.compose.foundation.layout.widthIn
+import androidx.compose.foundation.horizontalScroll
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.FlowRow
@@ -60,10 +62,11 @@ import androidx.compose.ui.unit.dp
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import com.snax1k.chekki.R
 import com.snax1k.chekki.data.db.RepeatRule
-import com.snax1k.chekki.data.db.TaskPriority
+import com.snax1k.chekki.data.db.PriorityLevels
 import com.snax1k.chekki.reminders.exactAlarmSettingsIntent
 import com.snax1k.chekki.reminders.notificationSettingsIntent
 import com.snax1k.chekki.ui.icons.ChekkiIcons
+import com.snax1k.chekki.ui.tasks.Priority
 import com.snax1k.chekki.ui.theme.ChekkiTheme
 import com.snax1k.chekki.ui.theme.cssLinearGradient
 import kotlinx.coroutines.launch
@@ -79,6 +82,7 @@ import java.time.LocalTime
 @Composable
 fun AddTaskSheet(viewModel: AddTaskViewModel, onDismiss: () -> Unit) {
     val categories by viewModel.categories.collectAsStateWithLifecycle()
+    val priorityLevels by viewModel.priorityLevels.collectAsStateWithLifecycle()
     val today by viewModel.today.collectAsStateWithLifecycle()
     val sheetState = rememberModalBottomSheetState(skipPartiallyExpanded = true)
     val scope = rememberCoroutineScope()
@@ -102,6 +106,7 @@ fun AddTaskSheet(viewModel: AddTaskViewModel, onDismiss: () -> Unit) {
         AddTaskContent(
             draft = viewModel.draft,
             categories = categories,
+            priorityLevels = priorityLevels,
             today = today,
             onTitleChange = viewModel::onTitleChange,
             onNoteChange = viewModel::onNoteChange,
@@ -165,6 +170,7 @@ internal fun DragHandle() {
 private fun AddTaskContent(
     draft: TaskDraft,
     categories: List<CategoryOption>,
+    priorityLevels: List<Priority>,
     today: LocalDate,
     onTitleChange: (String) -> Unit,
     onNoteChange: (String) -> Unit,
@@ -176,7 +182,7 @@ private fun AddTaskContent(
     onReminderSelect: (Int?) -> Unit,
     notificationsAllowed: Boolean,
     onEnableNotifications: () -> Unit,
-    onPrioritySelect: (TaskPriority) -> Unit,
+    onPrioritySelect: (Long) -> Unit,
     onAddSubtask: () -> Long,
     onSubtaskChange: (Long, String) -> Unit,
     onSubtaskRemove: (Long) -> Unit,
@@ -246,6 +252,7 @@ private fun AddTaskContent(
                 NotificationsOffHint(onEnable = onEnableNotifications)
             }
             PrioritySelector(
+                levels = priorityLevels,
                 selected = draft.priority,
                 onSelect = onPrioritySelect,
                 modifier = Modifier.padding(top = 8.dp)
@@ -394,7 +401,9 @@ private fun QuickDateChips(selected: QuickDate?, onSelect: (QuickDate) -> Unit, 
 }
 
 @Composable
-private fun PrioritySelector(selected: TaskPriority, onSelect: (TaskPriority) -> Unit, modifier: Modifier = Modifier) {
+private fun PrioritySelector(levels: List<Priority>, selected: Long, onSelect: (Long) -> Unit, modifier: Modifier = Modifier) {
+    // «Нет» и уровни пользователя по важности; уровней бывает до восьми — ряд прокручивается вбок
+    val options = listOf<Priority?>(null) + levels
     Column(modifier) {
         Text(
             text = stringResource(R.string.add_task_priority),
@@ -407,30 +416,33 @@ private fun PrioritySelector(selected: TaskPriority, onSelect: (TaskPriority) ->
                 .fillMaxWidth()
                 .clip(MaterialTheme.shapes.medium)
                 .background(MaterialTheme.colorScheme.background)
+                .horizontalScroll(rememberScrollState())
                 .padding(4.dp)
                 .selectableGroup(),
             horizontalArrangement = Arrangement.spacedBy(4.dp)
         ) {
-            TaskPriority.entries.forEach { priority ->
-                val isSelected = priority == selected
+            options.forEach { level ->
+                val id = level?.id ?: PriorityLevels.NONE
+                val isSelected = id == selected
                 Row(
                     Modifier
-                        .weight(1f)
+                        .widthIn(min = 72.dp)
                         .height(48.dp)
                         .clip(MaterialTheme.shapes.extraSmall)
                         .background(if (isSelected) MaterialTheme.colorScheme.surfaceContainerHigh else Color.Transparent)
-                        .selectable(selected = isSelected, role = Role.RadioButton, onClick = { onSelect(priority) }),
+                        .selectable(selected = isSelected, role = Role.RadioButton, onClick = { onSelect(id) })
+                        .padding(horizontal = 10.dp),
                     horizontalArrangement = Arrangement.spacedBy(6.dp, Alignment.CenterHorizontally),
                     verticalAlignment = Alignment.CenterVertically
                 ) {
                     Icon(
-                        if (isSelected && priority != TaskPriority.None) ChekkiIcons.PriorityFlag else ChekkiIcons.PriorityFlagOutline,
+                        if (isSelected && level != null) ChekkiIcons.PriorityFlag else ChekkiIcons.PriorityFlagOutline,
                         contentDescription = null,
                         modifier = Modifier.size(14.dp),
-                        tint = priorityColor(priority)
+                        tint = priorityTint(level)
                     )
                     Text(
-                        text = stringResource(priority.shortLabel),
+                        text = priorityShortLabel(level),
                         style = MaterialTheme.typography.labelMedium,
                         color = if (isSelected) MaterialTheme.colorScheme.onSurface else MaterialTheme.colorScheme.onSurfaceVariant,
                         maxLines = 1
@@ -594,12 +606,13 @@ private fun AddTaskContentPreview() {
                     quickDate = QuickDate.Weekend,
                     time = LocalTime.of(16, 0),
                     categoryId = 1,
-                    priority = TaskPriority.High,
+                    priority = PriorityLevels.HIGH,
                     repeat = RepeatPreset.Weekly.rule,
                     reminderMinutesBefore = 15,
                     subtasks = listOf(SubtaskDraft(0, "Собрать цифры из отчёта"), SubtaskDraft(1, "Сделать 10 слайдов"))
                 ),
                 categories = listOf(CategoryOption(1, "Работа", 0), CategoryOption(2, "Личное", 1)),
+                priorityLevels = listOf(Priority.High, Priority.Medium, Priority.Low),
                 today = LocalDate.of(2026, 10, 22),
                 onTitleChange = {},
                 onNoteChange = {},

@@ -37,7 +37,7 @@ class DatabaseBackupsTest {
     @Test
     fun копияСодержитДанныеИЧитается() {
         runBlocking {
-            TaskRepository(database).addTask("Проверить копию", "", null, null, null, TaskPriority.High)
+            TaskRepository(database).addTask("Проверить копию", "", null, null, null, PriorityLevels.HIGH)
         }
         val backup = DatabaseBackups.backupOpen(context, database, "before-0.5")
         assertTrue(backup.name.startsWith("chekki-before-0.5-"))
@@ -45,7 +45,7 @@ class DatabaseBackupsTest {
             assertEquals(ChekkiDatabase.VERSION, copy.version)
             copy.rawQuery("SELECT priority FROM tasks WHERE title = 'Проверить копию'", null).use { cursor ->
                 assertTrue(cursor.moveToFirst())
-                assertEquals(TaskPriority.High.code, cursor.getInt(0))
+                assertEquals(PriorityLevels.HIGH, cursor.getLong(0))
             }
         }
     }

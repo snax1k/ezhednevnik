@@ -7,6 +7,7 @@ import com.snax1k.chekki.data.db.CategoryEntity
 import com.snax1k.chekki.data.db.ChekkiDatabase
 import com.snax1k.chekki.data.db.HabitPauseEntity
 import com.snax1k.chekki.data.db.HabitReminderEntity
+import com.snax1k.chekki.data.db.PriorityLevels
 import com.snax1k.chekki.data.db.SubtaskEntity
 import java.io.File
 import java.io.InputStream
@@ -73,8 +74,20 @@ class OldAppImporter(
                 )
             }
 
+            // Ранг важности старого приложения (3 — высокая) → уровень пользователя на том же месте по важности
+            val levels = database.priorityLevelDao().getAll()
+            val levelByRank = mapOf(
+                PriorityLevels.HIGH to levels.getOrNull(0)?.id,
+                PriorityLevels.MEDIUM to levels.getOrNull(1)?.id,
+                PriorityLevels.LOW to levels.getOrNull(2)?.id
+            )
             plan.tasks.forEach { planned ->
-                val taskId = taskDao.insertTask(planned.task.copy(categoryId = planned.categoryUid?.let(categoryIds::get)))
+                val taskId = taskDao.insertTask(
+                    planned.task.copy(
+                        categoryId = planned.categoryUid?.let(categoryIds::get),
+                        priority = levelByRank[planned.task.priority] ?: PriorityLevels.NONE
+                    )
+                )
                 if (planned.subtasks.isNotEmpty()) {
                     taskDao.insertSubtasks(
                         planned.subtasks.map { SubtaskEntity(taskId = taskId, title = it.title, isDone = it.isDone, position = it.position) }

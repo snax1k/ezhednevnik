@@ -72,7 +72,7 @@ import com.snax1k.chekki.ui.category.categoryColor
 import com.snax1k.chekki.data.DeletedTask
 import com.snax1k.chekki.data.MovedTask
 import com.snax1k.chekki.data.db.RepeatRule
-import com.snax1k.chekki.data.db.TaskPriority
+import com.snax1k.chekki.data.db.PriorityLevels
 import com.snax1k.chekki.reminders.exactAlarmSettingsIntent
 import com.snax1k.chekki.reminders.notificationSettingsIntent
 import com.snax1k.chekki.ui.addtask.AddSubtaskButton
@@ -92,12 +92,13 @@ import com.snax1k.chekki.ui.addtask.TaskDraft
 import com.snax1k.chekki.ui.addtask.TaskTimePickerDialog
 import com.snax1k.chekki.ui.addtask.label
 import com.snax1k.chekki.ui.addtask.nextFullHour
-import com.snax1k.chekki.ui.addtask.priorityColor
+import com.snax1k.chekki.ui.addtask.levelOf
+import com.snax1k.chekki.ui.addtask.priorityShortLabel
+import com.snax1k.chekki.ui.addtask.priorityTint
 import com.snax1k.chekki.ui.addtask.rememberNotificationAccess
 import com.snax1k.chekki.ui.addtask.reminderLabel
 import com.snax1k.chekki.ui.addtask.reminderOptions
 import com.snax1k.chekki.ui.addtask.repeatLabel
-import com.snax1k.chekki.ui.addtask.shortLabel
 import com.snax1k.chekki.ui.components.CardProgressBar
 import com.snax1k.chekki.ui.components.SquareIconButton
 import com.snax1k.chekki.ui.icons.ChekkiIcons
@@ -105,6 +106,7 @@ import com.snax1k.chekki.ui.main.TaskGroup
 import com.snax1k.chekki.ui.tasks.PostponeMenu
 import com.snax1k.chekki.ui.tasks.TaskCheckbox
 import com.snax1k.chekki.ui.tasks.checkboxColor
+import com.snax1k.chekki.ui.tasks.Priority
 import com.snax1k.chekki.ui.theme.ChekkiTheme
 import com.snax1k.chekki.ui.theme.GroupColor
 import java.time.LocalDate
@@ -124,6 +126,7 @@ fun TaskScreen(
     val isDone by viewModel.isDone.collectAsStateWithLifecycle()
     val subtasks by viewModel.subtasks.collectAsStateWithLifecycle()
     val categories by viewModel.categories.collectAsStateWithLifecycle()
+    val priorityLevels by viewModel.priorityLevels.collectAsStateWithLifecycle()
     val today by viewModel.today.collectAsStateWithLifecycle()
     if (viewModel.isMissing) {
         LaunchedEffect(Unit) { onBack() }
@@ -137,6 +140,7 @@ fun TaskScreen(
         isDone = isDone,
         subtasks = subtasks,
         categories = categories,
+        priorityLevels = priorityLevels,
         today = today,
         onBack = onBack,
         onDelete = { viewModel.delete(onDeleted) },
@@ -199,6 +203,7 @@ private fun TaskContent(
     isDone: Boolean,
     subtasks: List<SubtaskUi>,
     categories: List<CategoryOption>,
+    priorityLevels: List<Priority>,
     today: LocalDate,
     onBack: () -> Unit,
     onDelete: () -> Unit,
@@ -214,7 +219,7 @@ private fun TaskContent(
     notificationsAllowed: Boolean,
     onEnableNotifications: () -> Unit,
     onRepeatSelect: (RepeatRule) -> Unit,
-    onPrioritySelect: (TaskPriority) -> Unit,
+    onPrioritySelect: (Long) -> Unit,
     onCategorySelect: (Long?) -> Unit,
     subtaskRows: List<SubtaskRowUi>,
     subtaskActions: SubtaskActions
@@ -236,6 +241,7 @@ private fun TaskContent(
                     isDone = isDone,
                     subtasks = subtasks,
                     categories = categories,
+                    priorityLevels = priorityLevels,
                     today = today,
                     onToggleDone = onToggleDone,
                     onPostpone = onPostpone,
@@ -303,6 +309,7 @@ private fun ColumnScope.TaskBody(
     isDone: Boolean,
     subtasks: List<SubtaskUi>,
     categories: List<CategoryOption>,
+    priorityLevels: List<Priority>,
     today: LocalDate,
     onToggleDone: () -> Unit,
     onPostpone: (LocalDate) -> Unit,
@@ -316,7 +323,7 @@ private fun ColumnScope.TaskBody(
     notificationsAllowed: Boolean,
     onEnableNotifications: () -> Unit,
     onRepeatSelect: (RepeatRule) -> Unit,
-    onPrioritySelect: (TaskPriority) -> Unit,
+    onPrioritySelect: (Long) -> Unit,
     onCategorySelect: (Long?) -> Unit,
     subtaskRows: List<SubtaskRowUi>,
     subtaskActions: SubtaskActions
@@ -361,6 +368,7 @@ private fun ColumnScope.TaskBody(
             date = date,
             today = today,
             categories = categories,
+            priorityLevels = priorityLevels,
             onDateClick = onDateClick,
             onQuickDateSelect = onQuickDateSelect,
             onReminderSelect = onReminderSelect,
@@ -495,13 +503,14 @@ private fun PropertiesCard(
     date: LocalDate?,
     today: LocalDate,
     categories: List<CategoryOption>,
+    priorityLevels: List<Priority>,
     onDateClick: () -> Unit,
     onQuickDateSelect: (QuickDate) -> Unit,
     onReminderSelect: (Int?) -> Unit,
     notificationsAllowed: Boolean,
     onEnableNotifications: () -> Unit,
     onRepeatSelect: (RepeatRule) -> Unit,
-    onPrioritySelect: (TaskPriority) -> Unit,
+    onPrioritySelect: (Long) -> Unit,
     onCategorySelect: (Long?) -> Unit,
     modifier: Modifier = Modifier
 ) {
@@ -536,14 +545,15 @@ private fun PropertiesCard(
         )
         RowDivider()
         OptionsRow(
-            icon = if (draft.priority == TaskPriority.None) ChekkiIcons.PriorityFlagOutline else ChekkiIcons.PriorityFlag,
-            iconTint = priorityColor(draft.priority),
+            icon = if (priorityLevels.levelOf(draft.priority) == null) ChekkiIcons.PriorityFlagOutline else ChekkiIcons.PriorityFlag,
+            iconTint = priorityTint(priorityLevels.levelOf(draft.priority)),
             label = stringResource(R.string.add_task_priority),
-            value = stringResource(draft.priority.shortLabel),
-            options = TaskPriority.entries,
-            selected = draft.priority,
-            optionLabel = { stringResource(it.shortLabel) },
-            onSelect = onPrioritySelect,
+            value = priorityShortLabel(priorityLevels.levelOf(draft.priority)),
+            // «Нет» и уровни пользователя по важности
+            options = listOf<Priority?>(null) + priorityLevels,
+            selected = priorityLevels.levelOf(draft.priority),
+            optionLabel = { priorityShortLabel(it) },
+            onSelect = { onPrioritySelect(it?.id ?: PriorityLevels.NONE) },
             placement = FieldRowPlacement.Card
         )
         RowDivider()
@@ -936,7 +946,7 @@ private fun TaskContentPreview() {
                 exactDate = LocalDate.of(2026, 10, 22),
                 time = LocalTime.of(14, 0),
                 categoryId = 1,
-                priority = TaskPriority.Medium,
+                priority = PriorityLevels.MEDIUM,
                 repeat = RepeatPreset.Quarterly.rule,
                 reminderMinutesBefore = 30
             ),
@@ -949,6 +959,7 @@ private fun TaskContentPreview() {
             ),
             subtaskActions = SubtaskActions({}, {}, {}, {}, {}, {}),
             categories = listOf(CategoryOption(1, "Работа", 0)),
+            priorityLevels = listOf(Priority.High, Priority.Medium, Priority.Low),
             today = LocalDate.of(2026, 10, 22),
             onBack = {},
             onDelete = {},
