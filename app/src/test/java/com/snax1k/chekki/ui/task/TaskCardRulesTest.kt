@@ -5,7 +5,10 @@ import com.snax1k.chekki.data.db.RepeatRule
 import com.snax1k.chekki.data.db.TaskEntity
 import com.snax1k.chekki.ui.addtask.QuickDate
 import com.snax1k.chekki.ui.main.TaskGroup
+import com.snax1k.chekki.data.EditedSubtask
 import org.junit.Assert.assertEquals
+import org.junit.Assert.assertFalse
+import org.junit.Assert.assertTrue
 import org.junit.Assert.assertNull
 import org.junit.Test
 import java.time.Instant
@@ -52,37 +55,68 @@ class TaskCardRulesTest {
         assertEquals(today.plusDays(1), draft.dateFor(today.plusDays(1)))
     }
 
-    private val saved = listOf(
-        SubtaskUi(10, "Молоко", done = true),
-        SubtaskUi(11, "Хлеб", done = false)
+    private val savedSubtasks = listOf(
+        CardSubtask(key = 10, id = 10, title = "Молоко", done = true),
+        CardSubtask(key = 11, id = 11, title = "Хлеб", done = false)
     )
 
+    private val savedDraft = TaskEntity(
+        title = "Купить продукты", date = today, time = null, categoryId = null, createdAt = Instant.EPOCH
+    ).toDraft()
+
     @Test
-    fun строкиПодзадачБезПравкиПовторяютБазу() {
-        val rows = subtaskRows(saved, editing = null, newKeys = emptyMap())
+    fun безПравокСохранятьНечего() {
+        assertFalse(hasUnsavedChanges(savedDraft, savedDraft, savedSubtasks, savedSubtasks))
+        // Пробелы по краям и стёртое (не сохраняемое) название — не правка
+        assertFalse(hasUnsavedChanges(savedDraft.copy(title = "  Купить продукты "), savedDraft, savedSubtasks, savedSubtasks))
+        assertFalse(hasUnsavedChanges(savedDraft.copy(title = ""), savedDraft, savedSubtasks, savedSubtasks))
+        // Пустая новая подзадача — тоже
+        val withEmpty = savedSubtasks + CardSubtask(key = -1, id = null, title = " ", done = false)
+        assertFalse(hasUnsavedChanges(savedDraft, savedDraft, withEmpty, savedSubtasks))
+    }
+
+    @Test
+    fun правкиПолейИПодзадачЗамечаются() {
+        assertTrue(hasUnsavedChanges(savedDraft.copy(title = "Купить продукты на неделю"), savedDraft, savedSubtasks, savedSubtasks))
+        assertTrue(hasUnsavedChanges(savedDraft.copy(priority = 3), savedDraft, savedSubtasks, savedSubtasks))
+        assertTrue(hasUnsavedChanges(savedDraft.fixedTo(today).withDate(today.plusDays(1), today), savedDraft, savedSubtasks, savedSubtasks))
+        // Отметка, удаление и новая подзадача
+        assertTrue(hasUnsavedChanges(savedDraft, savedDraft, savedSubtasks.map { it.copy(done = true) }, savedSubtasks))
+        assertTrue(hasUnsavedChanges(savedDraft, savedDraft, savedSubtasks.take(1), savedSubtasks))
+        assertTrue(hasUnsavedChanges(savedDraft, savedDraft, savedSubtasks + CardSubtask(-1, null, "Сыр", false), savedSubtasks))
+    }
+
+    @Test
+    fun вБазуУходятПодзадачиБезПустых() {
+        val rows = listOf(
+            CardSubtask(key = 10, id = 10, title = "", done = true),
+            CardSubtask(key = 11, id = 11, title = " Хлеб ржаной ", done = false),
+            CardSubtask(key = -1, id = null, title = "Сыр", done = false),
+            CardSubtask(key = -2, id = null, title = "", done = false)
+        )
+        assertEquals(
+            listOf(
+                // Стёртое название прежней подзадачи не сохраняется — остаётся «Молоко»
+                EditedSubtask(10, "Молоко", true),
+                EditedSubtask(11, "Хлеб ржаной", false),
+                EditedSubtask(null, "Сыр", false)
+            ),
+            subtasksForSave(rows, savedSubtasks)
+        )
+    }
+
+    @Test
+    fun стёртоеНазваниеЗадачиНеСохраняется() {
+        assertEquals("Купить продукты", savedDraft.copy(title = "   ").forSave(savedDraft).title)
+        assertEquals("Хлеб", savedDraft.copy(title = " Хлеб ", note = " к ужину ").forSave(savedDraft).title)
+        assertEquals("к ужину", savedDraft.copy(note = " к ужину ").forSave(savedDraft).note)
+    }
+
+    @Test
+    fun строкиПодзадачОтмечаютПравящуюся() {
+        val rows = subtaskRows(savedSubtasks, editingKey = 11)
         assertEquals(listOf(10L, 11L), rows.map { it.key })
-        assertEquals(listOf("Молоко", "Хлеб"), rows.map { it.title })
-        assertEquals(listOf(false, false), rows.map { it.isEditing })
-    }
-
-    @Test
-    fun уПравящейсяПодзадачиТекстИзПравки() {
-        val rows = subtaskRows(saved, SubtaskEditing(key = 11, text = "", isNew = false, originalTitle = "Хлеб"), emptyMap())
-        // Пока название стёрто, в базе прежнее, а на экране — пустое поле
-        assertEquals(listOf("Молоко", ""), rows.map { it.title })
         assertEquals(listOf(false, true), rows.map { it.isEditing })
-    }
-
-    @Test
-    fun новаяСтрокаИдётПоследнейИСохраняетКлючПослеСохранения() {
-        val editing = SubtaskEditing(key = -1, text = "Сыр", isNew = true, originalTitle = "")
-        val before = subtaskRows(saved, editing, emptyMap())
-        assertEquals(listOf(10L, 11L, -1L), before.map { it.key })
-
-        // Подзадача появилась в базе под id 12, но строка осталась со своим ключом и не задвоилась
-        val after = subtaskRows(saved + SubtaskUi(12, "Сыр", done = false), editing, newKeys = mapOf(12L to -1L))
-        assertEquals(listOf(10L, 11L, -1L), after.map { it.key })
-        assertEquals(true, after.last().isEditing)
     }
 
     @Test

@@ -119,6 +119,8 @@
     <string name="date_picker_title">Выберите дату</string>
     <string name="time_picker_title">Время</string>
     <string name="action_cancel">Отмена</string>
+    <string name="action_yes">Да</string>
+    <string name="action_no">Нет</string>
     <string name="action_next">Далее</string>
     <string name="action_done">Готово</string>
     <string name="quick_date_today">Сегодня</string>
@@ -255,6 +257,10 @@
     <string name="task_pick_date">Выбрать дату…</string>
     <string name="task_edit_subtask">Изменить подзадачу</string>
     <string name="task_postpone">Отложить</string>
+    <!-- Карточка сохраняет только по кнопке (23.11.2026) -->
+    <string name="task_save">Сохранить</string>
+    <string name="task_cancel_changes">Отменить</string>
+    <string name="task_discard_changes">Задача изменена. Закрыть без сохранения изменений?</string>
     <string name="postpone_next_week">Через неделю</string>
     <!-- Плашка после переноса: «Задача отложена на завтра», «…на 24 октября» -->
     <string name="task_postponed">Задача отложена на %1$s</string>

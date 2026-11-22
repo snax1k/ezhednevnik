@@ -1,5 +1,8 @@
 package com.snax1k.chekki.ui.task
 
+import androidx.compose.material3.TextButton
+import androidx.compose.material3.AlertDialog
+import androidx.activity.compose.BackHandler
 import androidx.compose.foundation.background
 import androidx.compose.foundation.border
 import androidx.compose.foundation.clickable
@@ -127,7 +130,6 @@ fun TaskScreen(
     onAttachmentDeleted: (AttachmentEntity) -> Unit = {}
 ) {
     val isDone by viewModel.isDone.collectAsStateWithLifecycle()
-    val subtasks by viewModel.subtasks.collectAsStateWithLifecycle()
     val categories by viewModel.categories.collectAsStateWithLifecycle()
     val priorityLevels by viewModel.priorityLevels.collectAsStateWithLifecycle()
     val today by viewModel.today.collectAsStateWithLifecycle()
@@ -137,15 +139,23 @@ fun TaskScreen(
     val context = LocalContext.current
     val notifications = rememberNotificationAccess()
     var showExactAlarmDialog by remember { mutableStateOf(false) }
+    var showDiscardDialog by remember { mutableStateOf(false) }
+    val hasChanges = viewModel.hasChanges
+    // С несохранёнными правками «Назад» (стрелка и системный жест) сначала спрашивает
+    val guardedBack: () -> Unit = { if (viewModel.hasChanges) showDiscardDialog = true else onBack() }
+    BackHandler(enabled = hasChanges) { showDiscardDialog = true }
 
     TaskContent(
         draft = viewModel.draft,
         isDone = isDone,
-        subtasks = subtasks,
+        hasChanges = hasChanges,
+        isSaving = viewModel.isSaving,
+        onSave = viewModel::save,
+        onCancel = viewModel::discardChanges,
         categories = categories,
         priorityLevels = priorityLevels,
         today = today,
-        onBack = onBack,
+        onBack = guardedBack,
         onDelete = { viewModel.delete(onDeleted) },
         onPostpone = { date -> viewModel.postpone(date, onPostponed) },
         onToggleDone = viewModel::toggleDone,
@@ -168,7 +178,7 @@ fun TaskScreen(
         onRepeatSelect = viewModel::onRepeatSelect,
         onPrioritySelect = viewModel::onPrioritySelect,
         onCategorySelect = viewModel::onCategorySelect,
-        subtaskRows = subtaskRows(subtasks, viewModel.editingSubtask, viewModel.newSubtaskKeys),
+        subtaskRows = subtaskRows(viewModel.subtasks, viewModel.editingSubtaskKey),
         subtaskActions = remember(viewModel) {
             SubtaskActions(
                 onToggle = viewModel::toggleSubtask,
@@ -196,6 +206,33 @@ fun TaskScreen(
             onDismiss = { showExactAlarmDialog = false }
         )
     }
+
+    if (showDiscardDialog) {
+        DiscardChangesDialog(
+            onDiscard = {
+                showDiscardDialog = false
+                viewModel.discardChanges()
+                onBack()
+            },
+            onDismiss = { showDiscardDialog = false }
+        )
+    }
+}
+
+/** Как в старом приложении: «Задача изменена. Закрыть без сохранения изменений?» — «Нет» / «Да». */
+@Composable
+private fun DiscardChangesDialog(onDiscard: () -> Unit, onDismiss: () -> Unit) {
+    AlertDialog(
+        onDismissRequest = onDismiss,
+        confirmButton = {
+            TextButton(onClick = onDiscard) { Text(stringResource(R.string.action_yes)) }
+        },
+        dismissButton = {
+            TextButton(onClick = onDismiss) { Text(stringResource(R.string.action_no)) }
+        },
+        text = { Text(stringResource(R.string.task_discard_changes), style = MaterialTheme.typography.bodyLarge) },
+        containerColor = MaterialTheme.colorScheme.surfaceContainerHigh
+    )
 }
 
 /** Какое окно выбора открыто: календарь и после «Далее» циферблат для «Дата и время» или календарь для «Отложить». */
@@ -205,7 +242,10 @@ private enum class PickerStep { Date, Time, PostponeDate }
 private fun TaskContent(
     draft: TaskDraft?,
     isDone: Boolean,
-    subtasks: List<SubtaskUi>,
+    hasChanges: Boolean,
+    isSaving: Boolean,
+    onSave: () -> Unit,
+    onCancel: () -> Unit,
     categories: List<CategoryOption>,
     priorityLevels: List<Priority>,
     today: LocalDate,
@@ -244,7 +284,10 @@ private fun TaskContent(
                 TaskBody(
                     draft = draft,
                     isDone = isDone,
-                    subtasks = subtasks,
+                    hasChanges = hasChanges,
+                    isSaving = isSaving,
+                    onSave = onSave,
+                    onCancel = onCancel,
                     categories = categories,
                     priorityLevels = priorityLevels,
                     today = today,
@@ -313,7 +356,10 @@ private fun TaskContent(
 private fun ColumnScope.TaskBody(
     draft: TaskDraft,
     isDone: Boolean,
-    subtasks: List<SubtaskUi>,
+    hasChanges: Boolean,
+    isSaving: Boolean,
+    onSave: () -> Unit,
+    onCancel: () -> Unit,
     categories: List<CategoryOption>,
     priorityLevels: List<Priority>,
     today: LocalDate,
@@ -386,12 +432,16 @@ private fun ColumnScope.TaskBody(
             onCategorySelect = onCategorySelect,
             modifier = Modifier.padding(top = 16.dp)
         )
-        SubtasksCard(subtasks, subtaskRows, subtaskActions, Modifier.padding(top = 16.dp))
+        SubtasksCard(subtaskRows, subtaskActions, Modifier.padding(top = 16.dp))
         attachmentsBlock(Modifier.padding(top = 16.dp))
         Spacer(Modifier.height(24.dp))
     }
     BottomButtons(
         isDone = isDone,
+        hasChanges = hasChanges,
+        isSaving = isSaving,
+        onSave = onSave,
+        onCancel = onCancel,
         date = date,
         today = today,
         onToggleDone = onToggleDone,
@@ -641,11 +691,12 @@ private class SubtaskActions(
  */
 @Composable
 private fun SubtasksCard(
-    saved: List<SubtaskUi>,
     rows: List<SubtaskRowUi>,
     actions: SubtaskActions,
     modifier: Modifier = Modifier
 ) {
+    // Считаем подзадачи в карточке, с несохранёнными правками; пустая новая строка не в счёт
+    val saved = rows.filter { it.title.isNotBlank() }
     val done = saved.count { it.done }
     val progressDescription = stringResource(R.string.task_subtasks_progress, done, saved.size)
     val focusManager = LocalFocusManager.current
@@ -845,6 +896,10 @@ private fun RowDivider() {
 @Composable
 private fun BottomButtons(
     isDone: Boolean,
+    hasChanges: Boolean,
+    isSaving: Boolean,
+    onSave: () -> Unit,
+    onCancel: () -> Unit,
     date: LocalDate?,
     today: LocalDate,
     onToggleDone: () -> Unit,
@@ -862,6 +917,26 @@ private fun BottomButtons(
                 .fillMaxWidth(),
             horizontalArrangement = Arrangement.spacedBy(12.dp)
         ) {
+            // Есть несохранённые правки — вместо «Отложить / Выполнено» «Отменить / Сохранить» (решено 23.11.2026)
+            if (hasChanges) {
+                BottomButton(
+                    icon = null,
+                    text = stringResource(R.string.task_cancel_changes),
+                    background = MaterialTheme.colorScheme.surfaceContainerHigh,
+                    contentColor = MaterialTheme.colorScheme.onSurface,
+                    onClick = onCancel,
+                    modifier = Modifier.weight(1f)
+                )
+                BottomButton(
+                    icon = ChekkiIcons.Check,
+                    text = stringResource(R.string.task_save),
+                    background = MaterialTheme.colorScheme.primary,
+                    contentColor = MaterialTheme.colorScheme.onPrimary,
+                    onClick = { if (!isSaving) onSave() },
+                    modifier = Modifier.weight(1f)
+                )
+                return@Row
+            }
             if (!isDone) {
                 Box(Modifier.weight(1f)) {
                     BottomButton(
@@ -960,12 +1035,11 @@ private fun TaskContentPreview() {
                 reminderMinutesBefore = 30
             ),
             isDone = false,
-            subtasks = previewSubtasks,
-            subtaskRows = subtaskRows(
-                previewSubtasks,
-                editing = SubtaskEditing(key = 2, text = "Построить графики", isNew = false, originalTitle = "Построить графики"),
-                newKeys = emptyMap()
-            ),
+            hasChanges = true,
+            isSaving = false,
+            onSave = {},
+            onCancel = {},
+            subtaskRows = subtaskRows(previewSubtasks, editingKey = 2),
             subtaskActions = SubtaskActions({}, {}, {}, {}, {}, {}),
             categories = listOf(CategoryOption(1, "Работа", 0)),
             priorityLevels = listOf(Priority.High, Priority.Medium, Priority.Low),
@@ -991,7 +1065,7 @@ private fun TaskContentPreview() {
 }
 
 private val previewSubtasks = listOf(
-    SubtaskUi(1, "Выгрузить данные о продажах", done = true),
-    SubtaskUi(2, "Построить графики", done = false),
-    SubtaskUi(3, "Написать короткий вывод", done = false)
+    CardSubtask(1, 1, "Выгрузить данные о продажах", done = true),
+    CardSubtask(2, 2, "Построить графики", done = false),
+    CardSubtask(3, 3, "Написать короткий вывод", done = false)
 )

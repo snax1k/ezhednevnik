@@ -330,6 +330,35 @@ class TaskRepositoryTest {
     }
 
     @Test
+    fun подзадачиИзКарточкиСохраняютсяЦеликом() {
+        runBlocking {
+            val taskId = repository.addTask(
+                title = "Поход",
+                note = "",
+                date = today,
+                time = null,
+                categoryId = null,
+                priority = PriorityLevels.NONE,
+                subtasks = listOf("Палатка", "Спальник", "Фонарик")
+            )
+            val (tent, bag, _) = repository.getSubtasks(taskId)
+            // Палатку переименовали и отметили, спальник оставили, фонарик удалили, добавили котелок
+            repository.saveSubtasks(
+                taskId,
+                listOf(
+                    EditedSubtask(tent.id, "Палатка двухместная", isDone = true),
+                    EditedSubtask(bag.id, "Спальник", isDone = false),
+                    EditedSubtask(null, "Котелок", isDone = false)
+                )
+            )
+            val after = repository.getSubtasks(taskId)
+            assertEquals(listOf("Палатка двухместная", "Спальник", "Котелок"), after.map { it.title })
+            assertEquals(listOf(true, false, false), after.map { it.isDone })
+            assertEquals(tent.id, after[0].id)
+        }
+    }
+
+    @Test
     fun повторДоДатыПослеНеёКопийНеСоздаёт() {
         runBlocking {
             // Каждый день до завтра: выполнение сегодня создаёт копию на завтра, а выполнение завтрашней — уже нет

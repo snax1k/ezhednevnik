@@ -407,6 +407,10 @@ interface TaskDao {
     @Query("UPDATE subtasks SET title = :title WHERE id = :id")
     suspend fun renameSubtask(id: Long, title: String)
 
+    /** Всё, что правится у подзадачи в карточке: название, отметка, место. */
+    @Query("UPDATE subtasks SET title = :title, is_done = :isDone, position = :position WHERE id = :id")
+    suspend fun updateSubtask(id: Long, title: String, isDone: Boolean, position: Int)
+
     /** Удаляет подзадачу. Номера мест у остальных не сдвигаются: порядок держится и с пропусками. */
     @Query("DELETE FROM subtasks WHERE id = :id")
     suspend fun deleteSubtask(id: Long)

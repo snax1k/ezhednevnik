@@ -324,6 +324,25 @@ class TaskRepository(
 
     suspend fun deleteSubtask(id: Long) = taskDao.deleteSubtask(id)
 
+    /**
+     * Подзадачи из карточки задачи целиком, по «Сохранить» (с 23.11.2026): в базе станет ровно [rows] в этом порядке.
+     * Строки без id добавляются, с id — обновляются, подзадачи задачи, которых нет в [rows], удаляются.
+     */
+    suspend fun saveSubtasks(taskId: Long, rows: List<EditedSubtask>) = database.withTransaction {
+        val kept = rows.mapNotNull { it.id }.toSet()
+        taskDao.getSubtasks(taskId).filter { it.id !in kept }.forEach { taskDao.deleteSubtask(it.id) }
+        rows.forEachIndexed { position, row ->
+            if (row.id == null) {
+                taskDao.insertSubtask(SubtaskEntity(taskId = taskId, title = row.title, isDone = row.isDone, position = position))
+            } else {
+                taskDao.updateSubtask(row.id, row.title, row.isDone, position)
+            }
+        }
+    }
+
+    /** Подзадачи задачи по порядку. */
+    suspend fun getSubtasks(taskId: Long): List<SubtaskEntity> = taskDao.getSubtasks(taskId)
+
     /** Задачи на дату, включая выполненные. */
     fun observeTasksOn(date: LocalDate): Flow<List<TaskWithDetails>> = taskDao.observeTasksOn(date)
 
@@ -479,3 +498,6 @@ data class DeletedCategory(val category: CategoryEntity, val taskIds: List<Long>
 
 /** Удалённый уровень важности и задачи, у которых он был: для «Отменить». */
 data class DeletedPriorityLevel(val level: PriorityLevelEntity, val taskIds: List<Long>)
+
+/** Подзадача для [TaskRepository.saveSubtasks]: [id] null — новая. */
+data class EditedSubtask(val id: Long?, val title: String, val isDone: Boolean)
