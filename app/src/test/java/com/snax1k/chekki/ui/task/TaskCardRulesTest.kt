@@ -1,8 +1,9 @@
 package com.snax1k.chekki.ui.task
 
+import com.snax1k.chekki.data.db.RepeatUnit
+import com.snax1k.chekki.data.db.RepeatRule
 import com.snax1k.chekki.data.db.TaskEntity
 import com.snax1k.chekki.ui.addtask.QuickDate
-import com.snax1k.chekki.ui.addtask.RepeatPreset
 import com.snax1k.chekki.ui.main.TaskGroup
 import org.junit.Assert.assertEquals
 import org.junit.Assert.assertNull
@@ -91,7 +92,7 @@ class TaskCardRulesTest {
         assertEquals(QuickDate.NoDate, draft.quickDate)
 
         // Повтор у задачи без даты ставит «Сегодня», а карточка тут же запоминает конкретный день
-        val withRepeat = draft.withRepeat(RepeatPreset.Daily.rule).fixedTo(today)
+        val withRepeat = draft.withRepeat(RepeatRule(RepeatUnit.Day, every = 1, weekdays = 0)).fixedTo(today)
         assertNull(withRepeat.quickDate)
         assertEquals(today, withRepeat.exactDate)
 

@@ -88,6 +88,20 @@ class MigrationTest {
                     )
                 )
                 assertEquals(1, database.taskDao().getTaskWithDetails(1)!!.attachmentsTotal)
+                // 7 → 8: старый повтор «каждую неделю» не изменился, новые поля пустые, а новое правило записывается
+                assertEquals(RepeatRule(RepeatUnit.Week, every = 1, weekdays = 0), task.task.repeat)
+                val twoWeeks = RepeatRule(
+                    RepeatUnit.TwoWeeks, every = 2, weekdays = 0b0000010, weekdays2 = 0b0000001,
+                    until = LocalDate.of(2026, 12, 31)
+                )
+                database.taskDao().updateEditableFields(
+                    id = 1, title = task.task.title, note = task.task.note, date = task.task.date, time = task.task.time,
+                    categoryId = task.task.categoryId, priority = task.task.priority,
+                    repeatUnit = twoWeeks.unit, repeatEvery = twoWeeks.every, repeatWeekdays = twoWeeks.weekdays,
+                    repeatWeekdays2 = twoWeeks.weekdays2, repeatMonthDays = twoWeeks.monthDays, repeatUntil = twoWeeks.until,
+                    reminderMinutesBefore = task.task.reminderMinutesBefore
+                )
+                assertEquals(twoWeeks, database.taskDao().getTask(1)!!.repeat)
                 database.openHelper.writableDatabase.execSQL("DELETE FROM tasks WHERE id = 1")
                 assertEquals(emptyList<String>(), database.attachmentDao().allFileNames())
             }

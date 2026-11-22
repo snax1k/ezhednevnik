@@ -42,8 +42,20 @@ object Migrations {
         }
     }
 
+    /**
+     * 7 → 8: новый повтор (23.11.2026) — две недели по-разному, числа месяца и срок повтора.
+     * Три колонки в `tasks`; у старых задач 0, 0 и NULL, их повтор не меняется.
+     */
+    val MIGRATION_7_8 = object : Migration(7, 8) {
+        override fun migrate(db: SupportSQLiteDatabase) {
+            db.execSQL("ALTER TABLE `tasks` ADD COLUMN `repeat_weekdays2` INTEGER NOT NULL DEFAULT 0")
+            db.execSQL("ALTER TABLE `tasks` ADD COLUMN `repeat_month_days` INTEGER NOT NULL DEFAULT 0")
+            db.execSQL("ALTER TABLE `tasks` ADD COLUMN `repeat_until` INTEGER")
+        }
+    }
+
     /** Все миграции по порядку. */
-    val ALL: Array<Migration> = arrayOf(MIGRATION_5_6, MIGRATION_6_7)
+    val ALL: Array<Migration> = arrayOf(MIGRATION_5_6, MIGRATION_6_7, MIGRATION_7_8)
 }
 
 /** Три уровня по умолчанию — при миграции и при создании новой базы. */

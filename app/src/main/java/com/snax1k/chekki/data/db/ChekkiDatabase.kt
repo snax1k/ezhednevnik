@@ -42,7 +42,7 @@ abstract class ChekkiDatabase : RoomDatabase() {
 
     companion object {
         /** Текущая версия схемы. Подняли — добавьте миграцию в [Migrations]. */
-        const val VERSION = 7
+        const val VERSION = 8
 
         /** С этой версии данные только переносятся миграциями. */
         const val FIRST_KEPT_VERSION = 5

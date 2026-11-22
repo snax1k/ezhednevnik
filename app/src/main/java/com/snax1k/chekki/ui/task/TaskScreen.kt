@@ -73,6 +73,7 @@ import com.snax1k.chekki.ui.category.categoryColor
 import com.snax1k.chekki.data.DeletedTask
 import com.snax1k.chekki.data.MovedTask
 import com.snax1k.chekki.data.db.RepeatRule
+import com.snax1k.chekki.data.db.RepeatUnit
 import com.snax1k.chekki.data.db.PriorityLevels
 import com.snax1k.chekki.reminders.exactAlarmSettingsIntent
 import com.snax1k.chekki.reminders.notificationSettingsIntent
@@ -87,7 +88,8 @@ import com.snax1k.chekki.ui.addtask.NotificationsOffHint
 import com.snax1k.chekki.ui.addtask.OptionsRow
 import com.snax1k.chekki.ui.addtask.PlainTextField
 import com.snax1k.chekki.ui.addtask.QuickDate
-import com.snax1k.chekki.ui.addtask.RepeatPreset
+import com.snax1k.chekki.ui.addtask.RepeatRow
+import com.snax1k.chekki.ui.addtask.RepeatSheet
 import com.snax1k.chekki.ui.addtask.TaskDatePickerDialog
 import com.snax1k.chekki.ui.addtask.TaskDraft
 import com.snax1k.chekki.ui.addtask.TaskTimePickerDialog
@@ -99,7 +101,6 @@ import com.snax1k.chekki.ui.addtask.priorityTint
 import com.snax1k.chekki.ui.addtask.rememberNotificationAccess
 import com.snax1k.chekki.ui.addtask.reminderLabel
 import com.snax1k.chekki.ui.addtask.reminderOptions
-import com.snax1k.chekki.ui.addtask.repeatLabel
 import com.snax1k.chekki.ui.components.CardProgressBar
 import com.snax1k.chekki.ui.components.SquareIconButton
 import com.snax1k.chekki.ui.icons.ChekkiIcons
@@ -221,7 +222,7 @@ private fun TaskContent(
     onReminderSelect: (Int?) -> Unit,
     notificationsAllowed: Boolean,
     onEnableNotifications: () -> Unit,
-    onRepeatSelect: (RepeatRule) -> Unit,
+    onRepeatSelect: (RepeatRule, LocalDate?) -> Unit,
     onPrioritySelect: (Long) -> Unit,
     onCategorySelect: (Long?) -> Unit,
     subtaskRows: List<SubtaskRowUi>,
@@ -327,7 +328,7 @@ private fun ColumnScope.TaskBody(
     onReminderSelect: (Int?) -> Unit,
     notificationsAllowed: Boolean,
     onEnableNotifications: () -> Unit,
-    onRepeatSelect: (RepeatRule) -> Unit,
+    onRepeatSelect: (RepeatRule, LocalDate?) -> Unit,
     onPrioritySelect: (Long) -> Unit,
     onCategorySelect: (Long?) -> Unit,
     subtaskRows: List<SubtaskRowUi>,
@@ -516,7 +517,7 @@ private fun PropertiesCard(
     onReminderSelect: (Int?) -> Unit,
     notificationsAllowed: Boolean,
     onEnableNotifications: () -> Unit,
-    onRepeatSelect: (RepeatRule) -> Unit,
+    onRepeatSelect: (RepeatRule, LocalDate?) -> Unit,
     onPrioritySelect: (Long) -> Unit,
     onCategorySelect: (Long?) -> Unit,
     modifier: Modifier = Modifier
@@ -539,17 +540,18 @@ private fun PropertiesCard(
             NotificationsOffHint(onEnable = onEnableNotifications, modifier = Modifier.padding(start = 16.dp, end = 4.dp))
         }
         RowDivider()
-        val repeatPreset = RepeatPreset.of(draft.repeat)
-        OptionsRow(
-            icon = ChekkiIcons.Repeat,
-            label = stringResource(R.string.add_task_repeat),
-            value = repeatPreset?.let { repeatLabel(it) } ?: stringResource(R.string.repeat_custom),
-            options = RepeatPreset.entries,
-            selected = repeatPreset,
-            optionLabel = { repeatLabel(it) },
-            onSelect = { onRepeatSelect(it.rule) },
-            placement = FieldRowPlacement.Card
-        )
+        var showRepeat by rememberSaveable { mutableStateOf(false) }
+        RepeatRow(rule = draft.repeat, today = today, onClick = { showRepeat = true }, placement = FieldRowPlacement.Card)
+        if (showRepeat) {
+            RepeatSheet(
+                rule = draft.repeat,
+                taskDate = date,
+                today = today,
+                onDismiss = { showRepeat = false },
+                onDone = { rule, nextDate -> onRepeatSelect(rule, nextDate) },
+                onClear = { onRepeatSelect(RepeatRule.None, null) }
+            )
+        }
         RowDivider()
         OptionsRow(
             icon = if (priorityLevels.levelOf(draft.priority) == null) ChekkiIcons.PriorityFlagOutline else ChekkiIcons.PriorityFlag,
@@ -954,7 +956,7 @@ private fun TaskContentPreview() {
                 time = LocalTime.of(14, 0),
                 categoryId = 1,
                 priority = PriorityLevels.MEDIUM,
-                repeat = RepeatPreset.Quarterly.rule,
+                repeat = RepeatRule(RepeatUnit.Month, every = 3, weekdays = 0),
                 reminderMinutesBefore = 30
             ),
             isDone = false,
@@ -981,7 +983,7 @@ private fun TaskContentPreview() {
             onReminderSelect = {},
             notificationsAllowed = true,
             onEnableNotifications = {},
-            onRepeatSelect = {},
+            onRepeatSelect = { _, _ -> },
             onPrioritySelect = {},
             onCategorySelect = {}
         )

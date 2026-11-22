@@ -91,8 +91,9 @@ class AddTaskViewModel(
         draft = draft.copy(priority = priority)
     }
 
-    fun onRepeatSelect(repeat: RepeatRule) {
-        draft = draft.withRepeat(repeat)
+    /** Повтор из окна «Повтор»; [nextDate] — «Следующая задача», станет датой задачи. */
+    fun onRepeatSelect(repeat: RepeatRule, nextDate: LocalDate?) {
+        draft = draft.withRepeat(repeat, nextDate, today = LocalDate.now())
     }
 
     /** Напоминание за сколько минут; null — без напоминания. */

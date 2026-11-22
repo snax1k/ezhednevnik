@@ -129,15 +129,90 @@
     <string name="add_task_no_category">Без категории</string>
     <string name="add_task_repeat">Повтор</string>
     <string name="repeat_none">Не повторять</string>
+    <!-- Окно «Повтор» (23.11.2026): три вкладки, как в старом приложении -->
+    <string name="repeat_tab_week">Неделя</string>
+    <string name="repeat_tab_month">Месяц</string>
+    <string name="repeat_tab_custom">Свой период</string>
+    <string name="repeat_pick_weekdays">Выберите дни недели</string>
+    <string name="repeat_two_weeks">Двухнедельный режим</string>
+    <string name="repeat_two_weeks_hint">Разные дни на этой и следующей неделе</string>
+    <string name="repeat_this_week">Эта неделя</string>
+    <string name="repeat_next_week">Следующая неделя</string>
+    <string name="repeat_pick_month_days">Выберите числа месяца</string>
+    <string name="repeat_last_day_hint">31-е — последний день месяца: в коротких месяцах задача встанет на 28-е, 29-е или 30-е</string>
+    <string name="repeat_every_label">Каждые</string>
+    <string name="repeat_every_decrease">Меньше</string>
+    <string name="repeat_every_increase">Больше</string>
+    <string name="repeat_next_date">Следующая задача</string>
+    <string name="repeat_until">Повторять до</string>
+    <string name="repeat_until_forever">Бессрочно</string>
+    <string name="repeat_until_clear">Повторять бессрочно</string>
+    <string name="repeat_until_too_early">Раньше следующей задачи</string>
+    <string name="repeat_nothing_selected">Выберите хотя бы один день</string>
+    <!-- Подписи правила в строке «Повтор» -->
     <string name="repeat_daily">Каждый день</string>
     <string name="repeat_weekdays">По будням</string>
+    <string name="repeat_weekend">По выходным</string>
     <string name="repeat_weekly">Каждую неделю</string>
-    <string name="repeat_biweekly">Каждые 2 недели</string>
     <string name="repeat_monthly">Каждый месяц</string>
-    <string name="repeat_quarterly">Каждый квартал</string>
     <string name="repeat_yearly">Каждый год</string>
-    <!-- Правило не из готовых вариантов (сейчас в панели не встречается) -->
-    <string name="repeat_custom">Свой повтор</string>
+    <!-- «Каждые 2 недели: Пн, Чт» -->
+    <string name="repeat_with_days">%1$s: %2$s</string>
+    <!-- Двухнедельный режим: дни этой недели / следующей -->
+    <string name="repeat_two_weeks_summary">Две недели: %1$s / %2$s</string>
+    <string name="repeat_no_days">—</string>
+    <string name="repeat_last_day">последний день</string>
+    <!-- «Пн, Чт · до 31 дек» -->
+    <string name="repeat_until_summary">%1$s · до %2$s</string>
+    <plurals name="repeat_every_days">
+        <item quantity="one">Каждый %d день</item>
+        <item quantity="few">Каждые %d дня</item>
+        <item quantity="many">Каждые %d дней</item>
+        <item quantity="other">Каждые %d дня</item>
+    </plurals>
+    <plurals name="repeat_every_weeks">
+        <item quantity="one">Каждую %d неделю</item>
+        <item quantity="few">Каждые %d недели</item>
+        <item quantity="many">Каждые %d недель</item>
+        <item quantity="other">Каждые %d недели</item>
+    </plurals>
+    <plurals name="repeat_every_months">
+        <item quantity="one">Каждый %d месяц</item>
+        <item quantity="few">Каждые %d месяца</item>
+        <item quantity="many">Каждые %d месяцев</item>
+        <item quantity="other">Каждые %d месяца</item>
+    </plurals>
+    <plurals name="repeat_every_years">
+        <item quantity="one">Каждый %d год</item>
+        <item quantity="few">Каждые %d года</item>
+        <item quantity="many">Каждые %d лет</item>
+        <item quantity="other">Каждые %d года</item>
+    </plurals>
+    <!-- Названия единиц на кнопках «своего периода»: «3 дня», «5 недель» -->
+    <plurals name="repeat_unit_day">
+        <item quantity="one">день</item>
+        <item quantity="few">дня</item>
+        <item quantity="many">дней</item>
+        <item quantity="other">дня</item>
+    </plurals>
+    <plurals name="repeat_unit_week">
+        <item quantity="one">неделя</item>
+        <item quantity="few">недели</item>
+        <item quantity="many">недель</item>
+        <item quantity="other">недели</item>
+    </plurals>
+    <plurals name="repeat_unit_month">
+        <item quantity="one">месяц</item>
+        <item quantity="few">месяца</item>
+        <item quantity="many">месяцев</item>
+        <item quantity="other">месяца</item>
+    </plurals>
+    <plurals name="repeat_unit_year">
+        <item quantity="one">год</item>
+        <item quantity="few">года</item>
+        <item quantity="many">лет</item>
+        <item quantity="other">года</item>
+    </plurals>
     <string name="add_task_reminder">Напоминание</string>
     <string name="reminder_none">Без напоминания</string>
     <string name="reminder_at_start">В момент начала</string>

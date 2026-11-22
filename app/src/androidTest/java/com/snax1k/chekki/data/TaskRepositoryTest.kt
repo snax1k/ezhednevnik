@@ -329,6 +329,31 @@ class TaskRepositoryTest {
         }
     }
 
+    @Test
+    fun повторДоДатыПослеНеёКопийНеСоздаёт() {
+        runBlocking {
+            // Каждый день до завтра: выполнение сегодня создаёт копию на завтра, а выполнение завтрашней — уже нет
+            val untilTomorrow = RepeatRule(RepeatUnit.Day, every = 1, weekdays = 0, until = today.plusDays(1))
+            val taskId = repository.addTask(
+                title = "Курс таблеток",
+                note = "",
+                date = today,
+                time = null,
+                categoryId = null,
+                priority = PriorityLevels.NONE,
+                repeat = untilTomorrow
+            )
+            repository.toggleDone(taskId, today = today)
+            val copy = repository.observeTasksOn(today.plusDays(1)).first().single { it.task.title == "Курс таблеток" }
+            assertEquals(untilTomorrow, copy.task.repeat)
+            repository.toggleDone(copy.task.id, today = today.plusDays(1))
+            assertEquals(
+                emptyList<String>(),
+                repository.observeTasksOn(today.plusDays(2)).first().map { it.task.title }
+            )
+        }
+    }
+
     /** Записывает, какие будильники репозиторий просил поставить и снять. */
     private class RecordingScheduler : ReminderScheduler {
         val updated = mutableListOf<TaskEntity>()

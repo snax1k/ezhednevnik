@@ -2,7 +2,6 @@ package com.snax1k.chekki.ui.addtask
 
 import com.snax1k.chekki.data.AllDayReminderTime
 import com.snax1k.chekki.data.db.RepeatRule
-import com.snax1k.chekki.data.db.RepeatUnit
 import com.snax1k.chekki.data.db.PriorityLevels
 import java.time.LocalDate
 import java.time.LocalTime
@@ -70,9 +69,19 @@ data class TaskDraft(
         return copy(time = time, reminderMinutesBefore = fitted)
     }
 
-    /** Повтор. Без даты повторять нечего, поэтому задача без даты получает дату «Сегодня». */
-    fun withRepeat(repeat: RepeatRule): TaskDraft =
-        copy(repeat = repeat).withTodayIfNoDate(needed = repeat != RepeatRule.None)
+    /**
+     * Повтор из окна «Повтор». [nextDate] — «Следующая задача», она становится датой задачи.
+     * Без даты повторять нечего, поэтому если даты нет и [nextDate] не дан — «Сегодня».
+     * «Не повторять» дату не меняет.
+     */
+    fun withRepeat(repeat: RepeatRule, nextDate: LocalDate? = null, today: LocalDate = LocalDate.now()): TaskDraft {
+        val withRule = copy(repeat = repeat)
+        return when {
+            repeat == RepeatRule.None -> withRule
+            nextDate != null -> withRule.withDate(nextDate, today)
+            else -> withRule.withTodayIfNoDate(needed = true)
+        }
+    }
 
     /** Напоминание. Без даты напоминать некогда, поэтому задача без даты получает дату «Сегодня». */
     fun withReminder(minutesBefore: Int?): TaskDraft =
@@ -96,23 +105,3 @@ object ReminderOptions {
     /** Для задачи на весь день: в день задачи и накануне, оба в [AllDayReminderTime]. */
     val allDay: List<Int> = listOf(0, 24 * 60)
 }
-
-/** Готовые варианты повтора в панели. Свой вариант (каждые N дней, выбранные дни недели) — позже. */
-enum class RepeatPreset(val rule: RepeatRule) {
-    None(RepeatRule.None),
-    Daily(RepeatRule(RepeatUnit.Day, every = 1, weekdays = 0)),
-    Weekdays(RepeatRule(RepeatUnit.Week, every = 1, weekdays = MONDAY_TO_FRIDAY)),
-    Weekly(RepeatRule(RepeatUnit.Week, every = 1, weekdays = 0)),
-    Biweekly(RepeatRule(RepeatUnit.Week, every = 2, weekdays = 0)),
-    Monthly(RepeatRule(RepeatUnit.Month, every = 1, weekdays = 0)),
-    Quarterly(RepeatRule(RepeatUnit.Month, every = 3, weekdays = 0)),
-    Yearly(RepeatRule(RepeatUnit.Year, every = 1, weekdays = 0));
-
-    companion object {
-        /** Готовый вариант для правила; null — правило не из списка. */
-        fun of(rule: RepeatRule): RepeatPreset? = entries.firstOrNull { it.rule == rule }
-    }
-}
-
-// Биты с понедельника по пятницу (бит 0 — понедельник)
-private const val MONDAY_TO_FRIDAY = 0b0011111

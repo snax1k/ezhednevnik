@@ -354,6 +354,9 @@ interface TaskDao {
             repeat_unit = :repeatUnit,
             repeat_every = :repeatEvery,
             repeat_weekdays = :repeatWeekdays,
+            repeat_weekdays2 = :repeatWeekdays2,
+            repeat_month_days = :repeatMonthDays,
+            repeat_until = :repeatUntil,
             reminder_minutes_before = :reminderMinutesBefore
         WHERE id = :id
         """
@@ -369,6 +372,9 @@ interface TaskDao {
         repeatUnit: RepeatUnit,
         repeatEvery: Int,
         repeatWeekdays: Int,
+        repeatWeekdays2: Int,
+        repeatMonthDays: Int,
+        repeatUntil: LocalDate?,
         reminderMinutesBefore: Int?
     )
 

@@ -56,21 +56,43 @@ data class TaskEntity(
 )
 
 /**
- * Правило повтора: колонки repeat_unit, repeat_every, repeat_weekdays.
+ * Правило повтора: колонки repeat_unit, repeat_every, repeat_weekdays, repeat_weekdays2, repeat_month_days, repeat_until.
  * Когда повторяющуюся задачу выполняют, она остаётся выполненной, а рядом создаётся копия на следующую дату.
+ *
+ * Виды правил (окно «Повтор»):
+ * - по дням недели — [RepeatUnit.Week] и [weekdays] (каждые [every] недель);
+ * - две недели по-разному — [RepeatUnit.TwoWeeks]: [weekdays] — дни чётных недель, [weekdays2] — нечётных
+ *   (номер недели с понедельника 29.12.1969, см. `weekParity`), так правило не зависит от даты задачи;
+ * - по числам месяца — [RepeatUnit.Month] и [monthDays] (каждые [every] месяцев);
+ * - свой период — «каждые [every] дней / недель / месяцев / лет» от даты задачи, без дней и чисел.
  */
 data class RepeatRule(
     val unit: RepeatUnit,
     /** Каждые сколько единиц: 1 — каждый день (неделю, …), квартал — 3 месяца. */
     val every: Int,
     /**
-     * Дни недели для еженедельного повтора, битовая маска: бит 0 — понедельник, …, бит 6 — воскресенье.
-     * 0 — в тот же день недели, что и дата задачи.
+     * Дни недели, битовая маска: бит 0 — понедельник, …, бит 6 — воскресенье.
+     * 0 — в тот же день недели, что и дата задачи. У [RepeatUnit.TwoWeeks] — дни чётных недель.
      */
-    val weekdays: Int
+    val weekdays: Int,
+    /** Только у [RepeatUnit.TwoWeeks]: дни нечётных недель, та же маска. С 8-й схемы. */
+    @ColumnInfo(defaultValue = "0") val weekdays2: Int = 0,
+    /**
+     * Числа месяца у [RepeatUnit.Month]: бит 0 — 1-е, …, бит 30 — 31-е, которое значит «последний день месяца».
+     * 29-го и 30-го в коротких месяцах нет — такие дни пропускаются. 0 — то же число, что у даты задачи. С 8-й схемы.
+     */
+    @ColumnInfo(name = "month_days", defaultValue = "0") val monthDays: Int = 0,
+    /** Последний день, на который ещё создаётся копия; null — бессрочно. С 8-й схемы. */
+    val until: LocalDate? = null
 ) {
     companion object {
         val None = RepeatRule(unit = RepeatUnit.None, every = 1, weekdays = 0)
+
+        /** Все семь дней недели. */
+        const val ALL_WEEKDAYS = 0b1111111
+
+        /** Бит 31-го числа: последний день месяца. */
+        const val LAST_MONTH_DAY_BIT = 1 shl 30
     }
 }
 
@@ -82,7 +104,10 @@ enum class RepeatUnit(val code: Int) {
     Day(1),
     Week(2),
     Month(3),
-    Year(4);
+    Year(4),
+
+    /** Две недели по-разному (с 8-й схемы). */
+    TwoWeeks(5);
 
     companion object {
         fun fromCode(code: Int): RepeatUnit = entries.firstOrNull { it.code == code } ?: None

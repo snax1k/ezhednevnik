@@ -62,6 +62,7 @@ import androidx.compose.ui.unit.dp
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import com.snax1k.chekki.R
 import com.snax1k.chekki.data.db.RepeatRule
+import com.snax1k.chekki.data.db.RepeatUnit
 import com.snax1k.chekki.data.db.PriorityLevels
 import com.snax1k.chekki.reminders.exactAlarmSettingsIntent
 import com.snax1k.chekki.reminders.notificationSettingsIntent
@@ -178,7 +179,7 @@ private fun AddTaskContent(
     onDatePick: (LocalDate) -> Unit,
     onTimePick: (LocalTime?) -> Unit,
     onCategorySelect: (Long?) -> Unit,
-    onRepeatSelect: (RepeatRule) -> Unit,
+    onRepeatSelect: (RepeatRule, LocalDate?) -> Unit,
     onReminderSelect: (Int?) -> Unit,
     notificationsAllowed: Boolean,
     onEnableNotifications: () -> Unit,
@@ -196,6 +197,7 @@ private fun AddTaskContent(
         LaunchedEffect(Unit) { titleFocus.requestFocus() }
     }
     var pickerStep by rememberSaveable { mutableStateOf<PickerStep?>(null) }
+    var showRepeat by rememberSaveable { mutableStateOf(false) }
     // В какую подзадачу поставить курсор: в только что добавленную
     var subtaskToFocus by remember { mutableStateOf<Long?>(null) }
     val date = draft.dateFor(today)
@@ -229,16 +231,7 @@ private fun AddTaskContent(
                 selectedId = draft.categoryId,
                 onSelect = onCategorySelect
             )
-            val repeatPreset = RepeatPreset.of(draft.repeat)
-            OptionsRow(
-                icon = ChekkiIcons.Repeat,
-                label = stringResource(R.string.add_task_repeat),
-                value = repeatPreset?.let { repeatLabel(it) } ?: stringResource(R.string.repeat_custom),
-                options = RepeatPreset.entries,
-                selected = repeatPreset,
-                optionLabel = { repeatLabel(it) },
-                onSelect = { onRepeatSelect(it.rule) }
-            )
+            RepeatRow(rule = draft.repeat, today = today, onClick = { showRepeat = true })
             OptionsRow(
                 icon = ChekkiIcons.Reminder,
                 label = stringResource(R.string.add_task_reminder),
@@ -297,6 +290,17 @@ private fun AddTaskContent(
             }
         )
         null -> Unit
+    }
+
+    if (showRepeat) {
+        RepeatSheet(
+            rule = draft.repeat,
+            taskDate = date,
+            today = today,
+            onDismiss = { showRepeat = false },
+            onDone = { rule, nextDate -> onRepeatSelect(rule, nextDate) },
+            onClear = { onRepeatSelect(RepeatRule.None, null) }
+        )
     }
 }
 
@@ -607,7 +611,7 @@ private fun AddTaskContentPreview() {
                     time = LocalTime.of(16, 0),
                     categoryId = 1,
                     priority = PriorityLevels.HIGH,
-                    repeat = RepeatPreset.Weekly.rule,
+                    repeat = RepeatRule(RepeatUnit.Week, every = 1, weekdays = 0b0010101),
                     reminderMinutesBefore = 15,
                     subtasks = listOf(SubtaskDraft(0, "Собрать цифры из отчёта"), SubtaskDraft(1, "Сделать 10 слайдов"))
                 ),
@@ -620,7 +624,7 @@ private fun AddTaskContentPreview() {
                 onDatePick = {},
                 onTimePick = {},
                 onCategorySelect = {},
-                onRepeatSelect = {},
+                onRepeatSelect = { _, _ -> },
                 onReminderSelect = {},
                 notificationsAllowed = false,
                 onEnableNotifications = {},

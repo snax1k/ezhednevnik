@@ -164,11 +164,30 @@ class OldAppConverterTest {
         assertEquals(RepeatRule(RepeatUnit.Week, 2, 0) to true, rule("week", 2, 0))
         // Две недели с одинаковыми днями — каждую неделю
         assertEquals(RepeatRule(RepeatUnit.Week, 1, 0b1111111) to true, rule("week", 1, 32766, twoWeeks = true))
-        // Разные дни недель — объединение и «не точно»
-        assertEquals(RepeatRule(RepeatUnit.Week, 1, 0b1111111) to false, rule("week", 1, 10922, twoWeeks = true))
+        // Разные дни недель (схема 8): 1-я неделя Пн, Ср, Пт, Вс; 2-я — Вт, Чт, Сб. Без даты 1-я — чётная
+        val first = 0b1010101
+        val second = 0b0101010
+        assertEquals(
+            RepeatRule(RepeatUnit.TwoWeeks, 2, first, weekdays2 = second) to true,
+            rule("week", 1, 10922, twoWeeks = true)
+        )
+        // Задача во вторник 24.11.2026 (нечётная неделя): вторник только во 2-й неделе — значит, это она
+        assertEquals(
+            RepeatRule(RepeatUnit.TwoWeeks, 2, first, weekdays2 = second) to true,
+            OldAppConverter.repeatRule(OldRegularity("r", "week", 1, 10922, true), LocalDate.of(2026, 11, 24))
+        )
+        // Задача в понедельник 23.11.2026 (нечётная неделя) — 1-я неделя нечётная
+        assertEquals(
+            RepeatRule(RepeatUnit.TwoWeeks, 2, second, weekdays2 = first) to true,
+            OldAppConverter.repeatRule(OldRegularity("r", "week", 1, 10922, true), LocalDate.of(2026, 11, 23))
+        )
         assertEquals(RepeatRule(RepeatUnit.Month, 6, 0) to true, rule("month", 6, 0))
-        assertEquals(RepeatRule(RepeatUnit.Month, 1, 0) to true, rule("month", 1, 1L shl 20))
-        assertEquals(RepeatRule(RepeatUnit.Month, 1, 0) to false, rule("month", 1, (1L shl 15) or (1L shl 30)))
+        // Числа месяца: бит 20 старой маски — 20-е, у нас бит 19
+        assertEquals(RepeatRule(RepeatUnit.Month, 1, 0, monthDays = 1 shl 19) to true, rule("month", 1, 1L shl 20))
+        assertEquals(
+            RepeatRule(RepeatUnit.Month, 1, 0, monthDays = (1 shl 14) or (1 shl 29)) to true,
+            rule("month", 1, (1L shl 15) or (1L shl 30))
+        )
         assertEquals(RepeatRule.None to false, OldAppConverter.repeatRule(null))
     }
 
@@ -177,7 +196,8 @@ class OldAppConverterTest {
         val plan = convert(
             backup(
                 tasks = listOf(task("t", title = "Счётчики", regularity = "month_1_x")),
-                regularities = listOf(OldRegularity("month_1_x", "month", 1, (1L shl 15) or (1L shl 30), false))
+                // Неизвестный вид правила — переносится без повтора и попадает в отчёт
+                regularities = listOf(OldRegularity("month_1_x", "hour", 1, 0, false))
             )
         )
         assertEquals(listOf("Счётчики"), plan.report.approximatedRepeats)

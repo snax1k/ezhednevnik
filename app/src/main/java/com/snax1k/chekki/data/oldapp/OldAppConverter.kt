@@ -8,6 +8,7 @@ import com.snax1k.chekki.data.db.RepeatRule
 import com.snax1k.chekki.data.db.RepeatUnit
 import com.snax1k.chekki.data.db.TaskEntity
 import com.snax1k.chekki.data.db.PriorityLevels
+import com.snax1k.chekki.data.weekParity
 import java.time.Duration
 import java.time.Instant
 import java.time.LocalDate
@@ -137,7 +138,7 @@ object OldAppConverter {
             val deadline = parseInstant(old.deadline)?.atZone(zone)?.toLocalDate()
             if (deadline != null) deadlines++
             val repeat = if (old.uid in repeatHeads) {
-                val (rule, exact) = repeatRule(regularities[old.regularityUid])
+                val (rule, exact) = repeatRule(regularities[old.regularityUid], date)
                 if (!exact) approximated += old.title.trim()
                 rule
             } else {
@@ -277,8 +278,12 @@ object OldAppConverter {
         return minutes.takeIf { it in 0..MAX_REMINDER_MINUTES }?.toInt()
     }
 
-    /** Правило повтора и точно ли оно совпадает со старым. Нет правила — без повтора (тоже «не точно»). */
-    internal fun repeatRule(regularity: OldRegularity?): Pair<RepeatRule, Boolean> {
+    /**
+     * Правило повтора и точно ли оно совпадает со старым. Нет правила — без повтора (тоже «не точно»).
+     * [date] — дата задачи: по ней понятно, какая из двух недель двухнедельного режима сейчас.
+     * С 23.11.2026 (схема 8) разные дни в 1-ю и 2-ю неделю и несколько чисел месяца переносятся точно.
+     */
+    internal fun repeatRule(regularity: OldRegularity?, date: LocalDate? = null): Pair<RepeatRule, Boolean> {
         if (regularity == null) return RepeatRule.None to false
         val every = regularity.period.coerceAtLeast(1)
         val mask = regularity.daysMask
@@ -294,15 +299,32 @@ object OldAppConverter {
                         first == second -> RepeatRule(RepeatUnit.Week, 1, first) to true
                         second == 0 -> RepeatRule(RepeatUnit.Week, 2, first) to true
                         first == 0 -> RepeatRule(RepeatUnit.Week, 2, second) to true
-                        // Разные дни в первую и вторую неделю: у нас так нельзя — каждую неделю по всем этим дням
-                        else -> RepeatRule(RepeatUnit.Week, 1, first or second) to false
+                        else -> twoWeeksRule(first, second, date) to true
                     }
                 }
             }
-            // Одно число месяца — это и есть «каждый месяц» от даты задачи; несколько чисел у нас не бывает
-            "month" -> RepeatRule(RepeatUnit.Month, every, 0) to (java.lang.Long.bitCount(mask) <= 1)
+            // Числа месяца: у старого приложения бит 1 — 1-е, …, бит 31 — 31-е (последний день), у нас на бит раньше
+            "month" -> RepeatRule(RepeatUnit.Month, every, 0, monthDays = ((mask shr 1) and 0x7FFFFFFFL).toInt()) to true
             else -> RepeatRule.None to false
         }
+    }
+
+    /**
+     * Две недели по-разному. Неделя задачи — та, где отмечен день её даты (если он отмечен в обеих
+     * или ни в одной — первая); у нас недели хранятся по чётности, см. `weekParity`.
+     */
+    private fun twoWeeksRule(first: Int, second: Int, date: LocalDate?): RepeatRule {
+        val dayBit = date?.let { 1 shl (it.dayOfWeek.value - 1) } ?: 0
+        val dateInSecond = second and dayBit != 0 && first and dayBit == 0
+        val dateWeek = if (dateInSecond) second else first
+        val otherWeek = if (dateInSecond) first else second
+        val dateWeekIsEven = date == null || weekParity(date) == 0
+        return RepeatRule(
+            RepeatUnit.TwoWeeks,
+            every = 2,
+            weekdays = if (dateWeekIsEven) dateWeek else otherWeek,
+            weekdays2 = if (dateWeekIsEven) otherWeek else dateWeek
+        )
     }
 
     /** Дни недели привычки: «неделя» — по битам, остальное — каждый день. */

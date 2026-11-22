@@ -1,7 +1,7 @@
 package com.snax1k.chekki.ui.addtask
 
 import com.snax1k.chekki.data.db.RepeatRule
-import com.snax1k.chekki.data.nextOccurrence
+import com.snax1k.chekki.data.db.RepeatUnit
 import org.junit.Assert.assertEquals
 import org.junit.Assert.assertFalse
 import org.junit.Assert.assertNull
@@ -14,11 +14,14 @@ class TaskDraftTest {
     // 22 октября 2026 — четверг
     private val thursday = LocalDate.of(2026, 10, 22)
 
+    private val weekly = RepeatRule(RepeatUnit.Week, every = 1, weekdays = 0)
+    private val daily = RepeatRule(RepeatUnit.Day, every = 1, weekdays = 0)
+
     private val fullDraft = TaskDraft(
         title = "Созвон",
         quickDate = QuickDate.Tomorrow,
         time = LocalTime.of(10, 30),
-        repeat = RepeatPreset.Weekly.rule,
+        repeat = weekly,
         reminderMinutesBefore = 15
     )
 
@@ -35,14 +38,14 @@ class TaskDraftTest {
     fun другаяПлашкаВремяИПовторНеТрогает() {
         val draft = fullDraft.withQuickDate(QuickDate.Weekend)
         assertEquals(LocalTime.of(10, 30), draft.time)
-        assertEquals(RepeatPreset.Weekly.rule, draft.repeat)
+        assertEquals(weekly, draft.repeat)
         assertEquals(15, draft.reminderMinutesBefore)
     }
 
     @Test
     fun повторИлиНапоминаниеБезДатыСтавятСегодня() {
         val noDate = TaskDraft(quickDate = QuickDate.NoDate)
-        assertEquals(QuickDate.Today, noDate.withRepeat(RepeatPreset.Daily.rule).quickDate)
+        assertEquals(QuickDate.Today, noDate.withRepeat(daily).quickDate)
         assertEquals(QuickDate.Today, noDate.withReminder(0).quickDate)
         // «Не повторять» и «Без напоминания» дату не трогают
         assertEquals(QuickDate.NoDate, noDate.withRepeat(RepeatRule.None).quickDate)
@@ -69,12 +72,15 @@ class TaskDraftTest {
     }
 
     @Test
-    fun готовыеВариантыПовтора() {
-        RepeatPreset.entries.forEach { assertEquals(it, RepeatPreset.of(it.rule)) }
-        // По будням: с пятницы — на понедельник
-        val friday = LocalDate.of(2026, 10, 23)
-        assertEquals(LocalDate.of(2026, 10, 26), RepeatPreset.Weekdays.rule.nextOccurrence(friday, friday))
-        // Раз в две недели — через 14 дней
-        assertEquals(LocalDate.of(2026, 11, 5), RepeatPreset.Biweekly.rule.nextOccurrence(thursday, thursday))
+    fun следующаяЗадачаИзОкнаПовтораСтановитсяДатой() {
+        val nextTuesday = LocalDate.of(2026, 10, 27)
+        val tuesdays = RepeatRule(RepeatUnit.Week, every = 1, weekdays = 0b0000010)
+        val draft = fullDraft.withRepeat(tuesdays, nextDate = nextTuesday, today = thursday)
+        assertEquals(tuesdays, draft.repeat)
+        assertEquals(nextTuesday, draft.dateFor(thursday))
+        // Дата, у которой есть своя плашка, становится плашкой
+        assertEquals(QuickDate.Today, fullDraft.withRepeat(daily, nextDate = thursday, today = thursday).quickDate)
+        // «Не повторять» дату не меняет
+        assertEquals(QuickDate.Tomorrow, fullDraft.withRepeat(RepeatRule.None, nextDate = nextTuesday, today = thursday).quickDate)
     }
 }

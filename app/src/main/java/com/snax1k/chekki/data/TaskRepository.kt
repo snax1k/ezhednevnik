@@ -221,6 +221,9 @@ class TaskRepository(
                 repeatUnit = repeat.unit,
                 repeatEvery = repeat.every,
                 repeatWeekdays = repeat.weekdays,
+                repeatWeekdays2 = repeat.weekdays2,
+                repeatMonthDays = repeat.monthDays,
+                repeatUntil = repeat.until,
                 reminderMinutesBefore = reminderMinutesBefore
             )
             taskDao.getTask(id)

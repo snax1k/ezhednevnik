@@ -234,7 +234,9 @@ class TaskViewModel(
 
     fun onPrioritySelect(priority: Long) = edit { it.copy(priority = priority) }
 
-    fun onRepeatSelect(repeat: RepeatRule) = edit { it.withRepeat(repeat) }
+    /** Повтор из окна «Повтор»; [nextDate] — «Следующая задача», станет датой задачи. */
+    fun onRepeatSelect(repeat: RepeatRule, nextDate: LocalDate?) =
+        edit { it.withRepeat(repeat, nextDate, today = LocalDate.now()) }
 
     /** Напоминание за сколько минут; null — без напоминания. */
     fun onReminderSelect(minutesBefore: Int?) = edit { it.withReminder(minutesBefore) }

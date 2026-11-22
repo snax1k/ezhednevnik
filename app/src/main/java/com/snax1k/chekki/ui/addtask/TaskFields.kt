@@ -413,20 +413,6 @@ private fun HintBox(isEmpty: Boolean, hint: String, textStyle: TextStyle, innerT
     }
 }
 
-@Composable
-internal fun repeatLabel(preset: RepeatPreset): String = stringResource(
-    when (preset) {
-        RepeatPreset.None -> R.string.repeat_none
-        RepeatPreset.Daily -> R.string.repeat_daily
-        RepeatPreset.Weekdays -> R.string.repeat_weekdays
-        RepeatPreset.Weekly -> R.string.repeat_weekly
-        RepeatPreset.Biweekly -> R.string.repeat_biweekly
-        RepeatPreset.Monthly -> R.string.repeat_monthly
-        RepeatPreset.Quarterly -> R.string.repeat_quarterly
-        RepeatPreset.Yearly -> R.string.repeat_yearly
-    }
-)
-
 /** «За 15 минут»; у задачи на весь день — «В день задачи, 9:00» и «Накануне, 9:00». */
 @Composable
 internal fun reminderLabel(minutesBefore: Int?, allDay: Boolean): String {
