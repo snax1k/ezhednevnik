@@ -1,6 +1,7 @@
 package com.snax1k.chekki.ui.main
 
 import com.snax1k.chekki.icon.SeasonalIconState
+import com.snax1k.chekki.icon.DEFAULT_MASCOT
 import com.snax1k.chekki.icon.Season
 import androidx.compose.material3.SwitchDefaults
 import androidx.compose.material3.Switch
@@ -102,9 +103,9 @@ fun MainMenuSheet(
     }
 }
 
-/** Шапка меню: маскот сезона (как на иконке) и название приложения. */
+/** Шапка меню: маскот сезона (как на иконке) и название приложения; [season] null — обычный маскот. */
 @Composable
-private fun MenuHeader(season: Season) {
+private fun MenuHeader(season: Season?) {
     Row(
         Modifier
             .fillMaxWidth()
@@ -113,7 +114,7 @@ private fun MenuHeader(season: Season) {
         verticalAlignment = Alignment.CenterVertically
     ) {
         Image(
-            painter = painterResource(season.mascot),
+            painter = painterResource(season?.mascot ?: DEFAULT_MASCOT),
             contentDescription = null,
             modifier = Modifier
                 .size(56.dp)
@@ -132,6 +133,7 @@ private fun MenuHeader(season: Season) {
                         Season.Spring -> R.string.season_spring
                         Season.Summer -> R.string.season_summer
                         Season.Autumn -> R.string.season_autumn
+                        null -> R.string.season_none
                     }
                 ),
                 style = MaterialTheme.typography.bodySmall,

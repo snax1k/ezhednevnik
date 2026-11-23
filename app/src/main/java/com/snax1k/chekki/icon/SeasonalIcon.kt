@@ -15,13 +15,13 @@ import java.time.Month
 
 /**
  * Время года для иконки и маскота (решено 23.11.2026): по календарю — декабрь–февраль новогодняя,
- * март–май весенняя, июнь–август летняя, сентябрь–ноябрь осенняя. Коды фиксированные: хранятся в настройках.
+ * март–май весенняя, июнь–август летняя, сентябрь–ноябрь осенняя.
  */
-enum class Season(val code: Int, @DrawableRes val mascot: Int, val aliasName: String) {
-    Winter(1, R.drawable.mascot_winter, "com.snax1k.chekki.LauncherWinter"),
-    Spring(2, R.drawable.mascot_spring, "com.snax1k.chekki.LauncherSpring"),
-    Summer(3, R.drawable.mascot_summer, "com.snax1k.chekki.LauncherSummer"),
-    Autumn(4, R.drawable.mascot_autumn, "com.snax1k.chekki.LauncherAutumn");
+enum class Season(@DrawableRes val mascot: Int, val aliasName: String) {
+    Winter(R.drawable.mascot_winter, "com.snax1k.chekki.LauncherWinter"),
+    Spring(R.drawable.mascot_spring, "com.snax1k.chekki.LauncherSpring"),
+    Summer(R.drawable.mascot_summer, "com.snax1k.chekki.LauncherSummer"),
+    Autumn(R.drawable.mascot_autumn, "com.snax1k.chekki.LauncherAutumn");
 
     companion object {
         fun of(date: LocalDate): Season = when (date.month) {
@@ -30,27 +30,29 @@ enum class Season(val code: Int, @DrawableRes val mascot: Int, val aliasName: St
             Month.JUNE, Month.JULY, Month.AUGUST -> Summer
             Month.SEPTEMBER, Month.OCTOBER, Month.NOVEMBER -> Autumn
         }
-
-        fun fromCode(code: Int): Season? = entries.firstOrNull { it.code == code }
     }
 }
 
-/**
- * Какой сезон показывать: со включённой сезонной иконкой — по дате, с выключенной — тот, что был,
- * когда её выключили ([frozen]; обычной иконки без наряда нет).
- */
-fun shownSeason(enabled: Boolean, frozen: Season?, today: LocalDate): Season =
-    if (enabled) Season.of(today) else frozen ?: Season.of(today)
+/** Вход с обычной иконкой (маскот без наряда) — когда сезонная иконка выключена. */
+const val DEFAULT_LAUNCHER_ALIAS = "com.snax1k.chekki.LauncherDefault"
 
-/** Состояние для меню ☰: включена ли сезонная иконка и какой маскот сейчас. */
-data class SeasonalIconState(val enabled: Boolean, val season: Season)
+/** Обычный маскот для шапки меню. */
+@DrawableRes
+val DEFAULT_MASCOT: Int = R.drawable.mascot_default
+
+/** Какой сезон показывать: со включённой сезонной иконкой — по дате, с выключенной — никакой (обычная иконка). */
+fun shownSeason(enabled: Boolean, today: LocalDate): Season? = if (enabled) Season.of(today) else null
+
+/** Состояние для меню ☰: включена ли сезонная иконка и какой сезон сейчас; null — обычная иконка. */
+data class SeasonalIconState(val enabled: Boolean, val season: Season?)
 
 /**
- * Сезонная иконка приложения. В манифесте четыре входа (`activity-alias` на MainActivity) со своими иконками,
- * включён всегда один — его иконку и показывает рабочий стол. Переключается при выходе из приложения
+ * Сезонная иконка приложения. В манифесте пять входов (`activity-alias` на MainActivity): четыре сезонных
+ * и обычный; включён всегда один — его иконку и показывает рабочий стол. Переключается при выходе из приложения
  * ([MainActivity.onStop]) и после перезагрузки, смены времени и обновления ([RescheduleReceiver]):
  * не при открытом экране, потому что некоторые лаунчеры при смене входа закрывают приложение.
  * Фоновой работы нет: новый сезон наступает на иконке после первого выхода из приложения в этом сезоне.
+ * Выключили переключатель в меню ☰ — обычная иконка, как до сезонных (решено 23.11.2026).
  */
 class SeasonalIcon(context: Context) {
     private val appContext = context.applicationContext
@@ -59,13 +61,9 @@ class SeasonalIcon(context: Context) {
     private val _state = MutableStateFlow(readState(LocalDate.now()))
     val state: StateFlow<SeasonalIconState> = _state.asStateFlow()
 
-    /** Переключатель «Сезонная иконка» в меню ☰. Выключили — сезон замирает на нынешнем. */
+    /** Переключатель «Сезонная иконка» в меню ☰. Иконка на рабочем столе сменится при выходе из приложения. */
     fun setEnabled(enabled: Boolean, today: LocalDate = LocalDate.now()) {
-        val current = readState(today)
-        preferences.edit {
-            putBoolean(KEY_ENABLED, enabled)
-            if (enabled) remove(KEY_FROZEN) else putInt(KEY_FROZEN, current.season.code)
-        }
+        preferences.edit { putBoolean(KEY_ENABLED, enabled) }
         _state.value = readState(today)
     }
 
@@ -74,22 +72,23 @@ class SeasonalIcon(context: Context) {
         _state.value = readState(today)
     }
 
-    /** Включает вход с иконкой нужного сезона и выключает остальные; если уже так — ничего не делает. */
+    /** Включает вход с нужной иконкой и выключает остальные; если уже так — ничего не делает. */
     fun applyToLauncher(today: LocalDate = LocalDate.now()) {
-        val target = readState(today).season
-        _state.value = readState(today)
+        val state = readState(today)
+        _state.value = state
+        val target = state.season?.aliasName ?: DEFAULT_LAUNCHER_ALIAS
         val packageManager = appContext.packageManager
         try {
             // Сначала включаем нужный вход, потом выключаем остальные: у приложения всегда есть хотя бы один
             setAlias(packageManager, target, enabled = true)
-            Season.entries.filter { it != target }.forEach { setAlias(packageManager, it, enabled = false) }
+            ALL_ALIASES.filter { it != target }.forEach { setAlias(packageManager, it, enabled = false) }
         } catch (e: Exception) {
             Log.w(TAG, "Иконка не переключилась", e)
         }
     }
 
-    private fun setAlias(packageManager: PackageManager, season: Season, enabled: Boolean) {
-        val component = ComponentName(appContext, season.aliasName)
+    private fun setAlias(packageManager: PackageManager, aliasName: String, enabled: Boolean) {
+        val component = ComponentName(appContext, aliasName)
         // Лишний раз не трогаем: каждое переключение заставляет лаунчер перечитать иконки
         if (isEnabled(packageManager, component) == enabled) return
         val wanted = if (enabled) PackageManager.COMPONENT_ENABLED_STATE_ENABLED else PackageManager.COMPONENT_ENABLED_STATE_DISABLED
@@ -107,14 +106,13 @@ class SeasonalIcon(context: Context) {
 
     private fun readState(today: LocalDate): SeasonalIconState {
         val enabled = preferences.getBoolean(KEY_ENABLED, true)
-        val frozen = Season.fromCode(preferences.getInt(KEY_FROZEN, 0))
-        return SeasonalIconState(enabled, shownSeason(enabled, frozen, today))
+        return SeasonalIconState(enabled, shownSeason(enabled, today))
     }
 
     private companion object {
         const val TAG = "SeasonalIcon"
         const val PREFERENCES = "seasonal_icon"
         const val KEY_ENABLED = "enabled"
-        const val KEY_FROZEN = "frozen_season"
+        val ALL_ALIASES = Season.entries.map { it.aliasName } + DEFAULT_LAUNCHER_ALIAS
     }
 }

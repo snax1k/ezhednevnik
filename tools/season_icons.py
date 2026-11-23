@@ -5,7 +5,8 @@
 Для каждого сезона (winter, spring, summer, autumn):
 - передний слой адаптивной иконки mipmap-<плотность>/ic_launcher_foreground_<сезон>.png (108 dp: 108–432 px),
   залитый фоном, с маскотом внутри безопасной зоны 66 dp — лаунчеры обрезают края кругом, «капсулой» и т. п.;
-- плитка маскота для меню ☰ drawable-nodpi/mascot_<сезон>.webp — видимая часть иконки (72 dp из 108), 288 px.
+- плитка маскота для меню ☰ drawable-nodpi/mascot_<сезон>.webp — видимая часть иконки (72 dp из 108), 288 px;
+и плитка обычного маскота mascot_default.webp из прежней иконки (для выключенной сезонной иконки).
 
 Масштаб общий для всех сезонов — по самому большому маскоту с нарядом, чтобы иконка не меняла размер со сменой сезона.
 Нужны Pillow и numpy.
@@ -78,6 +79,11 @@ def main():
         nodpi.mkdir(parents=True, exist_ok=True)
         tile.save(nodpi / f"mascot_{season}.webp", quality=88, method=6)
         print(season, "готово")
+    # Обычный маскот без наряда — для шапки меню, когда сезонная иконка выключена: та же видимая часть иконки
+    plain = Image.open(RES / "mipmap-xxxhdpi" / "ic_launcher_foreground.png").convert("RGB")
+    crop = (432 - 288) // 2
+    plain.crop((crop, crop, crop + 288, crop + 288)).save(RES / "drawable-nodpi" / "mascot_default.webp", quality=88, method=6)
+    print("обычный маскот готов")
 
 
 if __name__ == "__main__":

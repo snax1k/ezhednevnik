@@ -2,7 +2,8 @@
     <!-- Сезонная иконка и маскот в меню ☰ (23.11.2026) -->
     <string name="menu_seasonal_icon">Сезонная иконка</string>
     <string name="menu_seasonal_icon_on">Иконка и маскот меняются по времени года</string>
-    <string name="menu_seasonal_icon_off">Иконка не меняется</string>
+    <string name="menu_seasonal_icon_off">Обычная иконка, без сезонного наряда</string>
+    <string name="season_none">Обычная иконка</string>
     <string name="season_winter">Новогоднее настроение</string>
     <string name="season_spring">Весеннее настроение</string>
     <string name="season_summer">Летнее настроение</string>

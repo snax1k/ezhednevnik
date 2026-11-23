@@ -1,6 +1,7 @@
 package com.snax1k.chekki.icon
 
 import org.junit.Assert.assertEquals
+import org.junit.Assert.assertNull
 import org.junit.Test
 import java.time.LocalDate
 
@@ -20,20 +21,10 @@ class SeasonTest {
     }
 
     @Test
-    fun выключеннаяСезоннаяИконкаНеМеняется() {
+    fun выключеннаяСезоннаяИконкаОбычная() {
         val december = LocalDate.of(2026, 12, 5)
-        // Включена — по дате
-        assertEquals(Season.Winter, shownSeason(enabled = true, frozen = Season.Autumn, today = december))
-        // Выключена осенью — и зимой осенняя
-        assertEquals(Season.Autumn, shownSeason(enabled = false, frozen = Season.Autumn, today = december))
-        // Выключена, но сезон не запомнился — по дате
-        assertEquals(Season.Winter, shownSeason(enabled = false, frozen = null, today = december))
-    }
-
-    @Test
-    fun кодыСезоновНеМеняются() {
-        // Коды хранятся в настройках: менять их нельзя
-        assertEquals(listOf(1, 2, 3, 4), Season.entries.map { it.code })
-        Season.entries.forEach { assertEquals(it, Season.fromCode(it.code)) }
+        assertEquals(Season.Winter, shownSeason(enabled = true, today = december))
+        // Выключена — обычная иконка без сезона
+        assertNull(shownSeason(enabled = false, today = december))
     }
 }
