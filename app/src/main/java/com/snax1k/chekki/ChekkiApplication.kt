@@ -1,5 +1,6 @@
 package com.snax1k.chekki
 
+import com.snax1k.chekki.icon.SeasonalIcon
 import android.app.Application
 import android.content.Context
 import com.snax1k.chekki.data.AttachmentStore
@@ -73,6 +74,7 @@ class AppContainer(context: Context) {
     val attachmentStore: AttachmentStore by lazy { AttachmentStore(appContext) }
 
     /** Обновление приложения из выпусков на GitHub. */
+    val seasonalIcon: SeasonalIcon by lazy { SeasonalIcon(appContext) }
     val updateManager: UpdateManager by lazy { UpdateManager(appContext, applicationScope) { database } }
 
     /** Сегодняшняя дата, меняется в полночь. */

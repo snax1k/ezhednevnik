@@ -66,6 +66,9 @@ private const val QuickPostponeThreshold = 0.6f
  * - влево коротко — кнопки «Отложить» (меню вариантов) и «Удалить», у выполненной — только «Удалить»;
  * - влево длинно — сразу отложить на первый вариант меню (обычно «Завтра»).
  *
+ * Удержание строки — окно смены даты (замечание клиента 23.11.2026): календарь с датой задачи, время остаётся;
+ * переносит то же [onPostpone], что и «Отложить», поэтому есть плашка «Отменить».
+ *
  * Открытой может быть только одна строка: [isOpen] приходит от экрана, [onOpen] и [onClose] сообщают ему.
  * Те же действия доступны TalkBack через меню действий строки.
  */
@@ -89,6 +92,7 @@ fun SwipeableTaskRow(
     var rowWidth by remember { mutableIntStateOf(0) }
     var postponeMenuOpen by remember { mutableStateOf(false) }
     var datePickerOpen by remember { mutableStateOf(false) }
+    var dateEditOpen by remember { mutableStateOf(false) }
 
     val actionWidthPx = with(density) { ActionWidth.toPx() }
     // У выполненной задачи под строкой только «Удалить»
@@ -123,6 +127,7 @@ fun SwipeableTaskRow(
 
     val completeLabel = stringResource(if (task.done) R.string.action_uncomplete else R.string.swipe_complete)
     val deleteLabel = stringResource(R.string.task_delete)
+    val changeDateLabel = stringResource(R.string.task_change_date)
     val postponeLabel = quickPostpone?.let {
         stringResource(R.string.action_postpone_to, stringResource(it.first.label).lowercase())
     }
@@ -184,6 +189,14 @@ fun SwipeableTaskRow(
             onToggleDone = onToggleDone,
             // Открытую строку нажатие закрывает, а не открывает карточку
             onClick = { if (offsetX != 0f) close() else onClick() },
+            onLongClick = {
+                if (offsetX != 0f) {
+                    close()
+                } else {
+                    haptics.performHapticFeedback(HapticFeedbackType.LongPress)
+                    dateEditOpen = true
+                }
+            },
             modifier = Modifier
                 .offset { IntOffset(offsetX.roundToInt(), 0) }
                 .draggable(
@@ -224,6 +237,7 @@ fun SwipeableTaskRow(
                         } else {
                             null
                         },
+                        CustomAccessibilityAction(changeDateLabel) { dateEditOpen = true; true },
                         CustomAccessibilityAction(deleteLabel) { onDelete(); true }
                     )
                 }
@@ -238,6 +252,18 @@ fun SwipeableTaskRow(
                 datePickerOpen = false
                 close()
                 onPostpone(date)
+            },
+            confirmLabel = R.string.action_done
+        )
+    }
+
+    if (dateEditOpen) {
+        TaskDatePickerDialog(
+            initialDate = task.date ?: today,
+            onDismiss = { dateEditOpen = false },
+            onNext = { date ->
+                dateEditOpen = false
+                if (date != task.date) onPostpone(date)
             },
             confirmLabel = R.string.action_done
         )

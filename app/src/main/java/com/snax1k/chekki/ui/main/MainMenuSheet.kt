@@ -1,5 +1,12 @@
 package com.snax1k.chekki.ui.main
 
+import com.snax1k.chekki.icon.SeasonalIconState
+import com.snax1k.chekki.icon.Season
+import androidx.compose.material3.SwitchDefaults
+import androidx.compose.material3.Switch
+import androidx.compose.foundation.selection.toggleable
+import androidx.compose.ui.res.painterResource
+import androidx.compose.foundation.Image
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Column
@@ -57,7 +64,9 @@ fun MainMenuSheet(
     onPriorityLevels: () -> Unit,
     update: UpdateMenuState,
     onCheckUpdates: () -> Unit,
-    onShowUpdate: () -> Unit
+    onShowUpdate: () -> Unit,
+    seasonal: SeasonalIconState,
+    onSeasonalToggle: (Boolean) -> Unit
 ) {
     val sheetState = rememberModalBottomSheetState(skipPartiallyExpanded = true)
     val scope = rememberCoroutineScope()
@@ -80,14 +89,90 @@ fun MainMenuSheet(
                 .navigationBarsPadding()
                 .padding(start = 12.dp, end = 12.dp, bottom = 16.dp)
         ) {
+            MenuHeader(seasonal.season)
             MenuRow(ChekkiIcons.Habits, stringResource(R.string.menu_habits)) { then(onHabits) }
             MenuRow(ChekkiIcons.PriorityFlag, stringResource(R.string.menu_priority_levels)) { then(onPriorityLevels) }
             MenuRow(ChekkiIcons.Archive, stringResource(R.string.menu_import)) { then(onImport) }
+            SeasonalIconRow(seasonal.enabled, onSeasonalToggle)
             UpdateRow(update, onClick = {
                 // Версия уже найдена — закрываем меню и показываем плашку; иначе проверяем, меню остаётся открытым
                 if (update.availableVersion != null) then(onShowUpdate) else onCheckUpdates()
             })
         }
+    }
+}
+
+/** Шапка меню: маскот сезона (как на иконке) и название приложения. */
+@Composable
+private fun MenuHeader(season: Season) {
+    Row(
+        Modifier
+            .fillMaxWidth()
+            .padding(start = 12.dp, end = 12.dp, top = 4.dp, bottom = 8.dp),
+        horizontalArrangement = Arrangement.spacedBy(16.dp),
+        verticalAlignment = Alignment.CenterVertically
+    ) {
+        Image(
+            painter = painterResource(season.mascot),
+            contentDescription = null,
+            modifier = Modifier
+                .size(56.dp)
+                .clip(MaterialTheme.shapes.medium)
+        )
+        Column {
+            Text(
+                stringResource(R.string.app_name),
+                style = MaterialTheme.typography.titleLarge,
+                color = MaterialTheme.colorScheme.onSurface
+            )
+            Text(
+                stringResource(
+                    when (season) {
+                        Season.Winter -> R.string.season_winter
+                        Season.Spring -> R.string.season_spring
+                        Season.Summer -> R.string.season_summer
+                        Season.Autumn -> R.string.season_autumn
+                    }
+                ),
+                style = MaterialTheme.typography.bodySmall,
+                color = MaterialTheme.colorScheme.onSurfaceVariant
+            )
+        }
+    }
+}
+
+/** «Сезонная иконка»: переключатель на случай, если рабочий стол плохо переносит смену иконки. */
+@Composable
+private fun SeasonalIconRow(enabled: Boolean, onToggle: (Boolean) -> Unit) {
+    Row(
+        Modifier
+            .fillMaxWidth()
+            .heightIn(min = 56.dp)
+            .clip(MaterialTheme.shapes.medium)
+            .toggleable(value = enabled, role = Role.Switch, onValueChange = onToggle)
+            .padding(horizontal = 12.dp, vertical = 8.dp),
+        horizontalArrangement = Arrangement.spacedBy(16.dp),
+        verticalAlignment = Alignment.CenterVertically
+    ) {
+        Icon(ChekkiIcons.CategorySmile, contentDescription = null, Modifier.size(22.dp), tint = MaterialTheme.colorScheme.primary)
+        Column(Modifier.weight(1f)) {
+            Text(
+                stringResource(R.string.menu_seasonal_icon),
+                style = MaterialTheme.typography.titleMedium,
+                color = MaterialTheme.colorScheme.onSurface
+            )
+            Text(
+                stringResource(if (enabled) R.string.menu_seasonal_icon_on else R.string.menu_seasonal_icon_off),
+                style = MaterialTheme.typography.bodySmall,
+                color = MaterialTheme.colorScheme.onSurfaceVariant
+            )
+        }
+        Switch(
+            checked = enabled,
+            // Нажатие обрабатывает вся строка
+            onCheckedChange = null,
+            colors = SwitchDefaults.colors(checkedTrackColor = MaterialTheme.colorScheme.primary)
+        )
     }
 }
 

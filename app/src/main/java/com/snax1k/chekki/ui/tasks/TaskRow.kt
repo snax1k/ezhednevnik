@@ -1,5 +1,6 @@
 package com.snax1k.chekki.ui.tasks
 
+import androidx.compose.foundation.combinedClickable
 import androidx.compose.animation.AnimatedVisibility
 import androidx.compose.animation.animateColorAsState
 import androidx.compose.animation.core.Spring
@@ -50,10 +51,17 @@ import java.time.LocalDate
 
 /**
  * Задача в списке: отметка, название, строка свойств и флажок приоритета.
- * Нажатие на строку ([onClick]) открывает карточку, на кружок — только ставит или снимает отметку.
+ * Нажатие на строку ([onClick]) открывает карточку, на кружок — только ставит или снимает отметку,
+ * удержание ([onLongClick]) — окно смены даты (с 23.11.2026).
  */
 @Composable
-fun TaskRow(task: TaskUi, onToggleDone: () -> Unit, modifier: Modifier = Modifier, onClick: (() -> Unit)? = null) {
+fun TaskRow(
+    task: TaskUi,
+    onToggleDone: () -> Unit,
+    modifier: Modifier = Modifier,
+    onClick: (() -> Unit)? = null,
+    onLongClick: (() -> Unit)? = null
+) {
     val priorityColor = task.priority?.let { priorityColor(it) }
     val checkColor = checkboxColor(task.category?.colorIndex)
     val titleColor by animateColorAsState(
@@ -61,6 +69,7 @@ fun TaskRow(task: TaskUi, onToggleDone: () -> Unit, modifier: Modifier = Modifie
         label = "taskTitleColor"
     )
     val openLabel = stringResource(R.string.task_open)
+    val changeDateLabel = stringResource(R.string.task_change_date)
     Row(
         modifier
             .fillMaxWidth()
@@ -68,8 +77,17 @@ fun TaskRow(task: TaskUi, onToggleDone: () -> Unit, modifier: Modifier = Modifie
             .clip(MaterialTheme.shapes.medium)
             .background(MaterialTheme.colorScheme.surfaceContainer)
             .then(
-                if (onClick != null) Modifier.clickable(onClickLabel = openLabel, role = Role.Button, onClick = onClick)
-                else Modifier
+                if (onClick != null) {
+                    Modifier.combinedClickable(
+                        onClickLabel = openLabel,
+                        role = Role.Button,
+                        onLongClickLabel = if (onLongClick != null) changeDateLabel else null,
+                        onLongClick = onLongClick,
+                        onClick = onClick
+                    )
+                } else {
+                    Modifier
+                }
             )
             .padding(start = 4.dp, end = 14.dp, top = 8.dp, bottom = 8.dp),
         verticalAlignment = Alignment.Top

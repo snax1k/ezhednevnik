@@ -214,7 +214,8 @@ fun ChekkiApp() {
     }
     val showUndoPostpone: (MovedTask) -> Unit = { moved ->
         val newDate = moved.newDate ?: LocalDate.now()
-        showUndo(postponedMessage(context, newDate, LocalDate.now())) {
+        val earlier = moved.previousDate != null && moved.newDate != null && moved.newDate < moved.previousDate
+        showUndo(postponedMessage(context, newDate, LocalDate.now(), earlier)) {
             container.taskRepository.moveTask(moved.taskId, moved.previousDate)
         }
     }
@@ -485,6 +486,7 @@ fun ChekkiApp() {
         val updateManager = container.updateManager
         val latestUpdate by updateManager.latest.collectAsStateWithLifecycle()
         val manualCheck by updateManager.manualCheck.collectAsStateWithLifecycle()
+        val seasonalState by container.seasonalIcon.state.collectAsStateWithLifecycle()
         MainMenuSheet(
             onDismiss = {
                 isMenuOpen = false
@@ -495,7 +497,9 @@ fun ChekkiApp() {
             onPriorityLevels = { backStack.add(PriorityLevelsRoute) },
             update = UpdateMenuState(updateManager.installedVersionName, manualCheck, latestUpdate?.versionName),
             onCheckUpdates = updateManager::checkNow,
-            onShowUpdate = updateManager::showLatest
+            onShowUpdate = updateManager::showLatest,
+            seasonal = seasonalState,
+            onSeasonalToggle = { enabled -> container.seasonalIcon.setEnabled(enabled) }
         )
     }
     if (categorySheetFor != null) {

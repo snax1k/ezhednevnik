@@ -31,13 +31,66 @@
             android:exported="true"
             android:label="@string/app_name"
             android:theme="@style/Theme.Chekki"
-            android:windowSoftInputMode="adjustResize">
+            android:windowSoftInputMode="adjustResize" />
+
+        <!-- Сезонные иконки (23.11.2026): четыре входа на MainActivity, включён один — его иконку показывает
+             рабочий стол. Переключает icon/SeasonalIcon.kt; в манифесте включён осенний, приложение поправит сезон само -->
+        <activity-alias
+            android:name=".LauncherWinter"
+            android:enabled="false"
+            android:exported="true"
+            android:icon="@mipmap/ic_launcher_winter"
+            android:label="@string/app_name"
+            android:roundIcon="@mipmap/ic_launcher_winter"
+            android:targetActivity=".MainActivity">
             <intent-filter>
                 <action android:name="android.intent.action.MAIN" />
 
                 <category android:name="android.intent.category.LAUNCHER" />
             </intent-filter>
-        </activity>
+        </activity-alias>
+        <activity-alias
+            android:name=".LauncherSpring"
+            android:enabled="false"
+            android:exported="true"
+            android:icon="@mipmap/ic_launcher_spring"
+            android:label="@string/app_name"
+            android:roundIcon="@mipmap/ic_launcher_spring"
+            android:targetActivity=".MainActivity">
+            <intent-filter>
+                <action android:name="android.intent.action.MAIN" />
+
+                <category android:name="android.intent.category.LAUNCHER" />
+            </intent-filter>
+        </activity-alias>
+        <activity-alias
+            android:name=".LauncherSummer"
+            android:enabled="false"
+            android:exported="true"
+            android:icon="@mipmap/ic_launcher_summer"
+            android:label="@string/app_name"
+            android:roundIcon="@mipmap/ic_launcher_summer"
+            android:targetActivity=".MainActivity">
+            <intent-filter>
+                <action android:name="android.intent.action.MAIN" />
+
+                <category android:name="android.intent.category.LAUNCHER" />
+            </intent-filter>
+        </activity-alias>
+        <activity-alias
+            android:name=".LauncherAutumn"
+            android:enabled="true"
+            android:exported="true"
+            android:icon="@mipmap/ic_launcher_autumn"
+            android:label="@string/app_name"
+            android:roundIcon="@mipmap/ic_launcher_autumn"
+            android:targetActivity=".MainActivity">
+            <intent-filter>
+                <action android:name="android.intent.action.MAIN" />
+
+                <category android:name="android.intent.category.LAUNCHER" />
+            </intent-filter>
+        </activity-alias>
 
         <!-- Будильник задачи: показывает уведомление -->
         <receiver

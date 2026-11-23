@@ -94,11 +94,12 @@ fun PostponeMenu(
  * «Задача отложена на завтра», «…на 24 октября» — текст плашки после переноса.
  * Не composable: плашку показывают из обработчика нажатия, а не при отрисовке.
  */
-fun postponedMessage(context: Context, date: LocalDate, today: LocalDate): String {
+fun postponedMessage(context: Context, date: LocalDate, today: LocalDate, earlier: Boolean = false): String {
     val whenText = when (date) {
         today -> context.getString(R.string.postponed_today)
         today.plusDays(1) -> context.getString(R.string.postponed_tomorrow)
         else -> formatDayMonth(date, today)
     }
-    return context.getString(R.string.task_postponed, whenText)
+    // На более раннюю дату (удержание строки → календарь) задача не «отложена», а «перенесена»
+    return context.getString(if (earlier) R.string.task_moved else R.string.task_postponed, whenText)
 }

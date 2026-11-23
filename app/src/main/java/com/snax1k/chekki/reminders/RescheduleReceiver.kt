@@ -16,6 +16,8 @@ class RescheduleReceiver : BroadcastReceiver() {
     override fun onReceive(context: Context, intent: Intent) {
         if (intent.action !in HANDLED_ACTIONS) return
         val container = (context.applicationContext as ChekkiApplication).container
+        // После обновления, перезагрузки или смены даты — иконка нужного сезона
+        container.seasonalIcon.applyToLauncher()
         val pendingResult = goAsync()
         container.applicationScope.launch {
             try {

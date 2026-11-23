@@ -27,6 +27,14 @@ class MainActivity : ComponentActivity() {
         super.onStart()
         // Проверка обновления — только при открытом приложении, не чаще раза в 6 часов
         (application as ChekkiApplication).container.updateManager.onAppStart()
+        // Новый день мог принести новый сезон: маскот в меню — сразу, иконка — при выходе
+        (application as ChekkiApplication).container.seasonalIcon.refresh()
+    }
+
+    override fun onStop() {
+        super.onStop()
+        // Сезонную иконку меняем, когда экран уже не виден: некоторые лаунчеры при смене входа закрывают приложение
+        if (!isChangingConfigurations) (application as ChekkiApplication).container.seasonalIcon.applyToLauncher()
     }
 
     override fun onResume() {
